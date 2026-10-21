@@ -1,0 +1,2 @@
+npc_butcher
+npc_medicine_seller

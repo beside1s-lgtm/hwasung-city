@@ -1,0 +1,2 @@
+act_ssireum_pair
+npc_taekkyeon__kick

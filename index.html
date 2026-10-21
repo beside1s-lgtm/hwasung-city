@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ko" class="w-full h-full m-0 p-0 overflow-hidden">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>화성성역: 정조의 24년 (華城城役 - SimCity 2000 에디션)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;800;900&family=Noto+Sans+KR:wght@400;600;700&display=swap');
+    
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #0d0a07;
+      color: #ede5d8;
+      font-family: 'Noto Sans KR', sans-serif;
+      touch-action: none;
+    }
+
+    .font-traditional {
+      font-family: 'Noto Serif KR', serif;
+    }
+
+    .hanji-card {
+      background-color: #f7f1e5;
+      background-image: radial-gradient(#d6c7b2 15%, transparent 16%);
+      background-size: 16px 16px;
+      color: #261912;
+      border: 3px solid #7c2217;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.85), inset 0 0 0 1px #d6a46e;
+    }
+
+    .dock-btn {
+      transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+    .dock-btn:active {
+      transform: scale(0.92);
+    }
+    .dock-btn.active {
+      background: linear-gradient(180deg, #991b1b 0%, #4c0d0d 100%) !important;
+      border-color: #fbbf24 !important;
+      color: #ffffff !important;
+      box-shadow: 0 0 14px rgba(251, 191, 36, 0.7);
+    }
+
+    #viewport {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      flex: 1 1 0%;
+      min-height: 200px;
+      cursor: crosshair;
+      touch-action: none;
+      background: radial-gradient(circle at center, #1b1510 0%, #0d0a07 100%);
+    }
+    #viewport.panning {
+      cursor: grab;
+    }
+    #viewport.panning:active {
+      cursor: grabbing;
+    }
+
+    #gameCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+
+    /* 심시티 2000 RCI 수요 게이지 바 스타일 */
+    .rci-bar-track {
+      width: 8px;
+      height: 26px;
+      background-color: #1c1510;
+      border: 1px solid #5a3e26;
+      border-radius: 2px;
+      position: relative;
+      overflow: hidden;
+    }
+    .rci-bar-fill {
+      width: 100%;
+      position: absolute;
+      bottom: 0;
+      transition: height 0.25s ease;
+    }
+  </style>
+</head>
+
+<body class="w-full h-full flex flex-col justify-between relative select-none">
+
+  <!-- 상단 자원 및 연호 HUD -->
+  <header id="game-header" class="relative z-20 bg-[#19130d]/95 border-b-2 border-[#6b4421] px-3 py-1.5 flex flex-wrap items-center justify-between shadow-2xl text-xs md:text-sm">
+    <div class="flex items-center gap-2">
+      <div id="badge-season" class="bg-[#7a1a1a] text-[#fef08a] px-3 py-1 rounded-full font-traditional font-black tracking-wide shadow-md flex items-center gap-1.5 border border-[#ca8a04]">
+        <span id="txt-season-icon">🌸</span>
+        <span id="txt-turn-label">정조 원년(1776) 봄 [1/96턴]</span>
+      </div>
+
+      <!-- 심시티 2000 R-C-A 3색 수요 게이지 바 -->
+      <div id="hud-rca-container" class="cursor-pointer bg-[#120d09] px-2 py-0.5 rounded border border-[#6f4825] hover:border-amber-400 flex items-center gap-1.5 transition shadow" title="심시티 2000 R-C-A 구획 수요 지수 (클릭 시 상세 분석)">
+        <div class="flex flex-col items-center">
+          <div class="rci-bar-track" title="방·리 주거 수요 (R)">
+            <div id="bar-demand-res" class="rci-bar-fill bg-emerald-500" style="height: 65%;"></div>
+          </div>
+          <span class="text-[8px] font-bold text-emerald-400">R</span>
+        </div>
+        <div class="flex flex-col items-center">
+          <div class="rci-bar-track" title="저잣거리 상업 수요 (C)">
+            <div id="bar-demand-com" class="rci-bar-fill bg-sky-500" style="height: 45%;"></div>
+          </div>
+          <span class="text-[8px] font-bold text-sky-400">C</span>
+        </div>
+        <div class="flex flex-col items-center">
+          <div class="rci-bar-track" title="대유둔전 농업 수요 (A)">
+            <div id="bar-demand-agr" class="rci-bar-fill bg-amber-500" style="height: 50%;"></div>
+          </div>
+          <span class="text-[8px] font-bold text-amber-400">A</span>
+        </div>
+      </div>
+
+      <!-- 비변사 시보(신문) 버튼 -->
+      <button id="btn-newspaper" class="bg-[#3b271a] hover:bg-[#523724] border border-[#8a5d36] text-xs px-2.5 py-1 rounded-md text-[#fef08a] transition shadow font-bold flex items-center gap-1" title="비변사 시보 (화성순보 호외 열람)">
+        <span>📰</span>
+        <span class="hidden sm:inline">비변사시보</span>
+      </button>
+
+      <!-- 국책대역사 공사 발주 버튼 -->
+      <button id="btn-mega-projects" class="bg-[#5c2317] hover:bg-[#7c2f20] border border-[#d97706] text-xs px-2.5 py-1 rounded-md text-[#fef08a] transition shadow font-bold flex items-center gap-1" title="비변사 국책 대역사 공사 발주">
+        <span>🏗️</span>
+        <span class="hidden sm:inline">국책대역사</span>
+      </button>
+
+      <!-- 호조 조세(세율) 패널 버튼 -->
+      <button id="btn-tax-budget" class="bg-[#3b271a] hover:bg-[#523724] border border-[#8a5d36] text-xs px-2 py-1 rounded-md text-[#fed7aa] transition shadow font-bold flex items-center gap-1" title="호조 조세 및 재정 조율">
+        <span>⚖️</span>
+        <span class="hidden sm:inline">탕평조세</span>
+      </button>
+
+      <!-- 포호책 버튼 -->
+      <button id="btn-tiger-crisis" class="bg-[#451a03] hover:bg-[#78350f] border border-[#d97706] text-xs px-2 py-1 rounded-md text-[#fef08a] transition shadow font-bold flex items-center gap-1" title="정조시대 포호책(호환 방비 및 착호군 결단)">
+        <span>🐅</span>
+        <span class="hidden md:inline">포호책</span>
+      </button>
+
+      <!-- 세자시강원 버튼 -->
+      <button id="btn-crown-prince" class="bg-[#1e1b4b] hover:bg-[#312e81] border border-[#6366f1] text-xs px-2 py-1 rounded-md text-[#c7d2fe] transition shadow font-bold flex items-center gap-1" title="원자(순조) 세자 책봉 및 시강원 제왕학 서연">
+        <span>👑</span>
+        <span class="hidden md:inline">세자서연</span>
+      </button>
+
+      <!-- 화산 현륭원 버튼 -->
+      <button id="btn-hyoryungwon" class="bg-[#4c0519] hover:bg-[#881337] border border-[#f43f5e] text-xs px-2 py-1 rounded-md text-[#fecdd3] transition shadow font-bold flex items-center gap-1" title="화산 현륭원 사도세자 묘역 친림 참배">
+        <span>🌸</span>
+        <span class="hidden md:inline">현륭원</span>
+      </button>
+
+      <!-- 을묘원행 버튼 -->
+      <button id="btn-eulmyo-wonhaeng" class="bg-[#713f12] hover:bg-[#a16207] border border-[#facc15] text-xs px-2 py-1 rounded-md text-[#fef08a] transition shadow font-bold flex items-center gap-1" title="정조 19년 을묘년 화성 원행 &middot; 봉수당진찬연 궁중 정재 춤">
+        <span>🥁</span>
+        <span class="hidden md:inline">을묘원행</span>
+      </button>
+
+      <button id="btn-sound-toggle" class="bg-[#332216] hover:bg-[#4a3221] border border-[#7a5331] text-xs px-2.5 py-1 rounded-md text-[#fed7aa] transition shadow">
+        🔊 소리
+      </button>
+    </div>
+
+    <div class="flex items-center gap-3 md:gap-5 overflow-x-auto py-0.5 font-medium">
+      <div class="flex items-center gap-1" title="상평통보 국고">
+        <span>🪙</span>
+        <span class="font-bold text-amber-300" id="hud-gold">2,500</span>
+      </div>
+      <div class="flex items-center gap-1 cursor-pointer hover:bg-[#251a12] px-2 py-0.5 rounded border border-[#6b4522] hover:border-emerald-500 transition shadow-sm" id="hud-rice-container" title="대외 곡물 교역">
+        <span>🌾</span>
+        <span class="font-bold text-emerald-300" id="hud-rice">1,600</span>
+        <span class="text-[9px] bg-emerald-900/90 text-emerald-200 px-1 py-0.2 rounded border border-emerald-600/60 font-bold ml-0.5">교역</span>
+      </div>
+      <div class="flex items-center gap-1" title="화성 신도시 인구">
+        <span>👥</span>
+        <span class="font-bold text-sky-300" id="hud-pop">120</span>
+      </div>
+      <div class="flex items-center gap-1" title="백성 충성도">
+        <span>❤️</span>
+        <span class="font-bold text-rose-300" id="hud-loyalty">88%</span>
+      </div>
+      <div class="flex items-center gap-1" title="왕권 및 국방력">
+        <span>👑</span>
+        <span class="font-bold text-purple-300" id="hud-authority">70</span>
+      </div>
+      <div class="flex items-center gap-1" title="수원천 치수 방재율 (석축 제방 공사로 증대)">
+        <span>🛡️</span>
+        <span class="font-bold text-teal-300" id="hud-flood">0%</span>
+      </div>
+      <div class="flex items-center gap-1 bg-[#120e0b] px-2.5 py-1 rounded-md border border-[#7d5633]">
+        <span title="화성 성곽 완공도">🏯</span>
+        <span class="font-bold text-yellow-400" id="hud-fortress">0%</span>
+      </div>
+    </div>
+  </header>
+
+  <main id="viewport" class="relative flex-1 w-full overflow-hidden">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- 시점 및 도구 보조 툴바 (심시티 2000 회전 나침반 포함) -->
+    <div class="absolute top-3 right-3 z-30 flex flex-col gap-1.5 pointer-events-auto">
+      <div class="flex flex-col items-center bg-[#251b14]/90 border border-[#7a522e] rounded-lg p-1 shadow-xl">
+        <div class="flex gap-1">
+          <button id="btn-rotate-ccw" class="w-8 h-8 rounded bg-[#38261a] hover:bg-[#523724] text-amber-200 font-bold text-sm flex items-center justify-center active:scale-95 transition" title="반시계방향 90도 회전">↺</button>
+          <button id="btn-rotate-cw" class="w-8 h-8 rounded bg-[#38261a] hover:bg-[#523724] text-amber-200 font-bold text-sm flex items-center justify-center active:scale-95 transition" title="시계방향 90도 회전">↻</button>
+        </div>
+        <span id="hud-compass-label" class="text-[9px] text-amber-300 font-bold mt-0.5">북동 (0°)</span>
+      </div>
+
+      <button id="btn-pan-toggle" class="w-10 h-10 rounded-lg bg-[#251b14]/90 border border-[#7a522e] text-amber-200 font-bold text-sm flex items-center justify-center shadow-xl active:scale-95 transition" title="화면 이동/건설 모드 전환 (휠 클릭으로도 이동 가능)">✋</button>
+      <button id="btn-zoom-in" class="w-10 h-10 rounded-lg bg-[#251b14]/90 border border-[#7a522e] text-amber-200 font-bold text-lg flex items-center justify-center shadow-xl active:scale-95 transition">+</button>
+      <button id="btn-zoom-out" class="w-10 h-10 rounded-lg bg-[#251b14]/90 border border-[#7a522e] text-amber-200 font-bold text-lg flex items-center justify-center shadow-xl active:scale-95 transition">-</button>
+      <button id="btn-center-view" class="w-10 h-10 rounded-lg bg-[#251b14]/90 border border-[#7a522e] text-amber-200 font-bold text-sm flex items-center justify-center shadow-xl active:scale-95 transition" title="화면 중앙 원위치">🎯</button>
+      <button id="btn-demolish-toggle" class="w-10 h-10 rounded-lg bg-[#4a0d0d]/90 border border-[#991b1b] text-red-200 font-bold text-sm flex items-center justify-center shadow-xl active:scale-95 transition" title="철거 불도저">🚜</button>
+    </div>
+
+    <!-- 현재 선택 도구 설명 툴바 -->
+    <div id="tool-status-bar" class="absolute top-3 left-3 z-10 bg-[#1b130d]/95 border border-[#6f4623] px-3.5 py-2 rounded-lg text-xs flex items-center gap-2.5 shadow-2xl backdrop-blur-sm pointer-events-none max-w-[80vw]">
+      <span id="tool-bar-icon" class="text-xl">🔍</span>
+      <div>
+        <div id="tool-bar-title" class="text-amber-200 font-bold">살피기 모드</div>
+        <div id="tool-bar-desc" class="text-stone-300 text-[11px]">마우스 휠 클릭으로 맵 이동, 휠 스크롤로 줌 인/아웃 가능</div>
+      </div>
+    </div>
+
+    <!-- 정조의 어명 / 필수 건축 안내 배너 -->
+    <div id="quest-banner" class="absolute top-16 left-3 z-20 bg-[#1b130d]/95 border border-[#ca8a04] px-3 py-1.5 rounded-lg text-xs flex items-center justify-between gap-3 shadow-2xl max-w-[85vw] md:max-w-md pointer-events-auto backdrop-blur-sm">
+      <div class="flex items-center gap-2">
+        <span class="text-base">📜</span>
+        <div>
+          <div id="quest-title" class="text-amber-300 font-bold font-traditional text-[12px]">제1교지: 행정 사령탑(동헌) 설치</div>
+          <div id="quest-desc" class="text-stone-300 text-[10px]">수원유수부 동헌을 평지에 지어 신도시 성역의 기틀을 마련하십시오.</div>
+        </div>
+      </div>
+      <button id="btn-quest-action" class="bg-[#7c2217] hover:bg-[#991b1b] border border-[#f59e0b] text-[#fef08a] px-2.5 py-1 rounded text-[11px] font-bold whitespace-nowrap active:scale-95 transition">
+        터 잡기
+      </button>
+    </div>
+
+    <!-- 인게임 토스트 배너 -->
+    <div id="toast-banner" class="absolute top-16 left-1/2 -translate-x-1/2 z-40 bg-[#721c13] text-white px-4 py-2.5 rounded-lg border border-[#f59e0b] shadow-2xl text-xs sm:text-sm font-semibold transition-all duration-300 transform -translate-y-8 opacity-0 pointer-events-none flex items-center gap-2 max-w-[90%] text-center">
+      <span id="toast-icon">📢</span>
+      <span id="toast-msg">알림</span>
+    </div>
+  </main>
+
+  <footer id="dock-bar" class="relative z-20 bg-[#16100b] border-t-2 border-[#5a381a] px-1 py-1.5 flex items-center justify-around gap-1 overflow-x-auto shadow-2xl">
+    <button class="dock-btn active flex-1 min-w-[48px] max-w-[62px] py-1 bg-[#291d13] border border-[#5a391e] rounded-lg flex flex-col items-center justify-center text-[10px] text-amber-100" data-tool="inspect">
+      <span class="text-base">🔍</span>
+      <span>살피기</span>
+    </button>
+    <button class="dock-btn flex-1 min-w-[48px] max-w-[62px] py-1 bg-[#291d13] border border-[#5a391e] rounded-lg flex flex-col items-center justify-center text-[10px] text-amber-100" data-tool="road">
+      <span class="text-base">🛣️</span>
+      <span>삼남로</span>
+    </button>
+    <button class="dock-btn flex-1 min-w-[48px] max-w-[62px] py-1 bg-[#291d13] border border-[#5a391e] rounded-lg flex flex-col items-center justify-center text-[10px] text-amber-100" data-tool="wall">
+      <span class="text-base">🧱</span>
+      <span>화성성곽</span>
+    </button>
+    <button class="dock-btn flex-1 min-w-[48px] max-w-[62px] py-1 bg-[#291d13] border border-[#5a391e] rounded-lg flex flex-col items-center justify-center text-[10px] text-amber-100" data-tool="gate" title="교역로 관세 징수 및 통제력 확보 성문">
+      <span class="text-base">⛩️</span>
+      <span>홍예성문</span>
+    </button>
+    <button class="dock-btn flex-1 min-w-[48px] max-w-[62px] py-1 bg-[#291d13] border border-[#5a391e] rounded-lg flex flex-col items-center justify-center text-[10px] text-amber-100" data-tool="zone_res">
+      <span class="text-base">🏡</span>
+      <span>방·리</span>
+    </button>
+    <button class="dock-btn flex-1 min-w-[48px] max-w-[62px] py-1 bg-[#291d13] border border-[#5a391e] rounded-lg flex flex-col items-center justify-center text-[10px] text-amber-100" data-tool="zone_com">
+      <span class="text-base">🏪</span>
+      <span>저잣거리</span>
+    </button>
+    <button class="dock-btn flex-1 min-w-[48px] max-w-[62px] py-1 bg-[#291d13] border border-[#5a391e] rounded-lg flex flex-col items-center justify-center text-[10px] text-amber-100" data-tool="zone_agr">
+      <span class="text-base">🌾</span>
+      <span>대유둔전</span>
+    </button>
+    <button class="dock-btn flex-1 min-w-[54px] max-w-[70px] py-1 bg-[#3a1b15] border border-[#a85324] hover:bg-[#52251c] rounded-lg flex flex-col items-center justify-center text-[10px] text-amber-200 transition" id="btn-dock-mega" title="수원천 석축 제방, 팔달산 서성곽, 만석거 국책 대역사 발주">
+      <span class="text-base">🏗️</span>
+      <span class="font-bold text-[#fef08a]">국책대역사</span>
+    </button>
+    <button class="dock-btn flex-1 min-w-[48px] max-w-[62px] py-1 bg-[#291d13] border border-[#5a391e] rounded-lg flex flex-col items-center justify-center text-[10px] text-amber-100" id="btn-open-court">
+      <span class="text-base">📜</span>
+      <span>조정·인재</span>
+    </button>
+    <button id="btn-advance-turn" class="flex-1 min-w-[62px] max-w-[85px] py-1 bg-gradient-to-b from-emerald-800 to-emerald-950 border-2 border-emerald-400 rounded-lg flex flex-col items-center justify-center text-[11px] text-emerald-100 font-bold shadow-lg active:scale-95 transition">
+      <span class="text-base">⏳</span>
+      <span>계절진행</span>
+    </button>
+  </footer>
+
+  <div id="modal-container" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-3">
+    <div class="hanji-card rounded-xl w-full max-w-lg p-5 max-h-[88vh] flex flex-col relative">
+      <button id="modal-close-x" class="absolute top-3 right-3 text-stone-600 hover:text-stone-900 text-xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-stone-300">✕</button>
+      
+      <div class="border-b-2 border-stone-400 pb-2 mb-3 text-center">
+        <h2 id="modal-title" class="font-traditional text-xl font-black text-[#752119]">상소문</h2>
+        <p id="modal-subtitle" class="text-xs text-stone-600 mt-0.5">수원유수부 감찰 보고</p>
+      </div>
+
+      <div id="modal-body" class="overflow-y-auto pr-1 text-sm leading-relaxed text-stone-800 space-y-3"></div>
+
+      <div id="modal-footer" class="mt-4 pt-2 border-t border-stone-300 flex flex-col gap-2"></div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

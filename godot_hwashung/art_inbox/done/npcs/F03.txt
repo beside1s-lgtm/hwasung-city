@@ -1,0 +1,2 @@
+npc_chakhogapsa
+npc_firefighter

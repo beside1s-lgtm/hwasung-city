@@ -1,0 +1,2 @@
+npc_farmer
+npc_peasant_woman

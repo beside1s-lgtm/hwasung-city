@@ -1,0 +1,6 @@
+flood
+fire
+famine_relief
+plague_doctor
+bandit_raid
+rebel_arrest

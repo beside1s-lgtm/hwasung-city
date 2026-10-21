@@ -1,0 +1,2 @@
+npc_child_girl
+npc_kite_flyer

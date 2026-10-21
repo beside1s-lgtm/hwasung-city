@@ -1,0 +1,42 @@
+# Godot 4
+.godot/
+*.translation
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build and Export outputs
+dist/
+dist_godot/
+dist_installer/
+build/
+exports/
+release_build/
+installer/Output/
+
+# Backup directories
+_backup_music/
+_backup_sprites/
+
+# IDE & Editor files
+.vscode/
+.idea/
+.claude/
+*.swp
+*.swo
+
+# Temporary test / log files in root
+/*.txt
+/*.log
+/*.tmp
+/*.err
+godot_hwashung/lint_out.txt
+godot_hwashung/gui_run.log
+godot_hwashung/*_result.txt
+
+# OS generated files
+.DS_Store
+Thumbs.db

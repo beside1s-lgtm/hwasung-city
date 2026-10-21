@@ -1,0 +1,2 @@
+npc_woodcutter
+npc_salt_porter

@@ -1,0 +1,275 @@
+[gd_scene format=3 uid="uid://c7qae1f4a5b6c"]
+
+[ext_resource type="Script" path="res://scripts/CrownPrincePopup.gd" id="1_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_main"]
+bg_color = Color(0.968627, 0.952941, 0.913725, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.24, 0.18, 0.12, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 20.0
+content_margin_top = 16.0
+content_margin_right = 20.0
+content_margin_bottom = 16.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.92, 0.9, 0.85, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.78, 0.74, 0.65, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 14.0
+content_margin_top = 12.0
+content_margin_right = 14.0
+content_margin_bottom = 12.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_quote"]
+bg_color = Color(0.98, 0.96, 0.92, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.65, 0.55, 0.4, 0.8)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+
+[node name="CrownPrincePopup" type="CanvasLayer"]
+process_mode = 3
+layer = 135
+script = ExtResource("1_script")
+
+[node name="DimBackground" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.04, 0.04, 0.06, 0.75)
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MainPanel" type="PanelContainer" parent="CenterContainer"]
+custom_minimum_size = Vector2(860, 560)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_main")
+
+[node name="MarginContainer" type="MarginContainer" parent="CenterContainer/MainPanel"]
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/MainPanel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TitleBar" type="HBoxContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/TitleBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.18, 0.12, 0.08, 1)
+theme_override_font_sizes/font_size = 20
+text = "시강원 세자서연 (侍講院 世子書筵)"
+
+[node name="CloseButtonTop" type="Button" parent="CenterContainer/MainPanel/MarginContainer/VBox/TitleBar"]
+custom_minimum_size = Vector2(40, 32)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+text = "✕"
+
+[node name="ContentHBox" type="HBoxContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="LeftPortraitPanel" type="PanelContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox"]
+custom_minimum_size = Vector2(340, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="LeftVBox" type="VBoxContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/LeftPortraitPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="StageBadgeLabel" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/LeftPortraitPanel/LeftVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.65, 0.18, 0.12, 1)
+theme_override_font_sizes/font_size = 14
+text = "[제1단계: 헐렁한 곤룡포의 유아 세자]"
+horizontal_alignment = 1
+
+[node name="PortraitFrame" type="CenterContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/LeftPortraitPanel/LeftVBox"]
+layout_mode = 2
+
+[node name="PortraitRect" type="TextureRect" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/LeftPortraitPanel/LeftVBox/PortraitFrame"]
+texture_filter = 1
+custom_minimum_size = Vector2(160, 160)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="SparkleLabel" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/LeftPortraitPanel/LeftVBox/PortraitFrame"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.85, 0.2, 1)
+theme_override_font_sizes/font_size = 28
+text = "✨ 成長 ✨"
+horizontal_alignment = 1
+
+[node name="QuotePanel" type="PanelContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/LeftPortraitPanel/LeftVBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_quote")
+
+[node name="QuoteLabel" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/LeftPortraitPanel/LeftVBox/QuotePanel"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 0.15, 0.1, 1)
+theme_override_font_sizes/font_size = 13
+text = "\"아바마마, 글공부는 너무 지루하옵니다... 나비 잡으러 가도 되옵니까?\""
+autowrap_mode = 3
+
+[node name="DescLabel" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/LeftPortraitPanel/LeftVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.45, 0.4, 0.35, 1)
+theme_override_font_sizes/font_size = 11
+text = "몸에 맞지 않는 헐렁한 큰 곤룡포에 삐뚤빼뚤 얹어진 익선관, 장난기 넘치는 어린 세자입니다."
+autowrap_mode = 3
+
+[node name="RightWorkPanel" type="PanelContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="RightVBox" type="VBoxContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/RightWorkPanel"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="StatusHeaderLabel" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/RightWorkPanel/RightVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.15, 0.35, 0.55, 1)
+theme_override_font_sizes/font_size = 15
+text = "상태: 경연 대기 중 | 소모: 매달 2,000냥"
+
+[node name="GaugeSection" type="VBoxContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/RightWorkPanel/RightVBox"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="GaugeLabel" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/RightWorkPanel/RightVBox/GaugeSection"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.18, 0.14, 0.1, 1)
+theme_override_font_sizes/font_size = 14
+text = "[□□□□□□□□□□] 0 / 100점 (매달 +1.0%)"
+
+[node name="ProgressBar" type="ProgressBar" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/RightWorkPanel/RightVBox/GaugeSection"]
+custom_minimum_size = Vector2(0, 22)
+layout_mode = 2
+max_value = 100.0
+value = 0.0
+show_percentage = false
+
+[node name="InfoGrid" type="GridContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/RightWorkPanel/RightVBox"]
+layout_mode = 2
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="AcadTitle" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/RightWorkPanel/RightVBox/InfoGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.35, 0.3, 1)
+theme_override_font_sizes/font_size = 13
+text = "도시 학문력:"
+
+[node name="AcadVal" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/RightWorkPanel/RightVBox/InfoGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.15, 0.45, 0.25, 1)
+theme_override_font_sizes/font_size = 13
+text = "50점 (향교, 서당, 규장각 사대부)"
+
+[node name="SpeedTitle" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/RightWorkPanel/RightVBox/InfoGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.35, 0.3, 1)
+theme_override_font_sizes/font_size = 13
+text = "학업 진척률:"
+
+[node name="SpeedVal" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/RightWorkPanel/RightVBox/InfoGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.18, 0.35, 0.65, 1)
+theme_override_font_sizes/font_size = 13
+text = "매달 +5.5% (기본 1% + 학문력 비례)"
+
+[node name="CostTitle" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/RightWorkPanel/RightVBox/InfoGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.35, 0.3, 1)
+theme_override_font_sizes/font_size = 13
+text = "매달 지출 비용:"
+
+[node name="CostVal" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/RightWorkPanel/RightVBox/InfoGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.25, 0.15, 1)
+theme_override_font_sizes/font_size = 13
+text = "2,000냥 (난이도 배율 적용)"
+
+[node name="BuffTitle" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/RightWorkPanel/RightVBox/InfoGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.35, 0.3, 1)
+theme_override_font_sizes/font_size = 13
+text = "현재 단계 효과:"
+
+[node name="BuffVal" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/RightWorkPanel/RightVBox/InfoGrid"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.65, 0.45, 0.1, 1)
+theme_override_font_sizes/font_size = 13
+text = "연구속도 +3%"
+
+[node name="Spacer" type="Control" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/RightWorkPanel/RightVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="AlertLabel" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/RightWorkPanel/RightVBox"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.85, 0.2, 0.15, 1)
+theme_override_font_sizes/font_size = 13
+text = "⚠️ [경연 중단] 국고가 부족하여 세자 교육이 정체되었습니다."
+autowrap_mode = 3
+
+[node name="ActionHBox" type="HBoxContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/RightWorkPanel/RightVBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="ToggleButton" type="Button" parent="CenterContainer/MainPanel/MarginContainer/VBox/ContentHBox/RightWorkPanel/RightVBox/ActionHBox"]
+custom_minimum_size = Vector2(160, 42)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+text = "경연 시작"
+
+[node name="Footer" type="HBoxContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox"]
+layout_mode = 2
+alignment = 2
+
+[node name="CloseButtonBottom" type="Button" parent="CenterContainer/MainPanel/MarginContainer/VBox/Footer"]
+custom_minimum_size = Vector2(100, 36)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+text = "閉 (닫기)"

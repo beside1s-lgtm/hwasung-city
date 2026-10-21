@@ -1,0 +1,139 @@
+[gd_scene format=3 uid="uid://b7y8e9f1a2c3d"]
+
+[ext_resource type="Script" path="res://scripts/TechTreePopup.gd" id="1_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_main"]
+bg_color = Color(0.968627, 0.952941, 0.913725, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.24, 0.18, 0.12, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 20.0
+content_margin_top = 16.0
+content_margin_right = 20.0
+content_margin_bottom = 16.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_dash"]
+bg_color = Color(0.917647, 0.898039, 0.843137, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.78, 0.74, 0.65, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+content_margin_left = 14.0
+content_margin_top = 10.0
+content_margin_right = 14.0
+content_margin_bottom = 10.0
+
+[node name="TechTreePopup" type="CanvasLayer"]
+process_mode = 3
+layer = 130
+script = ExtResource("1_script")
+
+[node name="DimBackground" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.04, 0.04, 0.06, 0.75)
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MainPanel" type="PanelContainer" parent="CenterContainer"]
+custom_minimum_size = Vector2(820, 600)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_main")
+
+[node name="MarginContainer" type="MarginContainer" parent="CenterContainer/MainPanel"]
+layout_mode = 2
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/MainPanel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TitleBar" type="HBoxContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox"]
+layout_mode = 2
+
+[node name="TitleLabel" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/TitleBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.18, 0.12, 0.08, 1)
+theme_override_font_sizes/font_size = 20
+text = "실학 연구 (實學 硏究)"
+
+[node name="CloseButtonTop" type="Button" parent="CenterContainer/MainPanel/MarginContainer/VBox/TitleBar"]
+custom_minimum_size = Vector2(40, 32)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+text = "✕"
+
+[node name="Dashboard" type="PanelContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_dash")
+
+[node name="DashVBox" type="VBoxContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox/Dashboard"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="StatHBox" type="HBoxContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox/Dashboard/DashVBox"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="AcademicLabel" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/Dashboard/DashVBox/StatHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.12, 0.35, 0.22, 1)
+text = "🏛️ 도시 총 학문력: 0 / 100"
+
+[node name="SpeedLabel" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/Dashboard/DashVBox/StatHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.18, 0.42, 0.65, 1)
+text = "⚡ 연구 속도: 매달 +1%"
+
+[node name="TurnCostLabel" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/Dashboard/DashVBox/StatHBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.4, 0.4, 0.4, 1)
+text = "💰 연구 재정: 매달 0냥 (미진행)"
+
+[node name="BuffLabel" type="Label" parent="CenterContainer/MainPanel/MarginContainer/VBox/Dashboard/DashVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.4, 0.4, 1)
+text = "📜 [적용 효과: 없음 — 기본 연구비 매달 1,000냥 소모]"
+
+[node name="Scroll" type="ScrollContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox"]
+custom_minimum_size = Vector2(0, 420)
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+
+[node name="TechList" type="VBoxContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="Footer" type="HBoxContainer" parent="CenterContainer/MainPanel/MarginContainer/VBox"]
+layout_mode = 2
+alignment = 2
+
+[node name="CloseButtonBottom" type="Button" parent="CenterContainer/MainPanel/MarginContainer/VBox/Footer"]
+custom_minimum_size = Vector2(100, 36)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+text = "閉 (닫기)"

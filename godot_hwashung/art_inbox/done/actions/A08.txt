@@ -1,0 +1,2 @@
+npc_soldier__attack
+npc_soldier__shoot

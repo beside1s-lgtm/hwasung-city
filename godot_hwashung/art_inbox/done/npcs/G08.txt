@@ -1,0 +1,2 @@
+npc_thief
+npc_brawler

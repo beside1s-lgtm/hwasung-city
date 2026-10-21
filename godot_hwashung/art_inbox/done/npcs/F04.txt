@@ -1,0 +1,2 @@
+npc_bandit
+npc_beater

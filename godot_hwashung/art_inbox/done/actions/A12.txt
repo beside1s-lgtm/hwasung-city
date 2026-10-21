@@ -1,0 +1,2 @@
+npc_bandit__attack
+npc_patrol__subdue

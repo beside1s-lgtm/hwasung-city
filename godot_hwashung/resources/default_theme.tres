@@ -1,0 +1,9 @@
+[gd_resource type="Theme" format=3 uid="uid://dfthmhwashung01"]
+
+[resource]
+default_font_size = 16
+Button/font_sizes/font_size = 15
+HeaderLarge/font_sizes/font_size = 22
+HeaderMedium/font_sizes/font_size = 18
+HeaderSmall/font_sizes/font_size = 16
+Label/font_sizes/font_size = 16

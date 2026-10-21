@@ -1,0 +1,2272 @@
+<!DOCTYPE html>
+<html lang="ko" class="w-full h-full m-0 p-0 overflow-hidden">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>화성성역: 정조의 24년 (華城城役 - SimCity 2000 에디션)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@600;800;900&family=Noto+Sans+KR:wght@400;600;700&display=swap');
+    
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #0d0a07;
+      color: #ede5d8;
+      font-family: 'Noto Sans KR', sans-serif;
+      touch-action: none;
+    }
+
+    .font-traditional {
+      font-family: 'Noto Serif KR', serif;
+    }
+
+    .hanji-card {
+      background-color: #f7f1e5;
+      background-image: radial-gradient(#d6c7b2 15%, transparent 16%);
+      background-size: 16px 16px;
+      color: #261912;
+      border: 3px solid #7c2217;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.85), inset 0 0 0 1px #d6a46e;
+    }
+
+    .dock-btn {
+      transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+    .dock-btn:active {
+      transform: scale(0.92);
+    }
+    .dock-btn.active {
+      background: linear-gradient(180deg, #991b1b 0%, #4c0d0d 100%) !important;
+      border-color: #fbbf24 !important;
+      color: #ffffff !important;
+      box-shadow: 0 0 14px rgba(251, 191, 36, 0.7);
+    }
+
+    #viewport {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      flex: 1 1 0%;
+      min-height: 200px;
+      cursor: crosshair;
+      touch-action: none;
+      background: radial-gradient(circle at center, #1b1510 0%, #0d0a07 100%);
+    }
+    #viewport.panning {
+      cursor: grab;
+    }
+    #viewport.panning:active {
+      cursor: grabbing;
+    }
+
+    #gameCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+  </style>
+</head>
+
+<body class="w-full h-full flex flex-col justify-between relative select-none">
+
+  <!-- 상단 자원 및 연호 HUD -->
+  <header id="game-header" class="relative z-20 bg-[#19130d]/95 border-b-2 border-[#6b4421] px-3 py-1.5 flex flex-wrap items-center justify-between shadow-2xl text-xs md:text-sm">
+    <div class="flex items-center gap-2">
+      <div id="badge-season" class="bg-[#7a1a1a] text-[#fef08a] px-3 py-1 rounded-full font-traditional font-black tracking-wide shadow-md flex items-center gap-1.5 border border-[#ca8a04]">
+        <span id="txt-season-icon">🌸</span>
+        <span id="txt-turn-label">정조 원년(1776) 봄 [1/96턴]</span>
+      </div>
+      <button id="btn-sound-toggle" class="bg-[#332216] hover:bg-[#4a3221] border border-[#7a5331] text-xs px-2.5 py-1 rounded-md text-[#fed7aa] transition shadow">
+        🔊 소리
+      </button>
+    </div>
+
+    <div class="flex items-center gap-3 md:gap-5 overflow-x-auto py-0.5 font-medium">
+      <div class="flex items-center gap-1" title="상평통보 국고">
+        <span>🪙</span>
+        <span class="font-bold text-amber-300" id="hud-gold">2,500</span>
+      </div>
+      <div class="flex items-center gap-1 cursor-pointer hover:bg-[#251a12] px-2 py-0.5 rounded border border-[#6b4522] hover:border-emerald-500 transition shadow-sm" id="hud-rice-container" title="클릭하여 대외 곡물 교역 및 쌀 매입소 열기">
+        <span>🌾</span>
+        <span class="font-bold text-emerald-300" id="hud-rice">1,600</span>
+        <span class="text-[9px] bg-emerald-900/90 text-emerald-200 px-1 py-0.2 rounded border border-emerald-600/60 font-bold ml-0.5">교역</span>
+      </div>
+      <div class="flex items-center gap-1" title="화성 신도시 인구">
+        <span>👥</span>
+        <span class="font-bold text-sky-300" id="hud-pop">120</span>
+      </div>
+      <div class="flex items-center gap-1" title="백성 충성도">
+        <span>❤️</span>
+        <span class="font-bold text-rose-300" id="hud-loyalty">88%</span>
+      </div>
+      <div class="flex items-center gap-1" title="왕권 및 국방력">
+        <span>👑</span>
+        <span class="font-bold text-purple-300" id="hud-authority">70</span>
+      </div>
+      <div class="flex items-center gap-1 bg-[#120e0b] px-2.5 py-1 rounded-md border border-[#7d5633]">
+        <span title="화성 성곽 완공도">🏯</span>
+        <span class="font-bold text-yellow-400" id="hud-fortress">0%</span>
+      </div>
+    </div>
+  </header>
+
+  <main id="viewport" class="relative flex-1 w-full overflow-hidden">
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- 시점 및 도구 보조 툴바 -->
+    <div class="absolute top-3 right-3 z-30 flex flex-col gap-1.5 pointer-events-auto">
+      <button id="btn-undo" class="w-10 h-10 rounded-lg bg-[#251b14]/90 border border-[#7a522e] text-amber-200 font-bold text-sm flex items-center justify-center shadow-xl active:scale-95 transition opacity-40" title="실행 취소 (되돌리기)">↩️</button>
+      <button id="btn-pan-toggle" class="w-10 h-10 rounded-lg bg-[#251b14]/90 border border-[#7a522e] text-amber-200 font-bold text-sm flex items-center justify-center shadow-xl active:scale-95 transition" title="화면 이동/건설 모드 전환">✋</button>
+      <button id="btn-zoom-in" class="w-10 h-10 rounded-lg bg-[#251b14]/90 border border-[#7a522e] text-amber-200 font-bold text-lg flex items-center justify-center shadow-xl active:scale-95 transition">+</button>
+      <button id="btn-zoom-out" class="w-10 h-10 rounded-lg bg-[#251b14]/90 border border-[#7a522e] text-amber-200 font-bold text-lg flex items-center justify-center shadow-xl active:scale-95 transition">-</button>
+      <button id="btn-center-view" class="w-10 h-10 rounded-lg bg-[#251b14]/90 border border-[#7a522e] text-amber-200 font-bold text-sm flex items-center justify-center shadow-xl active:scale-95 transition" title="화면 중앙 원위치">🎯</button>
+      <button id="btn-demolish-toggle" class="w-10 h-10 rounded-lg bg-[#4a0d0d]/90 border border-[#991b1b] text-red-200 font-bold text-sm flex items-center justify-center shadow-xl active:scale-95 transition" title="철거 불도저">🚜</button>
+    </div>
+
+    <!-- 현재 선택 도구 설명 툴바 -->
+    <div id="tool-status-bar" class="absolute top-3 left-3 z-10 bg-[#1b130d]/95 border border-[#6f4623] px-3.5 py-2 rounded-lg text-xs flex items-center gap-2.5 shadow-2xl backdrop-blur-sm pointer-events-none max-w-[80vw]">
+      <span id="tool-bar-icon" class="text-xl">🔍</span>
+      <div>
+        <div id="tool-bar-title" class="text-amber-200 font-bold">살피기 모드</div>
+        <div id="tool-bar-desc" class="text-stone-300 text-[11px]">건물과 백성을 터치해 당대 생활상을 살핍니다. 드래그하여 시점을 이동합니다.</div>
+      </div>
+    </div>
+
+    <!-- 정조의 어명 / 필수 건축 안내 배너 -->
+    <div id="quest-banner" class="absolute top-16 left-3 z-20 bg-[#1b130d]/95 border border-[#ca8a04] px-3 py-1.5 rounded-lg text-xs flex items-center justify-between gap-3 shadow-2xl max-w-[85vw] md:max-w-md pointer-events-auto backdrop-blur-sm">
+      <div class="flex items-center gap-2">
+        <span class="text-base">📜</span>
+        <div>
+          <div id="quest-title" class="text-amber-300 font-bold font-traditional text-[12px]">제1교지: 행정 사령탑(동헌) 설치</div>
+          <div id="quest-desc" class="text-stone-300 text-[10px]">수원유수부 동헌을 평지에 지어 신도시 성역의 기틀을 마련하십시오.</div>
+        </div>
+      </div>
+      <button id="btn-quest-action" class="bg-[#7c2217] hover:bg-[#991b1b] border border-[#f59e0b] text-[#fef08a] px-2.5 py-1 rounded text-[11px] font-bold whitespace-nowrap active:scale-95 transition">
+        터 잡기
+      </button>
+    </div>
+
+    <!-- 인게임 토스트 배너 -->
+    <div id="toast-banner" class="absolute top-16 left-1/2 -translate-x-1/2 z-40 bg-[#721c13] text-white px-4 py-2.5 rounded-lg border border-[#f59e0b] shadow-2xl text-xs sm:text-sm font-semibold transition-all duration-300 transform -translate-y-8 opacity-0 pointer-events-none flex items-center gap-2 max-w-[90%] text-center">
+      <span id="toast-icon">📢</span>
+      <span id="toast-msg">알림</span>
+    </div>
+  </main>
+
+  <footer id="dock-bar" class="relative z-20 bg-[#16100b] border-t-2 border-[#5a381a] px-1 py-1.5 flex items-center justify-around gap-1 overflow-x-auto shadow-2xl">
+    <button class="dock-btn active flex-1 min-w-[48px] max-w-[62px] py-1 bg-[#291d13] border border-[#5a391e] rounded-lg flex flex-col items-center justify-center text-[10px] text-amber-100" data-tool="inspect">
+      <span class="text-base">🔍</span>
+      <span>살피기</span>
+    </button>
+    <button class="dock-btn flex-1 min-w-[48px] max-w-[62px] py-1 bg-[#291d13] border border-[#5a391e] rounded-lg flex flex-col items-center justify-center text-[10px] text-amber-100" data-tool="road">
+      <span class="text-base">🛣️</span>
+      <span>삼남로</span>
+    </button>
+    <button class="dock-btn flex-1 min-w-[48px] max-w-[62px] py-1 bg-[#291d13] border border-[#5a391e] rounded-lg flex flex-col items-center justify-center text-[10px] text-amber-100" data-tool="wall">
+      <span class="text-base">🧱</span>
+      <span>화성성곽</span>
+    </button>
+    <button class="dock-btn flex-1 min-w-[48px] max-w-[62px] py-1 bg-[#291d13] border border-[#5a391e] rounded-lg flex flex-col items-center justify-center text-[10px] text-amber-100" data-tool="zone_res">
+      <span class="text-base">🏡</span>
+      <span>방·리</span>
+    </button>
+    <button class="dock-btn flex-1 min-w-[48px] max-w-[62px] py-1 bg-[#291d13] border border-[#5a391e] rounded-lg flex flex-col items-center justify-center text-[10px] text-amber-100" data-tool="zone_com">
+      <span class="text-base">🏪</span>
+      <span>저잣거리</span>
+    </button>
+    <button class="dock-btn flex-1 min-w-[48px] max-w-[62px] py-1 bg-[#291d13] border border-[#5a391e] rounded-lg flex flex-col items-center justify-center text-[10px] text-amber-100" data-tool="zone_agr">
+      <span class="text-base">🌾</span>
+      <span>대유둔전</span>
+    </button>
+    <button class="dock-btn flex-1 min-w-[48px] max-w-[62px] py-1 bg-[#291d13] border border-[#5a391e] rounded-lg flex flex-col items-center justify-center text-[10px] text-amber-100" id="btn-open-court">
+      <span class="text-base">📜</span>
+      <span>조정·인재</span>
+    </button>
+    <button class="dock-btn flex-1 min-w-[48px] max-w-[62px] py-1 bg-[#291d13] border border-[#5a391e] rounded-lg flex flex-col items-center justify-center text-[10px] text-amber-100" id="btn-open-agri">
+      <span class="text-base">🌾</span>
+      <span>농학·교역</span>
+    </button>
+    <button class="dock-btn flex-1 min-w-[48px] max-w-[62px] py-1 bg-[#291d13] border border-[#5a391e] rounded-lg flex flex-col items-center justify-center text-[10px] text-amber-100" id="btn-open-infra">
+      <span class="text-base">🏛️</span>
+      <span>관영시설</span>
+    </button>
+    <button id="btn-advance-turn" class="flex-1 min-w-[62px] max-w-[85px] py-1 bg-gradient-to-b from-emerald-800 to-emerald-950 border-2 border-emerald-400 rounded-lg flex flex-col items-center justify-center text-[11px] text-emerald-100 font-bold shadow-lg active:scale-95 transition">
+      <span class="text-base">⏳</span>
+      <span>계절진행</span>
+    </button>
+  </footer>
+
+  <div id="modal-container" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-3">
+    <div class="hanji-card rounded-xl w-full max-w-lg p-5 max-h-[88vh] flex flex-col relative">
+      <button id="modal-close-x" class="absolute top-3 right-3 text-stone-600 hover:text-stone-900 text-xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-stone-300">✕</button>
+      
+      <div class="border-b-2 border-stone-400 pb-2 mb-3 text-center">
+        <h2 id="modal-title" class="font-traditional text-xl font-black text-[#752119]">상소문</h2>
+        <p id="modal-subtitle" class="text-xs text-stone-600 mt-0.5">수원유수부 감찰 보고</p>
+      </div>
+
+      <div id="modal-body" class="overflow-y-auto pr-1 text-sm leading-relaxed text-stone-800 space-y-3"></div>
+
+      <div id="modal-footer" class="mt-4 pt-2 border-t border-stone-300 flex flex-col gap-2"></div>
+    </div>
+  </div>
+
+  <script>
+    const MAP_SIZE = 16;
+    const TILE_W = 64;
+    const TILE_H = 32;
+    const ELEV_STEP = 20;
+
+    const gameState = {
+      turn: 1,
+      year: 1776,
+      seasonIndex: 0,
+      seasons: ['봄', '여름', '가을', '겨울'],
+      seasonIcons: ['🌸', '☀️', '🍁', '❄️'],
+      
+      gold: 2500,
+      rice: 1600,
+      pop: 120,
+      loyalty: 88,
+      authority: 70,
+      military: 100,
+      fortressProgress: 0,
+      
+      retainers: {
+        jeong: false,   // 정약용 (거중기, 축성속도 +80%)
+        chae: true,     // 채제공 (공사 예산 절감 20%)
+        park: false,    // 박제가 (신해통공 상업수익 +40%)
+        baek: false,    // 백동수 (장용영 정예화, 도적 차단)
+        kim: false,     // 김홍도 (민심 안정, 문화 번영)
+        seo: false,     // 서유구 (농학 생산 +25%)
+        guk: false,     // 홍국영 (왕권 강화, 숙위소)
+        gu: false,      // 구선복 (군사 급증, 반란 리스크)
+        hong: false     // 홍인한 (위험한 급전 지원)
+      },
+
+      researchedUigwe: false,
+      soundEnabled: true,
+      currentTool: 'inspect',
+      isPanMode: false,
+
+      research: {
+        goguma: false,     // 조엄의 감저(고구마) 구황작물 보급
+        gwanong: false,    // 박지원 과농소초 & 수차 보급
+        seed: false,       // 서유구 우량 벼 품종 개량
+        fertilizer: false, // 녹비·퇴비 시비법 혁신
+        reservoir: false   // 만석거 관개 정비
+      },
+
+      trade: {
+        autoBuyRice: true,
+        totalImportedRice: 0
+      },
+
+      milestones: {
+        wonhaeng1789: false, // 1789년 현륭원 원행 & 배다리
+        eulmyo1795: false    // 1795년 을묘년 화성 원행 8일간의 축제
+      },
+      lastEventTurn: 0
+    };
+
+    const undoStack = [];
+    const MAX_UNDO = 40;
+
+    const quests = [
+      {
+        id: 'office',
+        title: "제1교지: 행정 사령탑(동헌) 설치",
+        desc: "개혁 신도시의 기틀이 될 수원유수부 동헌을 평지에 지으십시오.",
+        tool: 'office',
+        btnText: "동헌 터 잡기",
+        check: () => {
+          for (let y = 0; y < MAP_SIZE; y++) {
+            for (let x = 0; x < MAP_SIZE; x++) {
+              if (tileGrid[y][x].building === 'office') return true;
+            }
+          }
+          return false;
+        },
+        reward: { gold: 200, rice: 100, msg: "동헌이 완공되어 행정 체계가 수립되었습니다! (+🪙200, +🌾100)" }
+      },
+      {
+        id: 'road',
+        title: "제2교지: 삼남대로 5칸 개설",
+        desc: "동헌과 이어지는 큰길(삼남대로)을 드래그하여 물류망을 뚫으십시오.",
+        tool: 'road',
+        btnText: "도로 닦기",
+        check: () => {
+          let count = 0;
+          for (let y = 0; y < MAP_SIZE; y++) {
+            for (let x = 0; x < MAP_SIZE; x++) {
+              if (tileGrid[y][x].building === 'road') count++;
+            }
+          }
+          return count >= 5;
+        },
+        reward: { gold: 150, rice: 50, msg: "삼남대로가 뚫려 보부상과 유민들이 모여듭니다! (+🪙150)" }
+      },
+      {
+        id: 'seojangdae',
+        title: "제3교지: 팔달산 서장대(西將臺) 축조",
+        desc: "팔달산 정상에 군사 총지휘소 [서장대]를 축조하십시오.",
+        tool: 'seojangdae',
+        btnText: "서장대 축조",
+        check: () => {
+          for (let y = 0; y < MAP_SIZE; y++) {
+            for (let x = 0; x < MAP_SIZE; x++) {
+              if (tileGrid[y][x].building === 'seojangdae') return true;
+            }
+          }
+          return false;
+        },
+        reward: { gold: 150, loyalty: 5, msg: "서장대가 세워져 팔달산 정상에서 사방을 감제합니다! (+🪙150, ❤️+5%)" }
+      },
+      {
+        id: 'bongdon',
+        title: "제4교지: 화성 봉돈(烽墩) 축조",
+        desc: "팔달산 능선에 위급을 알리는 5연 굴뚝 [봉돈]을 축조하십시오.",
+        tool: 'bongdon',
+        btnText: "봉돈 축조",
+        check: () => {
+          for (let y = 0; y < MAP_SIZE; y++) {
+            for (let x = 0; x < MAP_SIZE; x++) {
+              if (tileGrid[y][x].building === 'bongdon') return true;
+            }
+          }
+          return false;
+        },
+        reward: { gold: 150, loyalty: 5, msg: "봉돈이 축조되어 주야간 군사 통신망이 완비되었습니다! (+🪙150, ❤️+5%)" }
+      },
+      {
+        id: 'civil_zoning',
+        title: "제5교지: 백성 구획 및 공동 우물 조성",
+        desc: "방·리(주거), 저잣거리(상업), 둔전(농업) 구획을 지정하고 우물을 파십시오.",
+        tool: 'well',
+        btnText: "우물 파기",
+        check: () => {
+          let hasZone = false, hasWell = false;
+          for (let y = 0; y < MAP_SIZE; y++) {
+            for (let x = 0; x < MAP_SIZE; x++) {
+              if (tileGrid[y][x].zone || (tileGrid[y][x].building && (tileGrid[y][x].building.startsWith('res') || tileGrid[y][x].building.startsWith('com') || tileGrid[y][x].building.startsWith('agr')))) hasZone = true;
+              if (tileGrid[y][x].building === 'well') hasWell = true;
+            }
+          }
+          return hasZone && hasWell;
+        },
+        reward: { gold: 300, rice: 200, msg: "백성들이 정착하고 신도시가 활기를 띱니다! (+🪙300, +🌾200)" }
+      },
+      {
+        id: 'wall_build',
+        title: "제6교지: 화성 성곽 축조 및 완공",
+        desc: "화성 성곽을 드래그하여 둘러치고 24년 내에 100% 완공을 달성하십시오.",
+        tool: 'wall',
+        btnText: "성곽 축조",
+        check: () => gameState.fortressProgress >= 100,
+        reward: { gold: 1000, authority: 30, msg: "축하하옵니다! 수원화성 성곽이 완벽히 완공되었습니다!" }
+      }
+    ];
+
+    let currentQuestIndex = 0;
+
+    const tileGrid = [];
+    for (let y = 0; y < MAP_SIZE; y++) {
+      tileGrid[y] = [];
+      for (let x = 0; x < MAP_SIZE; x++) {
+        let elevation = 1;
+        let terrain = 'plain';
+
+        if (x <= 4 && y <= 4) {
+          elevation = 4 - Math.max(x, y);
+          terrain = 'mountain';
+        } else if (x <= 5 && y <= 5 && (x + y <= 7)) {
+          elevation = 2;
+          terrain = 'mountain';
+        }
+
+        if ((x === 8 && y >= 0 && y <= 6) || 
+            (x === 9 && y >= 6 && y <= 11) || 
+            (x === 8 && y >= 11 && y < MAP_SIZE)) {
+          elevation = 0;
+          terrain = 'water';
+        }
+
+        tileGrid[y][x] = {
+          x, y,
+          elevation: elevation,
+          terrain: terrain,
+          building: null,
+          zone: null,
+          level: 1,
+          smokeOffset: Math.random() * 10
+        };
+      }
+    }
+
+    let nativeAudioCtx = null;
+
+    function initNativeAudio() {
+      try {
+        if (!nativeAudioCtx) {
+          const AudioClass = window.AudioContext || window.webkitAudioContext;
+          if (AudioClass) {
+            nativeAudioCtx = new AudioClass();
+          }
+        }
+        if (nativeAudioCtx && nativeAudioCtx.state === 'suspended') {
+          nativeAudioCtx.resume().catch(() => {});
+        }
+      } catch (e) {
+        nativeAudioCtx = null;
+      }
+    }
+
+    function playSound(type) {
+      if (!gameState.soundEnabled) return;
+      initNativeAudio();
+      if (!nativeAudioCtx) return;
+
+      try {
+        const now = nativeAudioCtx.currentTime;
+        const osc = nativeAudioCtx.createOscillator();
+        const gain = nativeAudioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(nativeAudioCtx.destination);
+
+        if (type === 'hammer') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(140, now);
+          osc.frequency.exponentialRampToValueAtTime(45, now + 0.12);
+          gain.gain.setValueAtTime(0.35, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+          osc.start(now);
+          osc.stop(now + 0.12);
+        } else if (type === 'wall') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(95, now);
+          osc.frequency.exponentialRampToValueAtTime(30, now + 0.25);
+          gain.gain.setValueAtTime(0.6, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        } else if (type === 'coin') {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(659.25, now);
+          osc.frequency.setValueAtTime(987.77, now + 0.08);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        } else if (type === 'season') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(392.00, now);
+          osc.frequency.setValueAtTime(523.25, now + 0.15);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.6);
+          osc.start(now);
+          osc.stop(now + 0.6);
+        } else if (type === 'demolish') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(120, now);
+          osc.frequency.exponentialRampToValueAtTime(30, now + 0.3);
+          gain.gain.setValueAtTime(0.4, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+          osc.start(now);
+          osc.stop(now + 0.3);
+        } else if (type === 'error') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(160, now);
+          osc.frequency.setValueAtTime(110, now + 0.1);
+          gain.gain.setValueAtTime(0.3, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        }
+      } catch (err) {}
+    }
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const viewport = document.getElementById('viewport');
+
+    const camera = {
+      x: 0,
+      y: 0,
+      zoom: 1.0,
+      minZoom: 0.55,
+      maxZoom: 2.2
+    };
+
+    function centerCamera() {
+      const w = canvas.width || viewport.clientWidth || 800;
+      const h = canvas.height || viewport.clientHeight || 600;
+      camera.zoom = window.innerWidth < 640 ? 0.85 : 1.1;
+      camera.x = w / 2;
+      camera.y = Math.max(50, h * 0.20);
+    }
+
+    function resizeCanvas() {
+      const rect = viewport.getBoundingClientRect();
+      const w = Math.floor(rect.width) || window.innerWidth || 800;
+      const h = Math.floor(rect.height) || (window.innerHeight - 100) || 600;
+
+      if (w > 0 && h > 0 && (canvas.width !== w || canvas.height !== h)) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+      if (camera.x === 0 || camera.y === 0 || isNaN(camera.x) || isNaN(camera.y)) {
+        centerCamera();
+      }
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    if (window.ResizeObserver) {
+      const ro = new ResizeObserver(() => resizeCanvas());
+      ro.observe(viewport);
+    }
+
+    function getCanvasPos(clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+      };
+    }
+
+    function gridToScreen(gx, gy, elev = 0) {
+      const halfW = (TILE_W / 2) * camera.zoom;
+      const halfH = (TILE_H / 2) * camera.zoom;
+      const sx = (gx - gy) * halfW + camera.x;
+      const sy = (gx + gy) * halfH - (elev * ELEV_STEP * camera.zoom) + camera.y;
+      return { x: sx, y: sy };
+    }
+
+    function screenToGrid(sx, sy) {
+      const halfW = (TILE_W / 2) * camera.zoom;
+      const halfH = (TILE_H / 2) * camera.zoom;
+      
+      const candidates = [];
+      for (let y = 0; y < MAP_SIZE; y++) {
+        for (let x = 0; x < MAP_SIZE; x++) {
+          candidates.push(tileGrid[y][x]);
+        }
+      }
+      candidates.sort((a, b) => (b.elevation * 100 + b.x + b.y) - (a.elevation * 100 + a.x + a.y));
+
+      for (const tile of candidates) {
+        const pos = gridToScreen(tile.x, tile.y, tile.elevation);
+        const cx = pos.x;
+        const cy = pos.y + halfH;
+        const distNorm = Math.abs(sx - cx) / halfW + Math.abs(sy - cy) / halfH;
+        if (distNorm <= 1.0) {
+          return { x: tile.x, y: tile.y };
+        }
+      }
+      
+      const u = (sx - camera.x) / halfW;
+      const v = (sy - camera.y - halfH) / halfH;
+      const gx = Math.floor((u + v) / 2);
+      const gy = Math.floor((v - u) / 2);
+      return { 
+        x: Math.max(0, Math.min(MAP_SIZE - 1, gx)), 
+        y: Math.max(0, Math.min(MAP_SIZE - 1, gy)) 
+      };
+    }
+
+    function getPalette() {
+      switch (gameState.seasonIndex) {
+        case 0:
+          return {
+            plain: '#5c8734',
+            plainTop: '#6fa13f',
+            mountain: '#476924',
+            mountainTop: '#547d2b',
+            water: '#357ebd',
+            waterDeep: '#23598a',
+            cliffWest: '#704f32',
+            cliffEast: '#543b24',
+            road: '#ba975d'
+          };
+        case 1:
+          return {
+            plain: '#247031',
+            plainTop: '#2b873c',
+            mountain: '#185223',
+            mountainTop: '#1e662c',
+            water: '#1976d2',
+            waterDeep: '#0f5298',
+            cliffWest: '#634428',
+            cliffEast: '#4a321d',
+            road: '#9e7e49'
+          };
+        case 2:
+          return {
+            plain: '#9c7324',
+            plainTop: '#b6872a',
+            mountain: '#7a3814',
+            mountainTop: '#914319',
+            water: '#427083',
+            waterDeep: '#2a4b59',
+            cliffWest: '#5c3f25',
+            cliffEast: '#48301b',
+            road: '#8f6d42'
+          };
+        case 3:
+          return {
+            plain: '#d5dfea',
+            plainTop: '#eaf0f6',
+            mountain: '#879bb1',
+            mountainTop: '#9fb3c9',
+            water: '#52677e',
+            waterDeep: '#39495a',
+            cliffWest: '#47423c',
+            cliffEast: '#35312c',
+            road: '#b5bdc9'
+          };
+        default:
+          return {
+            plain: '#5c8734',
+            plainTop: '#6fa13f',
+            mountain: '#476924',
+            mountainTop: '#547d2b',
+            water: '#357ebd',
+            waterDeep: '#23598a',
+            cliffWest: '#704f32',
+            cliffEast: '#543b24',
+            road: '#ba975d'
+          };
+      }
+    }
+
+    let animationTime = 0;
+
+    const seasonParticles = [];
+    const MAX_PARTICLES = 36;
+    for (let i = 0; i < MAX_PARTICLES; i++) {
+      seasonParticles.push({
+        x: Math.random() * 1200,
+        y: Math.random() * 800,
+        speedX: (Math.random() - 0.5) * 1.6,
+        speedY: 0.6 + Math.random() * 1.4,
+        size: 2 + Math.random() * 3,
+        rot: Math.random() * Math.PI * 2,
+        rotSpeed: (Math.random() - 0.5) * 0.05
+      });
+    }
+
+    function drawSeasonParticles() {
+      const w = canvas.width || 800;
+      const h = canvas.height || 600;
+      const season = gameState.seasonIndex;
+      ctx.save();
+
+      seasonParticles.forEach(p => {
+        p.x += p.speedX;
+        p.y += p.speedY;
+        p.rot += p.rotSpeed;
+
+        if (p.y > h + 10) { p.y = -10; p.x = Math.random() * w; }
+        if (p.x < -10) p.x = w + 10;
+        if (p.x > w + 10) p.x = -10;
+
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rot);
+
+        if (season === 0) {
+          ctx.fillStyle = 'rgba(251, 182, 206, 0.75)';
+          ctx.beginPath();
+          ctx.ellipse(0, 0, p.size * 1.4, p.size * 0.7, 0, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (season === 1) {
+          ctx.fillStyle = 'rgba(254, 240, 138, 0.55)';
+          ctx.beginPath();
+          ctx.arc(0, 0, p.size * 0.65, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (season === 2) {
+          ctx.fillStyle = (p.size > 3.4) ? 'rgba(220, 38, 38, 0.75)' : 'rgba(234, 179, 8, 0.8)';
+          ctx.beginPath();
+          ctx.ellipse(0, 0, p.size * 1.3, p.size * 0.8, 0, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (season === 3) {
+          ctx.fillStyle = 'rgba(248, 250, 252, 0.85)';
+          ctx.beginPath();
+          ctx.arc(0, 0, p.size * 0.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      });
+
+      ctx.restore();
+    }
+
+    function render() {
+      animationTime += 0.03;
+      if (!canvas.width || !canvas.height) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const pal = getPalette();
+      const halfW = (TILE_W / 2) * camera.zoom;
+      const halfH = (TILE_H / 2) * camera.zoom;
+
+      for (let y = 0; y < MAP_SIZE; y++) {
+        for (let x = 0; x < MAP_SIZE; x++) {
+          const tile = tileGrid[y][x];
+          const elev = tile.elevation;
+          const pos = gridToScreen(x, y, elev);
+
+          // 심시티 2000 스타일 3D 남서측 절벽 단면
+          if (y + 1 < MAP_SIZE && tileGrid[y + 1][x].elevation < elev) {
+            const lowerElev = tileGrid[y + 1][x].elevation;
+            const diff = (elev - lowerElev) * ELEV_STEP * camera.zoom;
+            ctx.beginPath();
+            ctx.moveTo(pos.x - halfW, pos.y + halfH);
+            ctx.lineTo(pos.x, pos.y + halfH * 2);
+            ctx.lineTo(pos.x, pos.y + halfH * 2 + diff);
+            ctx.lineTo(pos.x - halfW, pos.y + halfH + diff);
+            ctx.closePath();
+            ctx.fillStyle = pal.cliffWest;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+
+          // 남동측 절벽 단면
+          if (x + 1 < MAP_SIZE && tileGrid[y][x + 1].elevation < elev) {
+            const lowerElev = tileGrid[y][x + 1].elevation;
+            const diff = (elev - lowerElev) * ELEV_STEP * camera.zoom;
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y + halfH * 2);
+            ctx.lineTo(pos.x + halfW, pos.y + halfH);
+            ctx.lineTo(pos.x + halfW, pos.y + halfH + diff);
+            ctx.lineTo(pos.x, pos.y + halfH * 2 + diff);
+            ctx.closePath();
+            ctx.fillStyle = pal.cliffEast;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+
+          // 타일 상단 지표면 다이아몬드
+          ctx.beginPath();
+          ctx.moveTo(pos.x, pos.y);
+          ctx.lineTo(pos.x + halfW, pos.y + halfH);
+          ctx.lineTo(pos.x, pos.y + halfH * 2);
+          ctx.lineTo(pos.x - halfW, pos.y + halfH);
+          ctx.closePath();
+
+          if (tile.terrain === 'mountain') {
+            ctx.fillStyle = pal.mountainTop;
+          } else if (tile.terrain === 'water') {
+            ctx.fillStyle = pal.water;
+          } else {
+            ctx.fillStyle = pal.plainTop;
+          }
+          ctx.fill();
+
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.09)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+
+          // 구획(Zoning) 지정 표시선
+          if (tile.zone && !tile.building) {
+            ctx.fillStyle = tile.zone === 'res' ? 'rgba(56, 189, 248, 0.35)' :
+                            tile.zone === 'com' ? 'rgba(251, 146, 60, 0.40)' : 'rgba(74, 222, 128, 0.40)';
+            ctx.fill();
+            ctx.strokeStyle = '#fef08a';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+          }
+
+          drawVillageAlleyways(tile, pos, halfW, halfH);
+          drawTileStructures(tile, pos, halfW, halfH);
+        }
+      }
+
+      drawBorderTradeRoutes();
+      drawHoverTileCursor(halfW, halfH);
+      drawDragPreview(halfW, halfH);
+      drawSeasonParticles();
+
+      requestAnimationFrame(render);
+    }
+
+    function getBorderRoadConnections() {
+      const connections = [];
+      for (let x = 0; x < MAP_SIZE; x++) {
+        if (tileGrid[0][x].building === 'road') connections.push({ edge: 'north', name: '한양 도성대로', x, y: 0, label: '한양 방면 (40리) 🚩' });
+        if (tileGrid[MAP_SIZE - 1][x].building === 'road') connections.push({ edge: 'south', name: '삼남 곡창대로', x, y: MAP_SIZE - 1, label: '호남·삼남대로 (곡창) 🌾' });
+      }
+      for (let y = 0; y < MAP_SIZE; y++) {
+        if (tileGrid[y][0].building === 'road') connections.push({ edge: 'west', name: '남양만 조운 포구', x: 0, y, label: '남양만 조운포구 ⛵' });
+        if (tileGrid[y][MAP_SIZE - 1].building === 'road') connections.push({ edge: 'east', name: '영남대로', x: MAP_SIZE - 1, y, label: '영남·동해대로 🧭' });
+      }
+      return connections;
+    }
+
+    function drawBorderTradeRoutes() {
+      const connections = getBorderRoadConnections();
+      if (!connections.length) return;
+
+      connections.forEach(conn => {
+        const tile = tileGrid[conn.y][conn.x];
+        const pos = gridToScreen(conn.x, conn.y, tile.elevation);
+        const halfH = (TILE_H / 2) * camera.zoom;
+
+        ctx.save();
+        ctx.fillStyle = '#fef08a';
+        ctx.font = `bold ${Math.max(10, Math.floor(11 * camera.zoom))}px 'Noto Sans KR', sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 6;
+        ctx.fillText(conn.label, pos.x, pos.y - 12);
+
+        // 쌀 수레 행렬 도트 애니메이션
+        const cartOffset = (Math.sin(animationTime * 2 + conn.x) * 4);
+        ctx.fillStyle = '#ca8a04';
+        ctx.fillRect(pos.x - 6 + cartOffset, pos.y + halfH - 4, 12, 6);
+        ctx.fillStyle = '#fef9c3';
+        ctx.fillRect(pos.x - 4 + cartOffset, pos.y + halfH - 7, 8, 4);
+        ctx.restore();
+      });
+    }
+
+    function drawVillageAlleyways(tile, pos, halfW, halfH) {
+      if (tile.terrain === 'water' || tile.building === 'wall') return;
+      const x = tile.x, y = tile.y;
+      const hasNeighborBuilt = (dx, dy) => {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || nx >= MAP_SIZE || ny < 0 || ny >= MAP_SIZE) return false;
+        const nt = tileGrid[ny][nx];
+        return nt.building || nt.zone;
+      };
+
+      if (!tile.building && !tile.zone) return;
+
+      ctx.save();
+      ctx.strokeStyle = 'rgba(180, 140, 80, 0.35)';
+      ctx.lineWidth = Math.max(1.5, 2.5 * camera.zoom);
+      ctx.beginPath();
+
+      if (hasNeighborBuilt(1, 0)) {
+        ctx.moveTo(pos.x, pos.y + halfH);
+        ctx.lineTo(pos.x + halfW * 0.6, pos.y + halfH * 1.3);
+      }
+      if (hasNeighborBuilt(-1, 0)) {
+        ctx.moveTo(pos.x, pos.y + halfH);
+        ctx.lineTo(pos.x - halfW * 0.6, pos.y + halfH * 0.7);
+      }
+      if (hasNeighborBuilt(0, 1)) {
+        ctx.moveTo(pos.x, pos.y + halfH);
+        ctx.lineTo(pos.x - halfW * 0.6, pos.y + halfH * 1.3);
+      }
+      if (hasNeighborBuilt(0, -1)) {
+        ctx.moveTo(pos.x, pos.y + halfH);
+        ctx.lineTo(pos.x + halfW * 0.6, pos.y + halfH * 0.7);
+      }
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawTileStructures(tile, pos, halfW, halfH) {
+      const b = tile.building;
+      if (!b) return;
+
+      ctx.save();
+
+      // 1. 삼남대로 (도로)
+      if (b === 'road') {
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y + halfH * 0.3);
+        ctx.lineTo(pos.x + halfW * 0.7, pos.y + halfH);
+        ctx.lineTo(pos.x, pos.y + halfH * 1.7);
+        ctx.lineTo(pos.x - halfW * 0.7, pos.y + halfH);
+        ctx.closePath();
+        ctx.fillStyle = '#b38d4f';
+        ctx.fill();
+        ctx.strokeStyle = '#856430';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // 보부상 / 백성 도트 캐릭터
+        const pedOffset = Math.sin(animationTime * 1.5 + tile.x * 2) * 5;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(pos.x + pedOffset, pos.y + halfH - 2, 2.5 * camera.zoom, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#8b5a2b';
+        ctx.fillRect(pos.x + pedOffset - 2, pos.y + halfH - 1, 4 * camera.zoom, 4 * camera.zoom);
+        ctx.restore();
+        return;
+      }
+
+      // 2. 수원화성 성곽 (벽돌 체성, 여장, 성문, 수문)
+      if (b === 'wall') {
+        const isWater = tile.terrain === 'water';
+        const hasRoad = (tile.x > 0 && tileGrid[tile.y][tile.x - 1].building === 'road') ||
+                        (tile.x + 1 < MAP_SIZE && tileGrid[tile.y][tile.x + 1].building === 'road') ||
+                        (tile.y > 0 && tileGrid[tile.y - 1][tile.x].building === 'road') ||
+                        (tile.y + 1 < MAP_SIZE && tileGrid[tile.y + 1][tile.x].building === 'road');
+
+        if (isWater) {
+          // 수원화성 화홍문 (7련 홍예 수문)
+          const archH = 26 * camera.zoom;
+          ctx.fillStyle = '#78716c';
+          ctx.fillRect(pos.x - halfW * 0.75, pos.y + halfH - archH, halfW * 1.5, archH);
+
+          // 7련 아치 수문 구멍
+          ctx.fillStyle = '#0284c7';
+          for (let i = -3; i <= 3; i++) {
+            ctx.beginPath();
+            ctx.arc(pos.x + i * 5 * camera.zoom, pos.y + halfH, 2.5 * camera.zoom, Math.PI, 0);
+            ctx.fill();
+          }
+
+          // 화홍문 단청 누각
+          ctx.fillStyle = '#b91c1c';
+          ctx.fillRect(pos.x - halfW * 0.5, pos.y + halfH - archH - 10 * camera.zoom, halfW, 10 * camera.zoom);
+          ctx.fillStyle = '#1e293b';
+          ctx.beginPath();
+          ctx.moveTo(pos.x, pos.y + halfH - archH - 16 * camera.zoom);
+          ctx.lineTo(pos.x + halfW * 0.65, pos.y + halfH - archH - 9 * camera.zoom);
+          ctx.lineTo(pos.x - halfW * 0.65, pos.y + halfH - archH - 9 * camera.zoom);
+          ctx.fill();
+        } else if (hasRoad) {
+          // 수원화성 4대문 (홍예문 + 옹성 + 2층 단청 문루)
+          const gateH = 28 * camera.zoom;
+          // 홍예 기단석
+          ctx.fillStyle = '#57534e';
+          ctx.fillRect(pos.x - halfW * 0.7, pos.y + halfH - gateH, halfW * 1.4, gateH);
+          // 아치 문
+          ctx.fillStyle = '#1c1917';
+          ctx.beginPath();
+          ctx.arc(pos.x, pos.y + halfH, 6 * camera.zoom, Math.PI, 0);
+          ctx.fill();
+
+          // 반원형 옹성 담장
+          ctx.strokeStyle = '#78716c';
+          ctx.lineWidth = 3 * camera.zoom;
+          ctx.beginPath();
+          ctx.arc(pos.x, pos.y + halfH + 4 * camera.zoom, halfW * 0.7, 0, Math.PI);
+          ctx.stroke();
+
+          // 2층 문루 (단청 기와)
+          ctx.fillStyle = '#dc2626';
+          ctx.fillRect(pos.x - halfW * 0.45, pos.y + halfH - gateH - 12 * camera.zoom, halfW * 0.9, 12 * camera.zoom);
+          ctx.fillStyle = '#0f172a';
+          ctx.beginPath();
+          ctx.moveTo(pos.x, pos.y + halfH - gateH - 18 * camera.zoom);
+          ctx.lineTo(pos.x + halfW * 0.6, pos.y + halfH - gateH - 11 * camera.zoom);
+          ctx.lineTo(pos.x - halfW * 0.6, pos.y + halfH - gateH - 11 * camera.zoom);
+          ctx.fill();
+
+          // 펄럭이는 붉은 군기
+          ctx.fillStyle = '#ef4444';
+          ctx.beginPath();
+          ctx.moveTo(pos.x + halfW * 0.4, pos.y + halfH - gateH - 18 * camera.zoom);
+          ctx.lineTo(pos.x + halfW * 0.4 + 8 * camera.zoom, pos.y + halfH - gateH - 15 * camera.zoom);
+          ctx.lineTo(pos.x + halfW * 0.4, pos.y + halfH - gateH - 12 * camera.zoom);
+          ctx.fill();
+        } else {
+          // 표준 전돌 성벽 (체성과 여장)
+          const wallH = 18 * camera.zoom;
+          ctx.fillStyle = '#44403c';
+          ctx.beginPath();
+          ctx.moveTo(pos.x - halfW * 0.6, pos.y + halfH);
+          ctx.lineTo(pos.x, pos.y + halfH * 1.5);
+          ctx.lineTo(pos.x, pos.y + halfH * 1.5 - wallH);
+          ctx.lineTo(pos.x - halfW * 0.6, pos.y + halfH - wallH);
+          ctx.fill();
+
+          ctx.fillStyle = '#57534e';
+          ctx.beginPath();
+          ctx.moveTo(pos.x, pos.y + halfH * 1.5);
+          ctx.lineTo(pos.x + halfW * 0.6, pos.y + halfH);
+          ctx.lineTo(pos.x + halfW * 0.6, pos.y + halfH - wallH);
+          ctx.lineTo(pos.x, pos.y + halfH * 1.5 - wallH);
+          ctx.fill();
+
+          ctx.fillStyle = '#78716c';
+          ctx.beginPath();
+          ctx.moveTo(pos.x, pos.y + halfH * 0.5 - wallH);
+          ctx.lineTo(pos.x + halfW * 0.6, pos.y + halfH - wallH);
+          ctx.lineTo(pos.x, pos.y + halfH * 1.5 - wallH);
+          ctx.lineTo(pos.x - halfW * 0.6, pos.y + halfH - wallH);
+          ctx.fill();
+
+          // 여장 총안(활/총 쏘는 틈)
+          ctx.fillStyle = '#1c1917';
+          ctx.fillRect(pos.x - 3 * camera.zoom, pos.y + halfH - wallH - 3 * camera.zoom, 6 * camera.zoom, 2.5 * camera.zoom);
+        }
+        ctx.restore();
+        return;
+      }
+
+      // 3. 우물
+      if (b === 'well') {
+        ctx.fillStyle = '#64748b';
+        ctx.fillRect(pos.x - 8 * camera.zoom, pos.y + halfH * 0.6, 16 * camera.zoom, 10 * camera.zoom);
+        ctx.fillStyle = '#0284c7';
+        ctx.fillRect(pos.x - 5 * camera.zoom, pos.y + halfH * 0.6 + 2, 10 * camera.zoom, 6 * camera.zoom);
+        ctx.fillStyle = '#d97706';
+        ctx.fillRect(pos.x + 8 * camera.zoom, pos.y + halfH * 0.6 + 2, 4 * camera.zoom, 5 * camera.zoom);
+        ctx.restore();
+        return;
+      }
+
+      // 4. 수원유수부 동헌 (행정 관아)
+      if (b === 'office') {
+        const offH = 22 * camera.zoom;
+        ctx.fillStyle = '#e2d4b7';
+        ctx.fillRect(pos.x - 16 * camera.zoom, pos.y + halfH - offH + 6 * camera.zoom, 32 * camera.zoom, 16 * camera.zoom);
+        ctx.fillStyle = '#b91c1c';
+        ctx.fillRect(pos.x - 14 * camera.zoom, pos.y + halfH - offH + 8 * camera.zoom, 6 * camera.zoom, 14 * camera.zoom);
+        ctx.fillRect(pos.x + 8 * camera.zoom, pos.y + halfH - offH + 8 * camera.zoom, 6 * camera.zoom, 14 * camera.zoom);
+        // 팔작지붕
+        ctx.fillStyle = '#1e293b';
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y + halfH - offH - 8 * camera.zoom);
+        ctx.lineTo(pos.x + 22 * camera.zoom, pos.y + halfH - offH + 6 * camera.zoom);
+        ctx.lineTo(pos.x - 22 * camera.zoom, pos.y + halfH - offH + 6 * camera.zoom);
+        ctx.fill();
+        ctx.restore();
+        return;
+      }
+
+      // 5. 팔달산 서장대
+      if (b === 'seojangdae') {
+        const jH = 26 * camera.zoom;
+        ctx.fillStyle = '#a8a29e';
+        ctx.fillRect(pos.x - 14 * camera.zoom, pos.y + halfH - jH + 10 * camera.zoom, 28 * camera.zoom, 14 * camera.zoom);
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(pos.x - 10 * camera.zoom, pos.y + halfH - jH + 2 * camera.zoom, 20 * camera.zoom, 8 * camera.zoom);
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y + halfH - jH - 6 * camera.zoom);
+        ctx.lineTo(pos.x + 18 * camera.zoom, pos.y + halfH - jH + 2 * camera.zoom);
+        ctx.lineTo(pos.x - 18 * camera.zoom, pos.y + halfH - jH + 2 * camera.zoom);
+        ctx.fill();
+        ctx.restore();
+        return;
+      }
+
+      // 6. 화성 봉돈 (5연 굴뚝 봉수대)
+      if (b === 'bongdon') {
+        const bH = 16 * camera.zoom;
+        ctx.fillStyle = '#78716c';
+        ctx.fillRect(pos.x - 16 * camera.zoom, pos.y + halfH - bH, 32 * camera.zoom, bH);
+        // 5연 굴뚝
+        for (let i = -2; i <= 2; i++) {
+          const cx = pos.x + i * 6 * camera.zoom;
+          ctx.fillStyle = '#44403c';
+          ctx.fillRect(cx - 2 * camera.zoom, pos.y + halfH - bH - 6 * camera.zoom, 4 * camera.zoom, 6 * camera.zoom);
+          // 봉화 연기 애니메이션
+          const smY = (animationTime * 8 + i * 2) % 18;
+          ctx.fillStyle = 'rgba(220, 220, 220, 0.7)';
+          ctx.beginPath();
+          ctx.arc(cx, pos.y + halfH - bH - 8 * camera.zoom - smY, 2 + smY * 0.25, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+        return;
+      }
+
+      // 7. 주거: 초가삼간(res_1) vs 고래등 기와집(res_2)
+      if (b.startsWith('res')) {
+        const isGiwa = b === 'res_2';
+        const rH = (isGiwa ? 20 : 16) * camera.zoom;
+        ctx.fillStyle = '#d7b377';
+        ctx.fillRect(pos.x - 12 * camera.zoom, pos.y + halfH - rH + 6 * camera.zoom, 24 * camera.zoom, 12 * camera.zoom);
+        // 지붕
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y + halfH - rH - 4 * camera.zoom);
+        ctx.lineTo(pos.x + 16 * camera.zoom, pos.y + halfH - rH + 6 * camera.zoom);
+        ctx.lineTo(pos.x - 16 * camera.zoom, pos.y + halfH - rH + 6 * camera.zoom);
+        ctx.fillStyle = isGiwa ? '#1e293b' : '#b45309';
+        ctx.fill();
+
+        // 아궁이 굴뚝 연기
+        const smY = (animationTime * 9 + tile.smokeOffset) % 16;
+        ctx.fillStyle = 'rgba(240, 240, 240, 0.65)';
+        ctx.beginPath();
+        ctx.arc(pos.x + 8 * camera.zoom, pos.y + halfH - rH - smY, 2 + smY * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        return;
+      }
+
+      // 8. 상업: 저잣거리 난전(com_1) vs 기와 주막(com_2)
+      if (b.startsWith('com')) {
+        const isBig = b === 'com_2';
+        const cH = (isBig ? 18 : 14) * camera.zoom;
+        ctx.fillStyle = isBig ? '#991b1b' : '#0d9488';
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y + halfH - cH - 2 * camera.zoom);
+        ctx.lineTo(pos.x + 14 * camera.zoom, pos.y + halfH - cH + 6 * camera.zoom);
+        ctx.lineTo(pos.x - 14 * camera.zoom, pos.y + halfH - cH + 6 * camera.zoom);
+        ctx.fill();
+
+        // 주막 깃발 / 멍석
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(pos.x - 8 * camera.zoom, pos.y + halfH - 2 * camera.zoom, 16 * camera.zoom, 4 * camera.zoom);
+        ctx.restore();
+        return;
+      }
+
+      // 9. 농업: 밭이랑(agr_1) vs 만석거 다랭이논(agr_2)
+      if (b.startsWith('agr')) {
+        const isRice = b === 'agr_2';
+        ctx.fillStyle = (gameState.seasonIndex === 2) ? '#ca8a04' : (isRice ? '#16a34a' : '#854d0e');
+        ctx.beginPath();
+        ctx.moveTo(pos.x - halfW * 0.5, pos.y + halfH);
+        ctx.lineTo(pos.x, pos.y + halfH * 0.5);
+        ctx.lineTo(pos.x + halfW * 0.5, pos.y + halfH);
+        ctx.lineTo(pos.x, pos.y + halfH * 1.5);
+        ctx.fill();
+        ctx.restore();
+        return;
+      }
+
+      // 10. 관영 공공시설 4종 (영빈관, 공업소, 형옥, 의원)
+      if (b === 'guesthouse') {
+        ctx.fillStyle = '#7c2d12';
+        ctx.fillRect(pos.x - 14 * camera.zoom, pos.y + halfH - 16 * camera.zoom, 28 * camera.zoom, 16 * camera.zoom);
+        ctx.fillStyle = '#1e3a8a';
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y + halfH - 22 * camera.zoom);
+        ctx.lineTo(pos.x + 18 * camera.zoom, pos.y + halfH - 16 * camera.zoom);
+        ctx.lineTo(pos.x - 18 * camera.zoom, pos.y + halfH - 16 * camera.zoom);
+        ctx.fill();
+      } else if (b === 'factory') {
+        ctx.fillStyle = '#44403c';
+        ctx.fillRect(pos.x - 14 * camera.zoom, pos.y + halfH - 14 * camera.zoom, 28 * camera.zoom, 14 * camera.zoom);
+        ctx.fillStyle = '#ea580c';
+        ctx.fillRect(pos.x - 4 * camera.zoom, pos.y + halfH - 8 * camera.zoom, 8 * camera.zoom, 6 * camera.zoom);
+      } else if (b === 'police') {
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(pos.x - 14 * camera.zoom, pos.y + halfH - 14 * camera.zoom, 28 * camera.zoom, 14 * camera.zoom);
+        ctx.fillStyle = '#e2e8f0';
+        for (let i = -10; i <= 10; i += 5) {
+          ctx.fillRect(pos.x + i * camera.zoom, pos.y + halfH - 10 * camera.zoom, 1.5 * camera.zoom, 8 * camera.zoom);
+        }
+      } else if (b === 'clinic') {
+        ctx.fillStyle = '#fef3c7';
+        ctx.fillRect(pos.x - 14 * camera.zoom, pos.y + halfH - 14 * camera.zoom, 28 * camera.zoom, 14 * camera.zoom);
+        ctx.fillStyle = '#dc2626';
+        ctx.fillRect(pos.x - 2 * camera.zoom, pos.y + halfH - 10 * camera.zoom, 4 * camera.zoom, 8 * camera.zoom);
+        ctx.fillRect(pos.x - 5 * camera.zoom, pos.y + halfH - 7 * camera.zoom, 10 * camera.zoom, 3 * camera.zoom);
+      }
+
+      ctx.restore();
+    }
+
+    // 드래그 청사진 프리뷰
+    let dragStartGrid = null;
+    let dragCurrentGrid = null;
+
+    function drawDragPreview(halfW, halfH) {
+      if (!dragStartGrid || !dragCurrentGrid) return;
+      if (gameState.isPanMode || gameState.currentTool === 'inspect') return;
+
+      const path = getDragTiles(dragStartGrid, dragCurrentGrid, gameState.currentTool);
+      ctx.save();
+      ctx.fillStyle = 'rgba(251, 191, 36, 0.45)';
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2;
+
+      path.forEach(pt => {
+        const tile = tileGrid[pt.y][pt.x];
+        const pos = gridToScreen(pt.x, pt.y, tile.elevation);
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y);
+        ctx.lineTo(pos.x + halfW, pos.y + halfH);
+        ctx.lineTo(pos.x, pos.y + halfH * 2);
+        ctx.lineTo(pos.x - halfW, pos.y + halfH);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      });
+      ctx.restore();
+    }
+
+    function getDragTiles(p1, p2, tool) {
+      const tiles = [];
+      if (tool.startsWith('zone_') || tool === 'demolish') {
+        const minX = Math.min(p1.x, p2.x), maxX = Math.max(p1.x, p2.x);
+        const minY = Math.min(p1.y, p2.y), maxY = Math.max(p1.y, p2.y);
+        for (let y = minY; y <= maxY; y++) {
+          for (let x = minX; x <= maxX; x++) {
+            tiles.push({ x, y });
+          }
+        }
+      } else {
+        // 직선 드래그 (브레젠험 스타일)
+        let x0 = p1.x, y0 = p1.y, x1 = p2.x, y1 = p2.y;
+        let dx = Math.abs(x1 - x0), dy = Math.abs(y1 - y0);
+        let sx = (x0 < x1) ? 1 : -1, sy = (y0 < y1) ? 1 : -1;
+        let err = dx - dy;
+        while (true) {
+          tiles.push({ x: x0, y: y0 });
+          if (x0 === x1 && y0 === y1) break;
+          let e2 = 2 * err;
+          if (e2 > -dy) { err -= dy; x0 += sx; }
+          if (e2 < dx) { err += dx; y0 += sy; }
+        }
+      }
+      return tiles;
+    }
+
+    // 마우스 / 터치 포인터 인터랙션
+    function drawHoverTileCursor(halfW, halfH) {
+      if (!hoverTile || isPointerDown || isMiddlePanning || gameState.isPanMode) return;
+      if (hoverTile.x < 0 || hoverTile.x >= MAP_SIZE || hoverTile.y < 0 || hoverTile.y >= MAP_SIZE) return;
+
+      const tile = tileGrid[hoverTile.y][hoverTile.x];
+      const pos = gridToScreen(tile.x, tile.y, tile.elevation);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+      ctx.lineTo(pos.x + halfW, pos.y + halfH);
+      ctx.lineTo(pos.x, pos.y + halfH * 2);
+      ctx.lineTo(pos.x - halfW, pos.y + halfH);
+      ctx.closePath();
+
+      if (gameState.currentTool === 'demolish') {
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.25)';
+        ctx.strokeStyle = '#ef4444';
+      } else if (gameState.currentTool === 'inspect') {
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.20)';
+        ctx.strokeStyle = '#38bdf8';
+      } else {
+        ctx.fillStyle = 'rgba(251, 191, 36, 0.25)';
+        ctx.strokeStyle = '#fbbf24';
+      }
+      ctx.lineWidth = 2;
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    let isPointerDown = false;
+    let isMiddlePanning = false;
+    let hoverTile = null;
+    let pointerDownScreen = { x: 0, y: 0 };
+    let lastScreenPos = { x: 0, y: 0 };
+
+    // 마우스 휠 클릭(Middle Click) 맵 이동 (패닝)
+    viewport.addEventListener('mousedown', e => {
+      if (e.button === 1) { // 휠 클릭
+        e.preventDefault();
+        isMiddlePanning = true;
+        lastScreenPos = { x: e.clientX, y: e.clientY };
+        viewport.style.cursor = 'grabbing';
+      }
+    });
+
+    viewport.addEventListener('auxclick', e => {
+      if (e.button === 1) e.preventDefault();
+    });
+
+    window.addEventListener('mouseup', e => {
+      if (isMiddlePanning && (e.button === 1 || e.buttons === 0)) {
+        isMiddlePanning = false;
+        viewport.style.cursor = gameState.isPanMode ? 'grab' : 'crosshair';
+      }
+    });
+
+    // 마우스 휠 스크롤 줌 인/아웃
+    viewport.addEventListener('wheel', e => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.12 : 0.88;
+      const newZoom = Math.max(camera.minZoom, Math.min(camera.maxZoom, camera.zoom * zoomFactor));
+      const cPos = getCanvasPos(e.clientX, e.clientY);
+      camera.x = cPos.x - (cPos.x - camera.x) * (newZoom / camera.zoom);
+      camera.y = cPos.y - (cPos.y - camera.y) * (newZoom / camera.zoom);
+      camera.zoom = newZoom;
+    }, { passive: false });
+
+    viewport.addEventListener('pointerdown', e => {
+      if (e.button === 1) return; // 휠 클릭은 mousedown에서 처리
+      if (e.button !== 0 && e.pointerType === 'mouse') return; // 좌클릭/터치만 처리
+
+      isPointerDown = true;
+      pointerDownScreen = { x: e.clientX, y: e.clientY };
+      lastScreenPos = { x: e.clientX, y: e.clientY };
+      
+      const cPos = getCanvasPos(e.clientX, e.clientY);
+      const g = screenToGrid(cPos.x, cPos.y);
+      dragStartGrid = g;
+      dragCurrentGrid = g;
+    });
+
+    window.addEventListener('pointermove', e => {
+      const cPos = getCanvasPos(e.clientX, e.clientY);
+      if (cPos.x >= 0 && cPos.x <= canvas.width && cPos.y >= 0 && cPos.y <= canvas.height) {
+        hoverTile = screenToGrid(cPos.x, cPos.y);
+      } else {
+        hoverTile = null;
+      }
+
+      if (isMiddlePanning) {
+        const dx = e.clientX - lastScreenPos.x;
+        const dy = e.clientY - lastScreenPos.y;
+        camera.x += dx;
+        camera.y += dy;
+        lastScreenPos = { x: e.clientX, y: e.clientY };
+        return;
+      }
+
+      if (!isPointerDown) return;
+      const dx = e.clientX - lastScreenPos.x;
+      const dy = e.clientY - lastScreenPos.y;
+
+      if (gameState.isPanMode || (gameState.currentTool === 'inspect' && Math.hypot(e.clientX - pointerDownScreen.x, e.clientY - pointerDownScreen.y) > 6)) {
+        camera.x += dx;
+        camera.y += dy;
+        lastScreenPos = { x: e.clientX, y: e.clientY };
+      } else {
+        dragCurrentGrid = screenToGrid(cPos.x, cPos.y);
+      }
+    });
+
+    window.addEventListener('pointerup', e => {
+      if (isMiddlePanning) {
+        isMiddlePanning = false;
+        viewport.style.cursor = gameState.isPanMode ? 'grab' : 'crosshair';
+        return;
+      }
+      if (!isPointerDown) return;
+      isPointerDown = false;
+      const dist = Math.hypot(e.clientX - pointerDownScreen.x, e.clientY - pointerDownScreen.y);
+
+      const cPos = getCanvasPos(e.clientX, e.clientY);
+      if (dist < 8 && !gameState.isPanMode) {
+        const g = screenToGrid(cPos.x, cPos.y);
+        handleTileClick(g.x, g.y);
+      } else if (!gameState.isPanMode && gameState.currentTool !== 'inspect' && dragStartGrid && dragCurrentGrid) {
+        const tiles = getDragTiles(dragStartGrid, dragCurrentGrid, gameState.currentTool);
+        applyBatchBuild(tiles, gameState.currentTool);
+      }
+
+      dragStartGrid = null;
+      dragCurrentGrid = null;
+    });
+
+    function showToast(msg, icon = '📢') {
+      const banner = document.getElementById('toast-banner');
+      document.getElementById('toast-icon').innerText = icon;
+      document.getElementById('toast-msg').innerText = msg;
+      banner.classList.remove('opacity-0', '-translate-y-8');
+      banner.classList.add('opacity-100', 'translate-y-0');
+      setTimeout(() => {
+        banner.classList.remove('opacity-100', 'translate-y-0');
+        banner.classList.add('opacity-0', '-translate-y-8');
+      }, 2600);
+    }
+
+    const TOOL_COSTS = {
+      'road': { gold: 20, rice: 0 },
+      'wall': { gold: 80, rice: 25 },
+      'well': { gold: 50, rice: 10 },
+      'zone_res': { gold: 30, rice: 0 },
+      'zone_com': { gold: 40, rice: 0 },
+      'zone_agr': { gold: 20, rice: 20 },
+      'office': { gold: 250, rice: 100 },
+      'seojangdae': { gold: 200, rice: 80 },
+      'bongdon': { gold: 150, rice: 50 },
+      'guesthouse': { gold: 350, rice: 120 },
+      'factory': { gold: 400, rice: 150 },
+      'police': { gold: 300, rice: 100 },
+      'clinic': { gold: 250, rice: 80 }
+    };
+
+    function saveUndoSnapshot() {
+      const snap = {
+        grid: JSON.parse(JSON.stringify(tileGrid)),
+        gold: gameState.gold,
+        rice: gameState.rice,
+        pop: gameState.pop,
+        loyalty: gameState.loyalty,
+        fortress: gameState.fortressProgress
+      };
+      undoStack.push(snap);
+      if (undoStack.length > MAX_UNDO) undoStack.shift();
+      document.getElementById('btn-undo').classList.remove('opacity-40');
+    }
+
+    function applyBatchBuild(tiles, tool) {
+      if (tool === 'inspect') return;
+      saveUndoSnapshot();
+      let builtCount = 0;
+
+      tiles.forEach(pt => {
+        const tile = tileGrid[pt.y][pt.x];
+        if (tool === 'demolish') {
+          if (tile.building || tile.zone) {
+            tile.building = null;
+            tile.zone = null;
+            builtCount++;
+          }
+          return;
+        }
+
+        if (tile.building && tool !== 'wall') return; // 이미 건물이 있으면 보호
+
+        let cost = TOOL_COSTS[tool] || { gold: 0, rice: 0 };
+        if (gameState.retainers.chae) cost = { gold: Math.floor(cost.gold * 0.8), rice: Math.floor(cost.rice * 0.8) };
+
+        if (gameState.gold < cost.gold || gameState.rice < cost.rice) return;
+
+        if (tool === 'road') {
+          if (tile.terrain === 'mountain') return;
+          tile.building = 'road';
+          tile.zone = null;
+        } else if (tool === 'wall') {
+          tile.building = 'wall';
+        } else if (tool.startsWith('zone_')) {
+          if (tile.terrain === 'mountain' || tile.terrain === 'water') return;
+          tile.zone = tool.replace('zone_', '');
+        }
+
+        gameState.gold -= cost.gold;
+        gameState.rice -= cost.rice;
+        builtCount++;
+      });
+
+      if (builtCount > 0) {
+        playSound(tool === 'demolish' ? 'demolish' : 'hammer');
+        updateFortressScore();
+        updateHUD();
+        checkQuestProgress();
+      }
+    }
+
+    function handleTileClick(x, y) {
+      const tile = tileGrid[y][x];
+
+      if (gameState.currentTool === 'inspect') {
+        showTileLore(tile);
+        return;
+      }
+
+      if (gameState.currentTool === 'demolish') {
+        if (tile.building || tile.zone) {
+          saveUndoSnapshot();
+          tile.building = null;
+          tile.zone = null;
+          playSound('demolish');
+          updateFortressScore();
+          updateHUD();
+        }
+        return;
+      }
+
+      if (tile.building) {
+        playSound('error');
+        showToast("이미 건물이 존재합니다. 철거(🚜) 후에 건설하십시오.", "⚠️");
+        return;
+      }
+
+      const cost = TOOL_COSTS[gameState.currentTool] || { gold: 0, rice: 0 };
+      if (gameState.gold < cost.gold || gameState.rice < cost.rice) {
+        playSound('error');
+        showToast("국고나 군량이 부족하옵니다!", "❌");
+        return;
+      }
+
+      if (tile.terrain === 'mountain' && !['wall', 'seojangdae', 'bongdon'].includes(gameState.currentTool)) {
+        playSound('error');
+        showToast("험준한 팔달산에는 관방 시설만 지을 수 있습니다.", "⛰️");
+        return;
+      }
+      if (tile.terrain === 'water' && gameState.currentTool !== 'wall') {
+        playSound('error');
+        showToast("수원천 물길 위에는 화홍문(성곽)만 축조할 수 있습니다.", "🌊");
+        return;
+      }
+
+      saveUndoSnapshot();
+      gameState.gold -= cost.gold;
+      gameState.rice -= cost.rice;
+
+      if (gameState.currentTool.startsWith('zone_')) {
+        tile.zone = gameState.currentTool.replace('zone_', '');
+      } else {
+        tile.building = gameState.currentTool;
+        tile.zone = null;
+      }
+
+      playSound('hammer');
+      updateFortressScore();
+      updateHUD();
+      checkQuestProgress();
+    }
+
+    function showTileLore(tile) {
+      let title = "수원의 대지";
+      let desc = "삼남대로와 수원천이 지나는 길목입니다. 백성을 모으고 성을 둘러 개혁의 터전을 세우십시오.";
+
+      if (tile.terrain === 'mountain') {
+        title = "팔달산(八達山) 능선";
+        desc = "사방으로 눈이 트여 사도세자의 묘소(현륭원)와 화성 전역을 수호하는 천혜의 방어 요새입니다.";
+      } else if (tile.terrain === 'water') {
+        title = "수원천(水原川) 물길";
+        desc = "광교산에서 발원하여 흐르는 맑은 내로, 여인들의 빨래터이자 수원의 젖줄입니다.";
+      }
+
+      if (tile.building === 'office') {
+        title = "수원유수부 동헌";
+        desc = "정조 대왕이 신도시 화성의 행정과 축성을 총괄하도록 설치한 최고 통치 관아입니다.";
+      } else if (tile.building === 'seojangdae') {
+        title = "팔달산 서장대(西將臺)";
+        desc = "정조가 친위부대 장용영 군사들의 쇠뇌와 조총 훈련을 직접 사열하고 지휘한 군사령탑입니다.";
+      } else if (tile.building === 'bongdon') {
+        title = "화성 봉돈(烽墩)";
+        desc = "벽돌로 견고히 쌓은 5연 굴뚝 봉수대로, 남양만 왜구의 침입과 한양 궁궐의 급변을 낮엔 연기, 밤엔 불빛으로 알립니다.";
+      } else if (tile.building === 'wall') {
+        title = "수원화성 성곽";
+        desc = "정약용의 거중기와 유형거를 투입해 전돌(벽돌)과 석재를 혼합한 조선 공학의 정수입니다.";
+      } else if (tile.building === 'road') {
+        title = "삼남대로(三南大路)";
+        desc = "한양 도성과 호남·영남을 잇는 조선 제1의 국가 간선도로망입니다. 보부상과 물자가 활발히 오갑니다.";
+      } else if (tile.building === 'well') {
+        title = "마을 공동 우물";
+        desc = "백성들이 물동이를 이고 정담을 나누며, 화재 시 불을 끄고 전염병을 막는 위생의 요람입니다.";
+      } else if (tile.building && tile.building.startsWith('res')) {
+        title = tile.building === 'res_2' ? "고래등 기와집" : "초가삼간 민가";
+        desc = "온돌 아궁이에 장작을 지펴 구들장을 덥히고, 마당에선 닭과 오리가 모이를 쪼아먹습니다.";
+      } else if (tile.building && tile.building.startsWith('com')) {
+        title = "저잣거리 주막 & 난전";
+        desc = "신해통공(辛亥通共)으로 독점 시전을 철폐하고 자유 상행위를 허용한 활기찬 시장입니다.";
+      } else if (tile.building && tile.building.startsWith('agr')) {
+        title = "대유둔전(大有屯田)";
+        desc = "정조가 만석거 저수지를 축조하여 개간한 국영 농지로, 성역 공사비와 장용영 군량을 자급합니다.";
+      }
+
+      openModal(title, "역사 고증 도감", `<p class="leading-relaxed">${desc}</p>`, [
+        { text: "확인", primary: true, action: closeModal }
+      ]);
+    }
+
+    function checkQuestProgress() {
+      if (currentQuestIndex >= quests.length) return;
+      const q = quests[currentQuestIndex];
+      if (q.check()) {
+        gameState.gold += q.reward.gold || 0;
+        gameState.rice += q.reward.rice || 0;
+        gameState.loyalty = Math.min(100, gameState.loyalty + (q.reward.loyalty || 0));
+        gameState.authority = Math.min(100, gameState.authority + (q.reward.authority || 0));
+        playSound('coin');
+        showToast(q.reward.msg, "👑");
+
+        currentQuestIndex++;
+        updateQuestUI();
+        updateHUD();
+      }
+    }
+
+    function updateQuestUI() {
+      const banner = document.getElementById('quest-banner');
+      if (currentQuestIndex >= quests.length) {
+        banner.innerHTML = `<span class="text-amber-300 font-bold font-traditional">모든 어명 교지를 완수하셨습니다! 성역을 수호하십시오.</span>`;
+        return;
+      }
+      const q = quests[currentQuestIndex];
+      document.getElementById('quest-title').innerText = q.title;
+      document.getElementById('quest-desc').innerText = q.desc;
+      document.getElementById('btn-quest-action').innerText = q.btnText;
+    }
+
+    document.getElementById('btn-quest-action').addEventListener('click', () => {
+      if (currentQuestIndex < quests.length) {
+        selectTool(quests[currentQuestIndex].tool);
+      }
+    });
+
+    function updateFortressScore() {
+      let wallCount = 0;
+      for (let y = 0; y < MAP_SIZE; y++) {
+        for (let x = 0; x < MAP_SIZE; x++) {
+          if (tileGrid[y][x].building === 'wall') wallCount++;
+        }
+      }
+      const speedMult = gameState.retainers.jeong ? 1.8 : 1.0;
+      gameState.fortressProgress = Math.min(100, Math.floor((wallCount / 28) * 100 * speedMult));
+    }
+
+    function updateHUD() {
+      const turnLabel = `정조 ${gameState.year - 1776 + 1}년(${gameState.year}) ${gameState.seasons[gameState.seasonIndex]} [${gameState.turn}/96턴]`;
+      document.getElementById('txt-turn-label').innerText = turnLabel;
+      document.getElementById('txt-season-icon').innerText = gameState.seasonIcons[gameState.seasonIndex];
+      document.getElementById('hud-gold').innerText = gameState.gold.toLocaleString();
+      document.getElementById('hud-rice').innerText = gameState.rice.toLocaleString();
+      document.getElementById('hud-pop').innerText = gameState.pop.toLocaleString();
+      document.getElementById('hud-loyalty').innerText = `${gameState.loyalty}%`;
+      document.getElementById('hud-authority').innerText = gameState.authority;
+      document.getElementById('hud-fortress').innerText = `${gameState.fortressProgress}%`;
+    }
+
+    // 턴 진행 (계절 변화, 자율 발전, 수입/지출, 이벤트)
+    function advanceTurn() {
+      gameState.turn++;
+      gameState.seasonIndex = (gameState.seasonIndex + 1) % 4;
+      if (gameState.seasonIndex === 0) gameState.year++;
+
+      playSound('season');
+
+      let addGold = 0, addRice = 0, addPop = 0;
+
+      for (let y = 0; y < MAP_SIZE; y++) {
+        for (let x = 0; x < MAP_SIZE; x++) {
+          const tile = tileGrid[y][x];
+
+          // 1. 자율 발전 (인접 도로/우물 체크)
+          if (tile.zone && !tile.building) {
+            const hasRoadNeighbor = checkNeighbor(x, y, 'road');
+            if (hasRoadNeighbor) {
+              tile.building = `${tile.zone}_1`;
+            }
+          } else if (tile.building && tile.building.endsWith('_1')) {
+            const hasWellNeighbor = checkNeighbor(x, y, 'well');
+            if (hasWellNeighbor && Math.random() < 0.4) {
+              tile.building = `${tile.zone}_2`; // 승급
+            }
+          }
+
+          // 2. 생산 정산
+          if (tile.building === 'res_1') addPop += 3;
+          if (tile.building === 'res_2') addPop += 8;
+          if (tile.building === 'com_1') addGold += 35;
+          if (tile.building === 'com_2') addGold += 80;
+          if (tile.building === 'agr_1') addRice += 40;
+          if (tile.building === 'agr_2') addRice += 100;
+
+          if (tile.building === 'guesthouse') addGold += 120;
+          if (tile.building === 'factory') addGold += 150;
+        }
+      }
+
+      // 인재 버프 적용
+      if (gameState.retainers.park) addGold = Math.floor(addGold * 1.4);
+      if (gameState.retainers.seo) addRice = Math.floor(addRice * 1.25);
+      if (gameState.retainers.hong) { addGold += 350; gameState.loyalty = Math.max(0, gameState.loyalty - 3); }
+      if (gameState.retainers.kim) gameState.loyalty = Math.min(100, gameState.loyalty + 2);
+      if (gameState.retainers.baek) gameState.military += 10;
+      if (gameState.retainers.gu) { gameState.military += 25; addRice -= 20; }
+
+      // 연구 테크 버프
+      if (gameState.research.gwanong) addRice = Math.floor(addRice * 1.4);
+      if (gameState.research.seed) addRice = Math.floor(addRice * 1.2);
+      if (gameState.research.fertilizer) addRice += 60;
+      if (gameState.research.reservoir) addRice += 80;
+
+      gameState.gold += addGold;
+      gameState.rice += addRice;
+      gameState.pop += addPop;
+
+      // 군량 소비
+      let riceConsumption = Math.floor(gameState.pop * 0.4 + gameState.military * 0.2);
+      if (gameState.research.goguma) riceConsumption = Math.floor(riceConsumption * 0.63);
+      gameState.rice -= riceConsumption;
+
+      // 식량 부족 시 대외 자동 매입
+      if (gameState.rice < 100 && gameState.trade.autoBuyRice && gameState.gold >= 200) {
+        gameState.gold -= 200;
+        gameState.rice += 250;
+        showToast("삼남 곡창지대에서 긴급 양곡을 매입하여 기근을 면했습니다.", "🌾");
+      } else if (gameState.rice < 0) {
+        gameState.rice = 0;
+        gameState.loyalty = Math.max(0, gameState.loyalty - 18);
+        showToast("군량미가 고갈되어 백성들이 굶주리고 있습니다!", "⚠️");
+      }
+
+      updateFortressScore();
+      updateHUD();
+      checkQuestProgress();
+
+      // 이벤트 판정 (3턴 주기 또는 역사 연도)
+      if (gameState.year === 1789 && !gameState.milestones.wonhaeng1789) {
+        gameState.milestones.wonhaeng1789 = true;
+        triggerHistoricWonhaeng1789();
+      } else if (gameState.year === 1795 && !gameState.milestones.eulmyo1795) {
+        gameState.milestones.eulmyo1795 = true;
+        triggerHistoricEulmyo1795();
+      } else if (gameState.turn % 3 === 0) {
+        triggerInspectorDilemma();
+      }
+
+      // 24년(96턴) 엔딩
+      if (gameState.turn >= 96) {
+        calculateEnding();
+      }
+    }
+
+    function checkNeighbor(x, y, target) {
+      const dirs = [[0,1],[0,-1],[1,0],[-1,0]];
+      for (let [dx, dy] of dirs) {
+        const nx = x + dx, ny = y + dy;
+        if (nx >= 0 && nx < MAP_SIZE && ny >= 0 && ny < MAP_SIZE) {
+          if (tileGrid[ny][nx].building === target) return true;
+        }
+      }
+      return false;
+    }
+
+    // 1789년 현륭원 원행 & 한강 배다리 이벤트
+    function triggerHistoricWonhaeng1789() {
+      openModal(
+        "1789년 현륭원(사도세자 묘) 원행",
+        "한강 배다리(舟橋) 축조의 결단",
+        `<p class="mb-2">정조 대왕께서 부친 사도세자의 묘를 수원 화산으로 이장하고 능행길에 오르십니다. 대규모 행렬이 한강을 건너기 위해 배다리를 놓아야 합니다.</p>`,
+        [
+          {
+            text: "정약용의 주교지모(舟橋之模) 채택 (금 300 소모, 민심 +15, 왕권 +10)",
+            primary: true,
+            action: () => {
+              if (gameState.gold < 300) { showToast("예산이 부족하옵니다!"); return; }
+              gameState.gold -= 300;
+              gameState.loyalty = Math.min(100, gameState.loyalty + 15);
+              gameState.authority = Math.min(100, gameState.authority + 10);
+              closeModal();
+              showToast("견고한 배다리가 놓여 백성들의 피해 없이 성역으로 진입했습니다!", "🚢");
+              updateHUD();
+            }
+          },
+          {
+            text: "민간 어선을 강제 징발하여 간이 도하 (민심 -20, 군량 -100)",
+            primary: false,
+            action: () => {
+              gameState.loyalty = Math.max(0, gameState.loyalty - 20);
+              gameState.rice = Math.max(0, gameState.rice - 100);
+              closeModal();
+              showToast("뱃사공들의 원성이 자자합니다.", "⚠️");
+              updateHUD();
+            }
+          }
+        ]
+      );
+    }
+
+    // 1795년 을묘년 화성 원행 8일간의 축제
+    function triggerHistoricEulmyo1795() {
+      openModal(
+        "1795년 을묘년 화성 원행 8일",
+        "혜경궁 홍씨 회갑연 & 신풍루 양로연",
+        `<p class="mb-2">어머니 혜경궁 홍씨의 회갑연을 봉수당에서 거행하고 신풍루에서 수원 백성들에게 쌀과 소금을 하사하는 대축제가 열렸습니다.</p>`,
+        [
+          {
+            text: "국고와 쌀을 아낌없이 풀어 백성 구휼 (금 400, 쌀 300 소모, 충성도 100% 극대화, 완공도 +15%)",
+            primary: true,
+            action: () => {
+              gameState.gold = Math.max(0, gameState.gold - 400);
+              gameState.rice = Math.max(0, gameState.rice - 300);
+              gameState.loyalty = 100;
+              gameState.fortressProgress = Math.min(100, gameState.fortressProgress + 15);
+              closeModal();
+              showToast("온 백성이 '만세'를 부르며 성역 축조에 자원했습니다!", "🎉");
+              updateHUD();
+            }
+          },
+          {
+            text: "검소하게 종묘 제례만 간소히 봉행 (비용 없음)",
+            primary: false,
+            action: () => {
+              closeModal();
+              updateHUD();
+            }
+          }
+        ]
+      );
+    }
+
+    // 암행어사 상소문 딜레마 (상황에 따라 정답이 변함)
+    function triggerInspectorDilemma() {
+      const pool = [
+        {
+          title: "암행어사 서면 보고: 난전 단속",
+          desc: "수원 저잣거리에 난전(자유 상인)이 급증하여 시전 상인들이 상소를 올렸습니다. 난전을 허용하시겠습니까?",
+          c1: "신해통공 발령 (난전 전면 허용)",
+          act1: () => {
+            if (gameState.loyalty >= 70) {
+              gameState.gold += 350;
+              showToast("상업이 융성하며 막대한 세수가 들어왔습니다! (+🪙350)", "🪙");
+            } else {
+              gameState.loyalty -= 15;
+              showToast("치안 부재로 난전 폭력배가 상가를 불태웠습니다! (민심 -15%)", "🔥");
+            }
+            closeModal();
+            updateHUD();
+          },
+          c2: "시전 상인의 독점권 인정",
+          act2: () => {
+            gameState.gold += 120;
+            gameState.loyalty -= 5;
+            showToast("상인들의 헌금을 받았으나 물가가 올랐습니다.", "📉");
+            closeModal();
+            updateHUD();
+          }
+        },
+        {
+          title: "암행어사 긴급 보고: 흉년과 환곡",
+          desc: "흉년으로 백성들의 굶주림이 극에 달했습니다. 관아 창고의 구휼미를 풀겠습니까?",
+          c1: "사창을 활짝 열어 무상 방출 (쌀 200석)",
+          act1: () => {
+            if (gameState.rice >= 200) {
+              gameState.rice -= 200;
+              gameState.loyalty = Math.min(100, gameState.loyalty + 25);
+              showToast("정조 대왕의 성덕에 감복하여 백성들이 결속합니다! (민심 +25%)", "❤️");
+            } else {
+              gameState.loyalty -= 20;
+              showToast("창고에 쌀이 부족하여 분노한 백성들이 소요를 일으켰습니다!", "⚠️");
+            }
+            closeModal();
+            updateHUD();
+          },
+          c2: "성역 완공용 예비미이므로 보존",
+          act2: () => {
+            gameState.loyalty -= 18;
+            gameState.pop = Math.max(20, gameState.pop - 20);
+            showToast("유민들이 수원천을 등지고 떠나 인구가 줄었습니다.", "📉");
+            closeModal();
+            updateHUD();
+          }
+        },
+        {
+          title: "군관 급보: 구선복의 사병 훈련",
+          desc: "군부 실세 구선복이 은밀히 사병을 모은다는 밀고가 들어왔습니다.",
+          c1: "백동수의 장용영을 보내 선제 압수수색",
+          act1: () => {
+            if (gameState.retainers.baek) {
+              gameState.authority += 15;
+              showToast("백동수가 무혈 진압하여 무기고를 접수했습니다! (왕권 +15)", "⚔️");
+            } else {
+              gameState.military -= 30;
+              showToast("군부의 반발로 군사력이 위축되었습니다.", "⚠️");
+            }
+            closeModal();
+            updateHUD();
+          },
+          c2: "군부 안정을 위해 묵인하고 관직 하사",
+          act2: () => {
+            gameState.military += 20;
+            gameState.authority -= 10;
+            showToast("군사력은 유지되었으나 왕권이 흔들립니다.", "📉");
+            closeModal();
+            updateHUD();
+          }
+        }
+      ];
+
+      const item = pool[Math.floor(Math.random() * pool.length)];
+      openModal(item.title, "수원유수부 비변사 감찰", `<p>${item.desc}</p>`, [
+        { text: item.c1, primary: true, action: item.act1 },
+        { text: item.c2, primary: false, action: item.act2 }
+      ]);
+    }
+
+    // 10대 멀티 엔딩 판정 (24년 96턴 종료 시)
+    function calculateEnding() {
+      let title = "";
+      let story = "";
+
+      if (gameState.fortressProgress >= 100 && gameState.authority >= 85 && gameState.loyalty >= 85 && gameState.gold >= 3000) {
+        title = "자강(自强)의 신조선 [True Ending]";
+        story = "수원화성이 난공불락의 개혁 요새로 완벽히 완공되었습니다! 탕평책과 상공업 부흥이 확고히 뿌리내려, 정조 사후에도 권문세족의 세도정치가 발붙이지 못하고 조선은 동아시아 최고의 근대 문명국가로 도약합니다.";
+      } else if (gameState.fortressProgress >= 80 && gameState.gold >= 5000 && gameState.retainers.park) {
+        title = "동방의 상업 공화국 [Merchant City]";
+        story = "신해통공과 삼남대로 교역의 성공으로 화성은 청나라와 왜를 잇는 거대 상업 메트로폴리스가 되었습니다. 상인과 중인 계층이 의회를 주도하며 경제 중심의 새로운 역사를 개창합니다.";
+      } else if (gameState.fortressProgress >= 100 && gameState.military >= 300 && gameState.retainers.baek) {
+        title = "철혈의 군사 요새 [Military Bastion]";
+        story = "정예 장용외영과 팔달산 서장대, 완벽한 포루·치성이 북방과 해안을 철통 수호합니다. 훗날 외세의 침략을 압도적으로 격퇴하는 자주 국방의 보루가 완성되었습니다.";
+      } else if (gameState.fortressProgress >= 90 && gameState.research.seed && gameState.research.gwanong) {
+        title = "문예부흥의 르네상스 [Cultural Renaissance]";
+        story = "규장각 실학과 만석거 관개, 《화성성역의궤》가 완비되어 세계에서 가장 아름답고 과학적인 성곽 도시로 유네스코 세계문화유산의 금자탑을 쌓았습니다.";
+      } else if (gameState.loyalty <= 30) {
+        title = "민란과 잿더미 [Peasant Revolt]";
+        story = "가혹한 부역과 군량 부족으로 굶주린 백성들이 횃불을 들고 봉기했습니다. 공사 중이던 화성은 화염에 휩싸이고 정조의 원대한 개혁은 잿더미가 되었습니다.";
+      } else if (gameState.gold < 0 || gameState.retainers.hong) {
+        title = "세도 가문의 손아귀 [Oligarchy Puppet]";
+        story = "무리한 차관과 세도가와의 타협으로 화성의 모든 이권이 노론 척신들에게 넘어갔습니다. 정조 승하 후 안동 김씨의 세도정치가 60년간 조선을 집어삼킵니다.";
+      } else if (gameState.fortressProgress >= 100) {
+        title = "미완의 개혁 [Historical Ending]";
+        story = "웅장하고 수려한 수원화성은 우뚝 섰으나, 정조의 갑작스러운 승하와 함께 수구 세력이 득세하며 역사 그대로 세도정치의 소용돌이로 흘러갑니다.";
+      } else {
+        title = "모래 위의 누각 [Failed Project]";
+        story = "24년의 세월이 흘렀으나 화성은 미완성으로 방치되었습니다. 낭비된 국고와 피폐해진 민심 속에 개혁 군주의 웅지는 역사 속으로 스러져 갑니다.";
+      }
+
+      openModal(
+        `대단원: ${title}`,
+        "정조 재위 24년(1776~1800)의 대기록",
+        `<p class="leading-relaxed font-traditional text-base">${story}</p>`,
+        [{ text: "새 역사 시작하기 (다시 플레이)", primary: true, action: () => location.reload() }]
+      );
+    }
+
+    // 모달 제어 헬퍼
+    function openModal(title, subtitle, bodyHtml, footerButtons = []) {
+      document.getElementById('modal-title').innerText = title;
+      document.getElementById('modal-subtitle').innerText = subtitle;
+      document.getElementById('modal-body').innerHTML = bodyHtml;
+
+      const footer = document.getElementById('modal-footer');
+      footer.innerHTML = '';
+      footerButtons.forEach(btn => {
+        const b = document.createElement('button');
+        b.className = btn.primary ? 
+          "w-full py-2.5 bg-[#7c2217] hover:bg-[#991b1b] text-[#fef08a] font-bold rounded-lg border border-[#f59e0b] shadow-md transition active:scale-95 text-xs sm:text-sm" :
+          "w-full py-2 bg-stone-300 hover:bg-stone-400 text-stone-900 font-bold rounded-lg border border-stone-400 transition active:scale-95 text-xs sm:text-sm";
+        b.innerText = btn.text;
+        b.addEventListener('click', btn.action);
+        footer.appendChild(b);
+      });
+
+      document.getElementById('modal-container').classList.remove('hidden');
+      document.getElementById('modal-container').classList.add('flex');
+    }
+
+    function closeModal() {
+      document.getElementById('modal-container').classList.add('hidden');
+      document.getElementById('modal-container').classList.remove('flex');
+    }
+
+    document.getElementById('modal-close-x').addEventListener('click', closeModal);
+
+    // 하단 툴바 도구 선택
+    function selectTool(toolName) {
+      gameState.currentTool = toolName;
+      document.querySelectorAll('.dock-btn[data-tool]').forEach(btn => {
+        if (btn.dataset.tool === toolName) btn.classList.add('active');
+        else btn.classList.remove('active');
+      });
+
+      const iconMap = {
+        'inspect': '🔍', 'road': '🛣️', 'wall': '🧱', 'zone_res': '🏡', 'zone_com': '🏪', 'zone_agr': '🌾',
+        'office': '🏛️', 'seojangdae': '🏯', 'bongdon': '🔥', 'well': '💧', 'demolish': '🚜'
+      };
+      const titleMap = {
+        'inspect': '살피기 모드', 'road': '삼남로 드래그 건설', 'wall': '화성성곽 연속 축조', 'zone_res': '방·리(주거) 구획',
+        'zone_com': '저잣거리(상업) 구획', 'zone_agr': '대유둔전(농업) 구획', 'office': '수원유수부 동헌', 'seojangdae': '서장대 축조',
+        'bongdon': '화성 봉돈 축조', 'well': '공동 우물 파기', 'demolish': '철거 불도저'
+      };
+
+      document.getElementById('tool-bar-icon').innerText = iconMap[toolName] || '🛠️';
+      document.getElementById('tool-bar-title').innerText = titleMap[toolName] || '건설 도구';
+      document.getElementById('tool-bar-desc').innerText = "지도 위를 터치하거나 드래그하여 건설하십시오.";
+    }
+
+    document.querySelectorAll('.dock-btn[data-tool]').forEach(btn => {
+      btn.addEventListener('click', () => selectTool(btn.dataset.tool));
+    });
+
+    // 보조 버튼들
+    document.getElementById('btn-pan-toggle').addEventListener('click', () => {
+      gameState.isPanMode = !gameState.isPanMode;
+      const btn = document.getElementById('btn-pan-toggle');
+      if (gameState.isPanMode) {
+        btn.classList.add('bg-amber-600', 'text-black');
+        viewport.classList.add('panning');
+      } else {
+        btn.classList.remove('bg-amber-600', 'text-black');
+        viewport.classList.remove('panning');
+      }
+    });
+
+    document.getElementById('btn-zoom-in').addEventListener('click', () => {
+      camera.zoom = Math.min(camera.maxZoom, camera.zoom + 0.15);
+    });
+    document.getElementById('btn-zoom-out').addEventListener('click', () => {
+      camera.zoom = Math.max(camera.minZoom, camera.zoom - 0.15);
+    });
+    document.getElementById('btn-center-view').addEventListener('click', centerCamera);
+
+    document.getElementById('btn-demolish-toggle').addEventListener('click', () => {
+      if (gameState.currentTool === 'demolish') {
+        selectTool('inspect');
+      } else {
+        selectTool('demolish');
+      }
+    });
+
+    document.getElementById('btn-undo').addEventListener('click', () => {
+      if (!undoStack.length) return;
+      const snap = undoStack.pop();
+      for (let y = 0; y < MAP_SIZE; y++) {
+        for (let x = 0; x < MAP_SIZE; x++) {
+          tileGrid[y][x] = snap.grid[y][x];
+        }
+      }
+      gameState.gold = snap.gold;
+      gameState.rice = snap.rice;
+      gameState.pop = snap.pop;
+      gameState.loyalty = snap.loyalty;
+      gameState.fortressProgress = snap.fortress;
+
+      if (!undoStack.length) document.getElementById('btn-undo').classList.add('opacity-40');
+      playSound('demolish');
+      updateHUD();
+      showToast("직전 행동을 되돌렸습니다.", "↩️");
+    });
+
+    document.getElementById('btn-sound-toggle').addEventListener('click', () => {
+      gameState.soundEnabled = !gameState.soundEnabled;
+      document.getElementById('btn-sound-toggle').innerText = gameState.soundEnabled ? '🔊 소리' : '🔇 음소거';
+    });
+
+    document.getElementById('btn-advance-turn').addEventListener('click', advanceTurn);
+
+    // 조정 인재 9인 모달
+    const RETAINER_DATA = [
+      { id: 'jeong', name: "다산 정약용", role: "실학·설계 총괄", cost: 200, icon: "📐", desc: "거중기·유형거 발명으로 성곽 완공 진행률 +80% 가속" },
+      { id: 'chae', name: "번암 채제공", role: "성역 총리대동", cost: 150, icon: "📜", desc: "예산 집행 절감 20%, 관료 부정부패 누수 방지" },
+      { id: 'park', name: "초정 박제가", role: "북학·상업 진흥", cost: 180, icon: "⛵", desc: "신해통공 상업 세수 +40% 증가, 대외 쌀 수입 우대" },
+      { id: 'baek', name: "야뇌 백동수", role: "장용영 무예 총관", cost: 200, icon: "⚔️", desc: "매 턴 국방력 +10, 군사 훈련 가속, 도적 침투 완벽 차단" },
+      { id: 'kim', name: "단원 김홍도", role: "도화서 화원", cost: 120, icon: "🎨", desc: "풍속화 기록으로 매 턴 백성 충성도 +2% 상승" },
+      { id: 'seo', name: "풍석 서유구", role: "농학·임원경제지", cost: 160, icon: "🌾", desc: "대유둔전 농업 생산량 +25% 영구 증산 및 가뭄 극복" },
+      { id: 'guk', name: "도승지 홍국영", role: "측근·숙위소 대장", cost: 220, icon: "👑", desc: "왕권 +15 즉시 상승 (부작용: 매 턴 충성도 -2%)" },
+      { id: 'gu', name: "어영대장 구선복", role: "군부 실세", cost: 250, icon: "🛡️", desc: "매 턴 국방력 +25 급증 (부작용: 군량 -20 추가 소모)" },
+      { id: 'hong', name: "좌의정 홍인한", role: "노론 벽파 수괴", cost: 0, icon: "💰", desc: "매 턴 비자금 +350 헌납 (부작용: 매 턴 민심 -3% 급락)" }
+    ];
+
+    document.getElementById('btn-open-court').addEventListener('click', () => {
+      let cardsHtml = `<div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">`;
+      RETAINER_DATA.forEach(r => {
+        const isHired = gameState.retainers[r.id];
+        cardsHtml += `
+          <div class="p-2.5 rounded-lg border ${isHired ? 'bg-amber-100 border-amber-600' : 'bg-stone-100 border-stone-300'} flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between font-bold text-stone-900">
+                <span>${r.icon} ${r.name}</span>
+                <span class="text-[10px] px-1.5 py-0.5 rounded ${isHired ? 'bg-emerald-700 text-white' : 'bg-stone-400 text-stone-100'}">${isHired ? '등용 중' : '미등용'}</span>
+              </div>
+              <div class="text-[10px] text-amber-900 font-semibold mb-1">${r.role}</div>
+              <div class="text-[11px] text-stone-700 leading-tight">${r.desc}</div>
+            </div>
+            <button class="mt-2 py-1 px-2 rounded text-[11px] font-bold ${isHired ? 'bg-rose-800 text-white' : 'bg-amber-800 text-amber-100'}" onclick="toggleRetainer('${r.id}', ${r.cost})">
+              ${isHired ? '해임(숙청)' : `등용 (🪙${r.cost})`}
+            </button>
+          </div>
+        `;
+      });
+      cardsHtml += `</div>`;
+
+      openModal("규장각 및 조정 인사", "탕평책 기반 인재 기용 및 관리", cardsHtml, [
+        { text: "닫기", primary: true, action: closeModal }
+      ]);
+    });
+
+    window.toggleRetainer = function(id, cost) {
+      if (gameState.retainers[id]) {
+        gameState.retainers[id] = false;
+        showToast("신하를 해임하였습니다.", "📜");
+      } else {
+        if (gameState.gold < cost) {
+          showToast("국고가 부족하여 등용할 수 없습니다!", "❌");
+          return;
+        }
+        gameState.gold -= cost;
+        gameState.retainers[id] = true;
+        showToast("인재를 조정에 등용하였습니다!", "👑");
+      }
+      closeModal();
+      updateFortressScore();
+      updateHUD();
+    };
+
+    // 실학 농학 연구 및 쌀 교역 모달
+    document.getElementById('btn-open-agri').addEventListener('click', openAgriModal);
+    document.getElementById('hud-rice-container').addEventListener('click', openAgriModal);
+
+    function openAgriModal() {
+      const r = gameState.research;
+      const html = `
+        <div class="space-y-3 text-xs">
+          <div class="bg-emerald-50 p-2.5 rounded-lg border border-emerald-300">
+            <div class="font-bold text-emerald-900 text-sm mb-1">🌾 대외 곡물 교역 및 긴급 양곡 수입</div>
+            <p class="text-stone-700 mb-2">삼남 곡창대로와 남양만 포구에서 쌀을 수입해 기근을 차단합니다.</p>
+            <div class="flex items-center gap-2">
+              <button class="flex-1 py-1.5 bg-emerald-800 text-emerald-100 rounded font-bold hover:bg-emerald-700" onclick="buyRice(200, 300)">쌀 300석 매입 (🪙200)</button>
+              <button class="flex-1 py-1.5 bg-emerald-800 text-emerald-100 rounded font-bold hover:bg-emerald-700" onclick="buyRice(500, 850)">쌀 850석 매입 (🪙500)</button>
+            </div>
+          </div>
+
+          <div class="font-bold text-stone-900 mt-2">규장각 실학 농학 연구 테크트리</div>
+          <div class="grid grid-cols-1 gap-2">
+            <div class="p-2 rounded border ${r.goguma ? 'bg-stone-200' : 'bg-white'} flex justify-between items-center">
+              <div>
+                <div class="font-bold">조엄의 감저(고구마) 구황작물 보급</div>
+                <div class="text-[10px] text-stone-600">인구당 쌀 소비량 37% 영구 절감</div>
+              </div>
+              <button class="py-1 px-2.5 rounded text-[11px] font-bold ${r.goguma ? 'bg-stone-400 text-white cursor-default' : 'bg-amber-800 text-white'}" onclick="unlockResearch('goguma', 300)">
+                ${r.goguma ? '연구 완료' : '연구 (🪙300)'}
+              </button>
+            </div>
+
+            <div class="p-2 rounded border ${r.gwanong ? 'bg-stone-200' : 'bg-white'} flex justify-between items-center">
+              <div>
+                <div class="font-bold">박지원 《과농소초》 & 수차(무자위)</div>
+                <div class="text-[10px] text-stone-600">모든 둔전 생산량 +40% 증산</div>
+              </div>
+              <button class="py-1 px-2.5 rounded text-[11px] font-bold ${r.gwanong ? 'bg-stone-400 text-white cursor-default' : 'bg-amber-800 text-white'}" onclick="unlockResearch('gwanong', 400)">
+                ${r.gwanong ? '연구 완료' : '연구 (🪙400)'}
+              </button>
+            </div>
+
+            <div class="p-2 rounded border ${r.seed ? 'bg-stone-200' : 'bg-white'} flex justify-between items-center">
+              <div>
+                <div class="font-bold">서유구 《임원경제지》 벼 종자 개량</div>
+                <div class="text-[10px] text-stone-600">다랭이논 수확량 +20% 추가 증산</div>
+              </div>
+              <button class="py-1 px-2.5 rounded text-[11px] font-bold ${r.seed ? 'bg-stone-400 text-white cursor-default' : 'bg-amber-800 text-white'}" onclick="unlockResearch('seed', 450)">
+                ${r.seed ? '연구 완료' : '연구 (🪙450)'}
+              </button>
+            </div>
+
+            <div class="p-2 rounded border ${r.reservoir ? 'bg-stone-200' : 'bg-white'} flex justify-between items-center">
+              <div>
+                <div class="font-bold">만석거·축만제 관개 보수 정비</div>
+                <div class="text-[10px] text-stone-600">매 턴 무상 비축미 +80석 공급</div>
+              </div>
+              <button class="py-1 px-2.5 rounded text-[11px] font-bold ${r.reservoir ? 'bg-stone-400 text-white cursor-default' : 'bg-amber-800 text-white'}" onclick="unlockResearch('reservoir', 500)">
+                ${r.reservoir ? '연구 완료' : '연구 (🪙500)'}
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      openModal("농학 연구 및 곡물 교역", "식량 자급 및 신농법 보급", html, [
+        { text: "닫기", primary: true, action: closeModal }
+      ]);
+    }
+
+    window.buyRice = function(costGold, amountRice) {
+      if (gameState.gold < costGold) {
+        showToast("국고가 부족합니다!", "❌");
+        return;
+      }
+      gameState.gold -= costGold;
+      gameState.rice += amountRice;
+      playSound('coin');
+      showToast(`쌀 ${amountRice}석을 수입하였습니다!`, "🌾");
+      closeModal();
+      updateHUD();
+    };
+
+    window.unlockResearch = function(key, cost) {
+      if (gameState.research[key]) return;
+      if (gameState.gold < cost) {
+        showToast("연구 예산이 부족합니다!", "❌");
+        return;
+      }
+      gameState.gold -= cost;
+      gameState.research[key] = true;
+      playSound('coin');
+      showToast("새로운 실학 농법 연구가 완료되었습니다!", "📖");
+      closeModal();
+      updateHUD();
+    };
+
+    // 관영시설 직접 건축 모달
+    document.getElementById('btn-open-infra').addEventListener('click', () => {
+      const html = `
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <div class="p-2.5 rounded border border-stone-300 bg-white cursor-pointer hover:border-amber-700" onclick="chooseInfra('office')">
+            <div class="font-bold text-amber-900">🏛️ 수원유수부 동헌</div>
+            <div class="text-[11px] text-stone-600">신도시 최고 행정 관아 (🪙250, 🌾100)</div>
+          </div>
+          <div class="p-2.5 rounded border border-stone-300 bg-white cursor-pointer hover:border-amber-700" onclick="chooseInfra('seojangdae')">
+            <div class="font-bold text-amber-900">🏯 팔달산 서장대</div>
+            <div class="text-[11px] text-stone-600">군사 총지휘소 (산악 전용, 🪙200, 🌾80)</div>
+          </div>
+          <div class="p-2.5 rounded border border-stone-300 bg-white cursor-pointer hover:border-amber-700" onclick="chooseInfra('bongdon')">
+            <div class="font-bold text-amber-900">🔥 화성 봉돈</div>
+            <div class="text-[11px] text-stone-600">5연 굴뚝 봉수대 (산악 전용, 🪙150, 🌾50)</div>
+          </div>
+          <div class="p-2.5 rounded border border-stone-300 bg-white cursor-pointer hover:border-amber-700" onclick="chooseInfra('well')">
+            <div class="font-bold text-amber-900">💧 공동 우물</div>
+            <div class="text-[11px] text-stone-600">방화 및 기와집 승급 (🪙50, 🌾10)</div>
+          </div>
+          <div class="p-2.5 rounded border border-stone-300 bg-white cursor-pointer hover:border-amber-700" onclick="chooseInfra('guesthouse')">
+            <div class="font-bold text-amber-900">🏮 영빈관 (사신 접대)</div>
+            <div class="text-[11px] text-stone-600">대외 외교 및 무역 세수 (🪙350, 🌾120)</div>
+          </div>
+          <div class="p-2.5 rounded border border-stone-300 bg-white cursor-pointer hover:border-amber-700" onclick="chooseInfra('factory')">
+            <div class="font-bold text-amber-900">⚙️ 관영 공업소</div>
+            <div class="text-[11px] text-stone-600">화포·도자기 공산품 수출 (🪙400, 🌾150)</div>
+          </div>
+          <div class="p-2.5 rounded border border-stone-300 bg-white cursor-pointer hover:border-amber-700" onclick="chooseInfra('police')">
+            <div class="font-bold text-amber-900">🔒 포도청·전옥서</div>
+            <div class="text-[11px] text-stone-600">치안 유지 및 형옥 (🪙300, 🌾100)</div>
+          </div>
+          <div class="p-2.5 rounded border border-stone-300 bg-white cursor-pointer hover:border-amber-700" onclick="chooseInfra('clinic')">
+            <div class="font-bold text-amber-900">💊 혜민 의원</div>
+            <div class="text-[11px] text-stone-600">역병 퇴치 및 복지 향상 (🪙250, 🌾80)</div>
+          </div>
+        </div>
+      `;
+
+      openModal("관영 공공시설 축조", "국비로 직접 설치하는 관영 인프라", html, [
+        { text: "닫기", primary: true, action: closeModal }
+      ]);
+    });
+
+    window.chooseInfra = function(tool) {
+      closeModal();
+      selectTool(tool);
+    };
+
+    // 첫 실행 초기화
+    function startApplication() {
+      resizeCanvas();
+      centerCamera();
+      updateHUD();
+      updateQuestUI();
+
+      // 시작 시 정조 대왕 첫 교지 상소문
+      setTimeout(() => {
+        openModal(
+          "정조 대왕의 첫 어명",
+          "수원화성 신도시 축조의 교지",
+          `<p class="font-traditional leading-relaxed mb-3">
+            "과인이 사도세자의 묘소를 화산으로 모시고, 이곳 수원을 자주국방과 상업 번영의 중심 도시로 개척하고자 하노라.<br><br>
+            그대는 유수부의 동헌을 세우고, 삼남대로를 닦아 백성을 모으며, 24년 내에 웅장한 수원화성을 완공하여 세도정치의 싹을 잘라내라!"
+          </p>`,
+          [
+            { text: "어명을 받듭니다 (동헌 터 잡기)", primary: true, action: () => { closeModal(); selectTool('office'); } }
+          ]
+        );
+      }, 400);
+
+      requestAnimationFrame(render);
+    }
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+      startApplication();
+    } else {
+      window.addEventListener('DOMContentLoaded', startApplication);
+    }
+  </script>
+</body>
+</html>

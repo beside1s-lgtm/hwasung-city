@@ -1,0 +1,156 @@
+[gd_scene format=3 uid="uid://c34e8f2a2b1a0"]
+
+[ext_resource type="Script" path="res://scripts/EndingPopup.gd" id="1_script"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_main"]
+bg_color = Color(0.968627, 0.952941, 0.913725, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.172549, 0.243137, 0.313726, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 24.0
+content_margin_top = 18.0
+content_margin_right = 24.0
+content_margin_bottom = 18.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_story"]
+bg_color = Color(0.92, 0.9, 0.85, 0.6)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.75, 0.72, 0.65, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+
+[node name="EndingPopup" type="CanvasLayer"]
+process_mode = 3
+layer = 150
+script = ExtResource("1_script")
+
+[node name="DimBackground" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.04, 0.04, 0.06, 0.9)
+
+[node name="CenterContainer" type="CenterContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="MainPanel" type="PanelContainer" parent="CenterContainer"]
+custom_minimum_size = Vector2(740, 580)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_main")
+
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/MainPanel"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Header" type="VBoxContainer" parent="CenterContainer/MainPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="PassingNotice" type="Label" parent="CenterContainer/MainPanel/VBox/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.545098, 0, 0, 1)
+theme_override_font_sizes/font_size = 14
+text = "경신년(1800년) 6월 28일, 정조 대왕 승하(昇遐)"
+horizontal_alignment = 1
+
+[node name="EndingTitle" type="Label" parent="CenterContainer/MainPanel/VBox/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.109804, 0.14902, 0.239216, 1)
+theme_override_font_sizes/font_size = 20
+text = "대조선 문예 부흥 [참 결말]"
+horizontal_alignment = 1
+
+[node name="EndingSubtitle" type="Label" parent="CenterContainer/MainPanel/VBox/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.313726, 0.380392, 0.45098, 1)
+theme_override_font_sizes/font_size = 13
+text = "개혁의 완성, 이상도시 화성을 발판으로 연 위대한 황금기"
+horizontal_alignment = 1
+
+[node name="ArtContainer" type="PanelContainer" parent="CenterContainer/MainPanel/VBox"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+
+[node name="ArtText" type="Label" parent="CenterContainer/MainPanel/VBox/ArtContainer"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 13
+text = "★ [제10결말: 참 결말] 이상도시 화성의 완성, 대조선 문예 부흥 ★"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ContentScroll" type="ScrollContainer" parent="CenterContainer/MainPanel/VBox"]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_story")
+horizontal_scroll_mode = 0
+
+[node name="StoryText" type="Label" parent="CenterContainer/MainPanel/VBox/ContentScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 1
+theme_override_colors/font_color = Color(0.11, 0.1, 0.09, 1)
+theme_override_font_sizes/font_size = 13
+text = "맺음말"
+autowrap_mode = 3
+
+[node name="StatsSection" type="VBoxContainer" parent="CenterContainer/MainPanel/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="StatsHeader" type="Label" parent="CenterContainer/MainPanel/VBox/StatsSection"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2, 0.25, 0.3, 1)
+theme_override_font_sizes/font_size = 13
+text = "[11년간의 최종 치세 실록 결산 (1789~1800)]"
+
+[node name="StatsGrid" type="GridContainer" parent="CenterContainer/MainPanel/VBox/StatsSection"]
+layout_mode = 2
+columns = 2
+theme_override_constants/h_separation = 28
+theme_override_constants/v_separation = 3
+
+[node name="Buttons" type="HBoxContainer" parent="CenterContainer/MainPanel/VBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 16
+
+[node name="BtnSave" type="Button" parent="CenterContainer/MainPanel/VBox/Buttons"]
+custom_minimum_size = Vector2(160, 36)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+text = "실록 저장하기"
+
+[node name="BtnRestart" type="Button" parent="CenterContainer/MainPanel/VBox/Buttons"]
+custom_minimum_size = Vector2(160, 36)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+text = "새로운 치세 시작"
+
+[node name="BtnContinue" type="Button" parent="CenterContainer/MainPanel/VBox/Buttons"]
+custom_minimum_size = Vector2(160, 36)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+text = "화성 계속 살펴보기"

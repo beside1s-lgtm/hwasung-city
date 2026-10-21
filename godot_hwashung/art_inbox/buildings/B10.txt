@@ -1,0 +1,6 @@
+tile_house_08
+tile_house_09
+ws_2x2_ceramics
+ws_2x2_lumber_machinery
+children_play_yard
+women_play_yard

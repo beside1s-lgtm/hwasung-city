@@ -1,0 +1,6 @@
+thatch_house_07
+tile_house_01
+tile_house_02
+tile_house_03
+tile_house_04
+well

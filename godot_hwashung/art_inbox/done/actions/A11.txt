@@ -1,0 +1,2 @@
+npc_farmer__hoe
+npc_hunter__shoot

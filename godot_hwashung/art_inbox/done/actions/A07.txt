@@ -1,0 +1,2 @@
+npc_peasant_woman__wash
+npc_fisherman__fish

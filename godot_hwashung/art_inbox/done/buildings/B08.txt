@@ -1,0 +1,6 @@
+ws_1x1_metalcraft
+ws_2x1_blacksmith
+ws_2x1_dyeing
+ws_2x1_shoemaker
+ws_2x1_stonemason
+ws_2x1_tile_kiln

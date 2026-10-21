@@ -1,0 +1,6 @@
+log_bundle
+roof_tiles
+crate
+bundle
+rice_sack
+salt_sack

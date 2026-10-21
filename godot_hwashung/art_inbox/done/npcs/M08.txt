@@ -1,0 +1,2 @@
+npc_monk
+npc_ajeon

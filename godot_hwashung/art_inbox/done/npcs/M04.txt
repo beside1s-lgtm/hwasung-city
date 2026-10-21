@@ -1,0 +1,2 @@
+npc_physician
+npc_drunkard

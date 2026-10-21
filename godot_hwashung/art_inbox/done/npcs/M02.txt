@@ -1,0 +1,2 @@
+npc_tteok_seller
+npc_fish_seller

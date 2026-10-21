@@ -1,0 +1,3 @@
+patrol_station
+firefighter_station
+salt_store_2x2

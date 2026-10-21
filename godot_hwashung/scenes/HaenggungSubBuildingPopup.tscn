@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://c8lae2f4a5b6d"]
+
+[ext_resource type="Script" path="res://scripts/HaenggungSubBuildingPopup.gd" id="1_script"]
+
+[node name="HaenggungSubBuildingPopup" type="CanvasLayer"]
+process_mode = 3
+layer = 88
+script = ExtResource("1_script")

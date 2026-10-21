@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://dsf7dvs1w4h20"]
+
+[ext_resource type="Script" path="res://scripts/SeojangdaePopup.gd" id="1_script"]
+
+[node name="SeojangdaePopup" type="CanvasLayer"]
+process_mode = 3
+layer = 87
+script = ExtResource("1_script")

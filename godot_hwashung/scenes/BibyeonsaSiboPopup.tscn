@@ -1,0 +1,7 @@
+[gd_scene load_steps=2 format=3 uid="uid://bibyeonsa_sibo_popup_001"]
+
+[ext_resource type="Script" path="res://scripts/BibyeonsaSiboPopup.gd" id="1_popup"]
+
+[node name="BibyeonsaSiboPopup" type="CanvasLayer"]
+layer = 105
+script = ExtResource("1_popup")

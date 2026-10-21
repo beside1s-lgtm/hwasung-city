@@ -1,0 +1,2 @@
+npc_ssireum
+npc_taekkyeon

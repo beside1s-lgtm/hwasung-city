@@ -1,0 +1,2 @@
+npc_base_man
+npc_base_man2

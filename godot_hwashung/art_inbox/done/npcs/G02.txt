@@ -1,0 +1,2 @@
+npc_hallyang
+npc_gisaeng

@@ -1,0 +1,2 @@
+act_jegi
+npc_jeongisu__tell

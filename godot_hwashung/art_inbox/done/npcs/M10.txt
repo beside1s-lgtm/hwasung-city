@@ -1,0 +1,2 @@
+npc_jumo
+npc_refugee

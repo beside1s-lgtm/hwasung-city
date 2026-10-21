@@ -1,0 +1,2 @@
+npc_yangban_scholar
+npc_yangban_lady

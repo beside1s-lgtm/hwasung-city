@@ -1,0 +1,4 @@
+tile_house_10_3x2
+tile_house_10_3x3
+maegok_seowon
+ws_3x3_royal_arsenal

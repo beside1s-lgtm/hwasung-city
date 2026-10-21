@@ -1,0 +1,6 @@
+book_open
+book_stack
+seoan
+painting_sheet
+scarecrow
+hyeongteul

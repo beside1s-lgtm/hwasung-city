@@ -1,0 +1,2 @@
+npc_bobusang
+npc_artisan_blacksmith

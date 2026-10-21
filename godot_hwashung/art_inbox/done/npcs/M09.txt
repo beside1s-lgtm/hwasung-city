@@ -1,0 +1,2 @@
+npc_book_peddler
+npc_simmani

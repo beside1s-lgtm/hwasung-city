@@ -1,0 +1,2 @@
+npc_jeongisu
+npc_fisherman

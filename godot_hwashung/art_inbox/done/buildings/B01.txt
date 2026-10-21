@@ -1,0 +1,6 @@
+thatch_house_01
+thatch_house_02
+thatch_house_03
+thatch_house_04
+thatch_house_05
+thatch_house_06

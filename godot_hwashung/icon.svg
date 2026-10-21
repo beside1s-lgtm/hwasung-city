@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <rect width="128" height="128" rx="20" fill="#2d1b11"/>
+  <polygon points="64,16 112,40 112,88 64,112 16,88 16,40" fill="#c29b61" stroke="#e0c28e" stroke-width="4"/>
+  <text x="64" y="74" font-size="32" font-family="serif" font-weight="bold" text-anchor="middle" fill="#5c1d11">華城</text>
+</svg>

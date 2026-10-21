@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://djnhrr52adayq"]
+
+[ext_resource type="Script" path="res://scripts/YeonmudaePopup.gd" id="1_script"]
+
+[node name="YeonmudaePopup" type="CanvasLayer"]
+process_mode = 3
+layer = 87
+script = ExtResource("1_script")

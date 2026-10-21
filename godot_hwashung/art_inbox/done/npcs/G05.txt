@@ -1,0 +1,2 @@
+npc_cheonmin
+npc_child_boy

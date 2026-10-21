@@ -1,0 +1,2 @@
+npc_thief__bound
+npc_brawler__punch

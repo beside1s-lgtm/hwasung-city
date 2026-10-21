@@ -1,0 +1,6 @@
+anvil
+workbench
+stone_block
+dye_vat
+dyed_cloth
+paper_vat

@@ -1,0 +1,6 @@
+market_shop_19
+market_shop_20
+ws_1x1_carpenter
+ws_1x1_bamboo
+ws_1x1_hanji
+ws_1x1_leather

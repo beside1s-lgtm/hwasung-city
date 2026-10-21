@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://uigwe_viewer_modal_001"]
+
+[ext_resource type="Script" path="res://scripts/UigweViewerModal.gd" id="1_modal"]
+
+[node name="UigweViewerModal" type="CanvasLayer"]
+script = ExtResource("1_modal")

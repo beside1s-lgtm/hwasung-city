@@ -1,0 +1,2 @@
+npc_soldier__bow
+npc_artisan_blacksmith__hammer

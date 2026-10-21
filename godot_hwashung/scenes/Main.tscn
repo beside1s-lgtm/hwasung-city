@@ -1,0 +1,27 @@
+[gd_scene load_steps=7 format=3 uid="uid://c6hwashungmain01"]
+
+[ext_resource type="Script" path="res://scripts/Main.gd" id="1_main"]
+[ext_resource type="Script" path="res://scripts/TiledMapLoader.gd" id="2_map"]
+[ext_resource type="Script" path="res://scripts/CameraController.gd" id="3_cam"]
+[ext_resource type="Script" path="res://scripts/TimeManager.gd" id="4_time"]
+[ext_resource type="Script" path="res://scripts/SimulationCore.gd" id="5_sim"]
+[ext_resource type="Script" path="res://scripts/HUDController.gd" id="6_hud"]
+
+[node name="Main" type="Node2D"]
+script = ExtResource("1_main")
+
+[node name="TiledMapLoader" type="Node2D" parent="."]
+y_sort_enabled = true
+script = ExtResource("2_map")
+
+[node name="Camera2D" type="Camera2D" parent="."]
+script = ExtResource("3_cam")
+
+[node name="TimeManager" type="Node" parent="."]
+script = ExtResource("4_time")
+
+[node name="SimulationCore" type="Node" parent="."]
+script = ExtResource("5_sim")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+script = ExtResource("6_hud")
