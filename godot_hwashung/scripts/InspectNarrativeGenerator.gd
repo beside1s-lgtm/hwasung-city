@@ -526,7 +526,7 @@ static func _get_encyclopedia_portrait(key: String) -> Texture2D:
 				if tex != null:
 					_encyclopedia_cache[key] = tex
 					return tex
-			var gpath: String = ProjectSettings.globalize_path(res_p)
+			var gpath: String = AssetPaths.disk_path(res_p)
 			if FileAccess.file_exists(gpath):
 				var img: Image = Image.new()
 				var err: Error = img.load(gpath)
@@ -552,8 +552,8 @@ static func portrait_pref(specific: Array, generic: String) -> Texture2D:
 			var res_p: String = "res://assets/encyclopedia/" + k + ext
 			if ResourceLoader.exists(res_p):
 				found = load(res_p) as Texture2D
-			elif FileAccess.file_exists(ProjectSettings.globalize_path(res_p)):
-				var img := Image.load_from_file(ProjectSettings.globalize_path(res_p))
+			elif FileAccess.file_exists(AssetPaths.disk_path(res_p)):
+				var img := Image.load_from_file(AssetPaths.disk_path(res_p))
 				if img != null and not img.is_empty():
 					found = ImageTexture.create_from_image(img)
 			if found != null:
@@ -1756,8 +1756,134 @@ static func build_inspect_data(entity: Dictionary, sim: SimulationCore = null, g
 		out["description"] = "멍석을 깐 보따리 상인과 광대패가 어우러져\n흥겨운 풍물 소리와 흥정이 가득한 열린 마당.\n팔도에서 모여든 길손들이 잠시 목을 축이며\n화성 저잣거리의 생동하는 활기를 꽃피웁니다."
 		return out
 
+	# ------------------------------------------------------------ D-2. 수공업 공방 (가죽, 목공, 석공, 염색, 대장간, 옹기, 제지, 신발 등)
+	var is_workshop: bool = (
+		entity.get("zone", "") == "ind" or
+		b_code_check.begins_with("ind") or
+		b_code_check.begins_with("ws_") or
+		b_code_check in ["workshop", "industry", "craft", "smithy"] or
+		kind == "workshop" or
+		entity.has("ws_asset_id")
+	)
+	if is_workshop:
+		out["category"] = "workshop"
+		var ws_trade: String = str(entity.get("trade", entity.get("shop_type", "")))
+		var ws_id: String = str(entity.get("ws_asset_id", b_code_check))
+		var total_shops_w: int = BuildingManager.active_market_shop_count
+		var total_ws_w: int = BuildingManager.active_workshop_count
+		var cov_shops_w: int = mini(total_shops_w, total_ws_w * 10)
+		var buff_suffix_w: String = "\n%s" % WorkshopManager.get_market_buff_tooltip_text(cov_shops_w, total_shops_w)
+
+		# 1. 신발 공방 (갖신방)
+		if ws_trade in ["shoe", "shoes"] or ws_id.contains("shoe") or ws_trade == "gat_shoe":
+			out["title"] = "화성 수공업 갖신방 (신발 공방)"
+			out["texture"] = get_portrait("base_artisan")
+			out["description"] = "질 좋은 소가죽과 비단으로 신을 짓는 공방.\n사대부의 가죽신인 태사혜와 당혜를 깁고\n백성들의 튼튼한 가죽신을 정성껏 지어내니\n발끝마다 장인의 섬세한 솜씨가 깃듭니다." + buff_suffix_w
+			return out
+		# 2. 가죽 공방 (피혁소)
+		elif ws_trade in ["leather", "hide"] or ws_id.contains("leather"):
+			out["title"] = "화성 수공업 가죽 공방 (피혁소)"
+			out["texture"] = get_portrait("base_butcher")
+			out["description"] = "사냥한 짐승의 가죽을 무두질하는 공방.\n군사들의 갑주와 마구, 활집을 정밀히 재단하며\n질기고 부드러운 가죽을 가공해 납품하니\n호국 국방과 일상 물품의 든든한 밑거름입니다." + buff_suffix_w
+			return out
+		# 3. 대장간 (야조소 / 철물 공방)
+		elif ws_trade in ["smith", "iron"] or ws_id.contains("blacksmith") or ws_id.contains("smith"):
+			out["title"] = "화성 관설 대장간 (야조소)"
+			out["texture"] = get_portrait("shop_smith")
+			out["description"] = "벌건 풀무불과 묵직한 쇠망치 소리의 현장.\n성곽 축성에 쓸 쇠못과 정, 쟁기를 벼려내며\n무쇠를 녹여 단단한 연장과 무기를 만드니\n장인의 땀방울이 화성의 뼈대를 세웁니다." + buff_suffix_w
+			return out
+		# 4. 목수 공방 (목공방)
+		elif ws_trade in ["carpenter", "wood", "lumber"] or ws_id.contains("carpenter"):
+			out["title"] = "화성 수공업 목공방 (목수 작업장)"
+			out["texture"] = get_portrait("base_artisan")
+			out["description"] = "먹줄을 튕기고 대패질 소리가 경쾌한 일터.\n성역 공사에 쓸 서까래와 기둥을 다듬고\n백성들의 가구와 농기구를 견고히 짜 맞추니\n나무 향기 속에 장인의 정성이 피어납니다." + buff_suffix_w
+			return out
+		# 5. 석수 공방 (석재 가공소)
+		elif ws_trade in ["stonemason", "stone"] or ws_id.contains("stonemason"):
+			out["title"] = "화성 석수 공방 (석재 가공소)"
+			out["texture"] = get_portrait("kim_bau")
+			out["description"] = "팔달산 화강암을 쪼개고 정질하는 공방.\n단단한 돌을 네모반듯하게 다듬어 성벽을 쌓고\n홍예문과 석교에 쓸 정교한 부재를 깎으니\n천년을 버틸 화성의 굳건한 주춧돌이 됩니다." + buff_suffix_w
+			return out
+		# 6. 천연 염색 공방 (염색소)
+		elif ws_trade in ["dyeing", "dye"] or ws_id.contains("dyeing"):
+			out["title"] = "화성 천연 염색 공방 (염색소)"
+			out["texture"] = get_portrait("shop_silk")
+			out["description"] = "쪽풀과 치자, 꼭두서니 물이 가득한 공방.\n무명과 비단을 고운 빛깔로 물들여 말리며\n마당 가득 오색 천이 바람에 나부끼니\n전통 오방색의 아름다움이 곱게 물듭니다." + buff_suffix_w
+			return out
+		# 7. 놋그릇 유기 공방 (방짜유기 / 금속 공예방)
+		elif ws_trade in ["brass", "metal", "metalcraft", "yugi"] or ws_id.contains("metalcraft") or ws_id.contains("brass"):
+			out["title"] = "화성 놋그릇 유기 공방 (방짜유기)"
+			out["texture"] = get_portrait("base_artisan")
+			out["description"] = "구리와 주석을 달구어 두드리는 놋점.\n은은한 황금빛 방짜유기와 식기를 만들어\n사대부와 백성의 식탁에 품격을 더하니\n맑은 쇳소리와 함께 장인정신이 이어집니다." + buff_suffix_w
+			return out
+		# 8. 전통 옹기 가마 (도자기 공방)
+		elif ws_trade in ["onggi", "ceramics", "pottery"] or ws_id.contains("ceramics") or ws_id.contains("onggi"):
+			out["title"] = "화성 전통 옹기 가마 (도자기 공방)"
+			out["texture"] = get_portrait("base_artisan")
+			out["description"] = "붉은 진흙을 빚어 가마에 구워내는 작업장.\n장을 담글 항아리와 뚝배기를 넉넉히 구워\n사시사철 백성들의 양식을 저장하게 하니\n질박한 옹기마다 흙의 숨결이 살아 숨 쉽니다." + buff_suffix_w
+			return out
+		# 9. 와요 (기와·벽돌 가마소)
+		elif ws_trade in ["tile_kiln", "kiln", "brick"] or ws_id.contains("tile_kiln"):
+			out["title"] = "화성 와요 (기와·벽돌 가마소)"
+			out["texture"] = get_portrait("base_artisan")
+			out["description"] = "성벽과 행궁에 쓸 벽돌과 기와를 굽는 가마.\n정조 대왕께서 장려하신 전유 기술을 도입하여\n단단하고 검푸른 전돌을 대량으로 구워내니\n새로운 축성술의 핵심 자재를 공급합니다." + buff_suffix_w
+			return out
+		# 10. 죽세 공방 (대나무 공예방)
+		elif ws_trade in ["bamboo"] or ws_id.contains("bamboo"):
+			out["title"] = "화성 죽세 공방 (대나무 공예방)"
+			out["texture"] = get_portrait("base_artisan")
+			out["description"] = "푸른 대나무를 쪼개 살을 엮는 세공 작업장.\n대바구니와 채반, 부채와 발을 정교히 엮어\n백성들의 살림살이와 여름나기를 도우니\n가볍고 질긴 대나무의 기품이 서려 있습니다." + buff_suffix_w
+			return out
+		# 11. 전통 한지 공방 (조지소)
+		elif ws_trade in ["hanji", "paper"] or ws_id.contains("hanji"):
+			out["title"] = "화성 전통 한지 공방 (조지소)"
+			out["texture"] = get_portrait("base_artisan")
+			out["description"] = "닥나무를 삶고 찧어 종이를 뜨는 공방.\n발을 흔들어 물을 빼고 결을 곱게 말려내니\n천 년을 간다는 질긴 백지(白紙)를 생산하여\n규장각 서책과 관아 공문서의 바탕이 됩니다." + buff_suffix_w
+			return out
+		# 12. 전통 갓방 (모자 공방)
+		elif ws_trade in ["gat", "hat"]:
+			out["title"] = "화성 전통 갓방 (모자 공방)"
+			out["texture"] = get_portrait("base_artisan")
+			out["description"] = "말총과 대나무를 엮어 선비의 갓을 짓는 공방.\n먹칠을 올리고 깃을 세워 품격을 완성하니\n단정한 양반과 유생의 의관을 정제해주어\n선비의 곧은 기개와 풍류를 드높입니다." + buff_suffix_w
+			return out
+		# 13. 필묵방 (문방사우 공방)
+		elif ws_trade in ["brush", "ink"]:
+			out["title"] = "화성 필묵방 (문방사우 공방)"
+			out["texture"] = get_portrait("base_artisan")
+			out["description"] = "족제비 털로 붓을 매고 송연묵을 벼리는 공방.\n글씨 쓰는 선비와 화원의 필수 도구를 만드니\n규장각 각신과 향교 유생들의 배움을 돕고\n기록 문화의 찬란한 꽃을 피워 올립니다." + buff_suffix_w
+			return out
+		# 14. 궁시방 (활·화살 공방)
+		elif ws_trade in ["bow", "arrow"]:
+			out["title"] = "화성 궁시방 (활·화살 공방)"
+			out["texture"] = get_portrait("base_artisan")
+			out["description"] = "물소 뿔과 참나무로 각궁을 짓는 병기 공방.\n깃을 다듬고 화살촉을 메워 명궁을 길러내니\n장용영 군사들과 연무대 훈련에 보급되어\n화성을 수호하는 막강한 국방력을 다집니다." + buff_suffix_w
+			return out
+		# 15. 축성 기계 공방 (기계소)
+		elif ws_id.contains("lumber_machinery"):
+			out["title"] = "화성 축성 기계 공방 (기계소)"
+			out["texture"] = get_portrait("jeong_yakyong")
+			out["description"] = "다산 정약용의 설계로 기계 장치를 제작하는 곳.\n거중기와 녹로, 유형거의 목재 톱니를 깎고 조립하여\n무거운 성돌을 번쩍 들어 올려 노역을 덜어주니\n조선 과학기술의 위대한 정수가 모여 있습니다." + buff_suffix_w
+			return out
+		# 16. 화성 군기시 (왕실 무기 제조창)
+		elif ws_id.contains("royal_arsenal"):
+			out["title"] = "화성 군기시 (왕실 무기 제조창)"
+			out["texture"] = get_portrait("shop_smith")
+			out["description"] = "장용영 군사들의 조총과 화포를 제작하는 병기창.\n쇠를 제련하고 화약을 다루어 최신 무기를 양산하니\n도성과 왕실을 보위하는 최정예 국방의 심장으로\n화성의 철통같은 방어력을 완성합니다." + buff_suffix_w
+			return out
+		# 17. 기본/포괄적 공방
+		else:
+			if b_code_check == "ind_2":
+				out["title"] = "화성 대형 수공업 공방"
+				out["texture"] = get_portrait("base_artisan")
+				out["description"] = "장인 수십 명이 협업하는 대규모 제조 공방.\n축성 자재와 고급 기물을 체계적으로 생산하여\n군관민의 수요를 채우고 활발한 교역을 견인하니\n정조 대왕의 상공업 진흥책이 꽃피는 터전입니다." + buff_suffix_w
+			else:
+				out["title"] = "화성 수공업 공방 (작업장)"
+				out["texture"] = get_portrait("base_artisan")
+				out["description"] = "팔도의 장인들이 모여 물건을 만드는 수공업 터전.\n가죽, 목재, 금속을 다듬어 일상 기물을 빚어내니\n공방에서 생산된 물품이 저잣거리로 이어져\n자족 신도시 화성의 튼튼한 산업 기반이 됩니다." + buff_suffix_w
+			return out
+
 	# ------------------------------------------------------------ E. 저잣거리 상점 (성문 위치별 & 업종별 특성화)
-	var is_market_shop: bool = entity.get("zone", "") == "com" or b_code_check in ["market", "shop", "commercial"] or entity.has("trade") or entity.get("is_market", false) or kind == "market"
+	var is_market_shop: bool = not is_workshop and (entity.get("zone", "") == "com" or b_code_check in ["market", "shop", "commercial"] or (entity.has("trade") and entity.get("zone", "") != "ind") or entity.get("is_market", false) or kind == "market")
 	if is_market_shop:
 		out["category"] = "market"
 		var trade_type: String = str(entity.get("trade", entity.get("shop_type", "")))
