@@ -393,21 +393,16 @@ static func clean_isolated_outskirts(grid: GameGrid, sim: SimulationCore = null)
 					cell.erase("isolated_turns")
 					cleaned_houses += 1
 
-			# 2. 만석거/저수지 없이 허공에 박힌 부적격 둔전 타일 자연 소멸
-			elif b.begins_with("agr") or z == "agr":
-				if grid.reservoir_positions.is_empty() or not is_near_reservoir(grid, pt, 8):
-					cell["building"] = ""
-					cell["zone"] = ""
-					cell["surface"] = "normal"
-					cleaned_farms += 1
+			# 2. 대유둔전(agr)은 저수지가 없더라도 천수답(식량 생산 -10% 페널티)으로 정상 경작되므로
+			# 플레이어가 설정한 구획이나 경작지를 세이브 로드 시 강제로 삭제하지 않고 보존한다.
 
-	if cleaned_houses > 0 or cleaned_farms > 0:
+	if cleaned_houses > 0:
 		grid.recount_zone_counts()
 		grid.recompute_infrastructure()
 		if sim and sim.pop_manager:
 			sim.pop_manager.sync_housing_lists_from_grid(grid)
 			sim.pop_manager.update_housing_occupancy(grid)
-		print("[세이브 정리 완료] 성 밖 맹지 가옥 %d채 및 고립 둔전 %d칸을 자연 정리했습니다." % [cleaned_houses, cleaned_farms])
+		print("[세이브 정리 완료] 성 밖 맹지 가옥 %d채를 자연 정리했습니다." % cleaned_houses)
 
 	return {"cleaned_houses": cleaned_houses, "cleaned_farms": cleaned_farms}
 

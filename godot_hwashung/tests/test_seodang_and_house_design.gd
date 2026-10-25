@@ -55,10 +55,8 @@ func _init() -> void:
 		"buildings/workshop.png": Vector2i(64, 72),
 		"buildings/seodang.png": Vector2i(128, 112),
 		"buildings/maegok_seowon.png": Vector2i(192, 160),
-		"buildings/seojangdae.png": Vector2i(128, 112),
-		"buildings/yeonmudae.png": Vector2i(128, 112),
-		"buildings/yusubu.png": Vector2i(128, 112),
-		"buildings/haenggung.png": Vector2i(448, 320)
+		"buildings/lm_gwana.png": Vector2i(128, 112),
+		"buildings/lm_haenggung.png": Vector2i(448, 320)
 	}
 
 	for rel_path: String in required_sprites.keys():

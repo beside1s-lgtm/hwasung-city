@@ -1381,7 +1381,7 @@ func _refresh_caches() -> void:
 				for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
 					var nx: int = x + d.x
 					var ny: int = y + d.y
-					if grid.in_bounds(nx, ny) and grid.grid[ny][nx].get("terrain", "") == "water":
+					if nx >= 0 and ny >= 0 and nx < sz and ny < sz and grid.grid[ny][nx].get("terrain", "") == "water":
 						water_vec += Vector2(d.x, d.y)
 						has_water = true
 				if has_water:
@@ -3629,9 +3629,10 @@ func _process(delta: float) -> void:
 	if not _dirty_nav_tiles.is_empty():
 		var dirty_keys := _dirty_nav_tiles.keys()
 		_dirty_nav_tiles.clear()
-		_roads_dirty = false
 		_update_nav_tiles_local(dirty_keys)
-	elif _roads_dirty:
+	# PORT-TRACE [렉: 턴 정산 멈칫]: 지도 전체 다시 세기(30ms 남짓)는 턴 계산·가림막·지도 굽기와 한 프레임에 겹치지 않게
+	# 차례를 받아서 한다(턴 중에 바뀐 것은 턴이 끝난 뒤 한 번에). 칸 몇 개 국소 갱신이 먼저 와도 전체 다시 세기를 지우지 않는다.
+	if _roads_dirty and GameGrid.frame_claim():
 		_roads_dirty = false
 		_refresh_caches()
 		_sync_spot_agents()
@@ -4901,9 +4902,9 @@ func _update_spot_agent(a: Dictionary, delta: float) -> void:
 			# 실학 연구(보유론·서기수용론) 완료 여부 상시 동기화
 			var is_cat_researched: bool = false
 			if sim != null and ("tech_tree" in sim) and sim.tech_tree != null:
-				is_cat_researched = sim.tech_tree.has_researched("boyuron", sim) and sim.tech_tree.has_researched("segi", sim)
+				is_cat_researched = sim.tech_tree.has_researched("boyuron", sim) # 보유론이면 단속하지 않는다
 			elif sim != null:
-				is_cat_researched = bool(sim.boyuron and sim.segi_policy)
+				is_cat_researched = bool(sim.boyuron)
 
 			if is_cat_researched:
 				if cat_state == "fleeing" or cat_state == "arrested":
@@ -4933,6 +4934,11 @@ func _update_spot_agent(a: Dictionary, delta: float) -> void:
 								cand_cp["bubble_text"] = "사학 죄인 체포!"
 								cand_cp["bubble_timer"] = 2.5
 								a["arrest_timer"] = 2.5
+								# 보유론 연구 전 사학 단속: 왕권 +2, 민심 -1 (붙잡히는 순간 한 번)
+								if sim != null:
+									sim.authority = mini(100, sim.authority + 2)
+									sim.loyalty = maxi(0, sim.loyalty - 1)
+									CityStats.set_royal_power(sim.authority)
 								break
 				elif cat_state == "arrested":
 					var arr_t: float = float(a.get("arrest_timer", 2.5)) - delta
@@ -7493,9 +7499,9 @@ func get_seodang_students(seodang_pos: Vector2i) -> Array[Dictionary]:
 func trigger_catholic_interaction(agent_or_pos: Variant) -> Dictionary:
 	var is_researched: bool = false
 	if sim != null and ("tech_tree" in sim) and sim.tech_tree != null:
-		is_researched = sim.tech_tree.has_researched("boyuron", sim) and sim.tech_tree.has_researched("segi", sim)
+		is_researched = sim.tech_tree.has_researched("boyuron", sim) # 보유론이면 단속하지 않는다
 	elif sim != null:
-		is_researched = bool(sim.boyuron and sim.segi_policy)
+		is_researched = bool(sim.boyuron)
 
 	var target_agent: Dictionary = {}
 	if agent_or_pos is Dictionary:

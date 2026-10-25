@@ -349,8 +349,8 @@ func process_turn_research(academic_power: int, sim: SimulationCore = null, has_
 					emit_signal("research_completed", cur_id)
 					emit_signal("research_status_changed", cur_id, research_status)
 
-	# 2. 세자 제왕학 서연 점진적 진척 (이덕무 검서관 등용 시 +2% 가산 보너스)
-	if prince_studying and prince_edu_progress < 100.0:
+	# 2. 세자 제왕학 서연 점진적 진척 (이덕무 검서관 등용 시 +2% 가산 보너스) — 1800년 엔딩(순조 즉위) 뒤에는 멈춤
+	if prince_studying and prince_edu_progress < 100.0 and not (sim != null and CrownPrinceEducationManager.prince_affairs_closed(sim.current_year)):
 		var prince_step: float = base_step + (2.0 if has_lee_deokmu else 0.0)
 		prince_edu_progress = clampf(prince_edu_progress + prince_step, 0.0, 100.0)
 		CityStats.set_crown_prince_education(int(prince_edu_progress))

@@ -45,6 +45,16 @@ const FIELDS := [
 	{"id": "medicine", "name": "서양 의학·종두법", "desc": "우두 접종과 해부학", "effect": "민심 +10"},
 	{"id": "survey", "name": "천문·측량·지리학", "desc": "세계 지도와 정밀 측량", "effect": "외교 성공률 +5%"},
 ]
+## PORT-TRACE [근대 의학 4분야]: 사용자 요청 — "예방접종·현미경(미생물학)·해부학·공중위생학을 연구해 각각 인구 부양력 +10%".
+## [서양 의학·종두법]을 마치면 열린다. 연구 방식·비용·속도는 위 분야와 같고, 서학 진척도(5분야 평균)에는 들지 않는다.
+## 부양력 배율은 건물 개편(석조·다층) 배율에 곱해진다(TaxManager.get_population_cap).
+const MEDICAL_FIELDS := [
+	{"id": "vaccination", "name": "예방접종(우두 보급)", "desc": "우두를 온 백성에게 접종해 천연두를 막음", "effect": "인구 부양력 +10%"},
+	{"id": "microbiology", "name": "현미경·미생물학", "desc": "병원균을 찾아내 전염병을 막음", "effect": "인구 부양력 +10%"},
+	{"id": "anatomy", "name": "해부학·외과", "desc": "몸의 구조를 밝혀 수술로 목숨을 살림", "effect": "인구 부양력 +10%"},
+	{"id": "hygiene", "name": "공중위생학", "desc": "검역·청결·상하수도로 도시 질병을 줄임", "effect": "인구 부양력 +10%"},
+]
+const MEDICAL_POP_BONUS := 0.10
 const RESEARCH_TURN_COST := 10000
 const FIELD_BASE_GAIN := 100.0 / 120.0 # 배율 1일 때 분야 하나 10년(120턴) → 5분야 50년
 const MAX_SPEED_MULT := 10.0
@@ -146,6 +156,26 @@ func western_progress() -> int:
 func field_done(id: String) -> bool:
 	return float(field_progress.get(id, 0.0)) >= 100.0
 
+## 의학 4분야는 [서양 의학·종두법]을 마쳐야 착수할 수 있다
+func medical_unlocked() -> bool:
+	return field_done("medicine")
+
+static func is_medical_field(id: String) -> bool:
+	for f in MEDICAL_FIELDS:
+		if f["id"] == id:
+			return true
+	return false
+
+## 의학 분야로 늘어난 인구 부양력 배율(1.0 ~ 1.4). 근대화 전이면 1.0
+static func medical_pop_mult() -> float:
+	if not is_active():
+		return 1.0
+	var n := 0
+	for f in MEDICAL_FIELDS:
+		if instance.field_done(f["id"]):
+			n += 1
+	return 1.0 + MEDICAL_POP_BONUS * n
+
 func is_studying(key: String) -> bool:
 	return students.has(key) and sim.turn < int(students[key]["return_turn"])
 
@@ -169,7 +199,7 @@ func study_candidates() -> Array:
 	return out
 
 func start_field(id: String) -> bool:
-	if field_done(id):
+	if field_done(id) or (is_medical_field(id) and not medical_unlocked()):
 		return false
 	current_field = id
 	research_paused = false
@@ -206,7 +236,7 @@ func _process_research() -> void:
 	field_progress[current_field] = v
 	if v >= 100.0:
 		_apply_field_effect(current_field)
-		for f in FIELDS:
+		for f in FIELDS + MEDICAL_FIELDS:
 			if f["id"] == current_field:
 				emit_signal("notice", "근대 과학 [%s] 연구를 마쳤습니다! (%s)" % [f["name"], f["effect"]], "🔬")
 		current_field = ""
@@ -415,6 +445,7 @@ func _resolve_sino_japanese_war() -> void:
 				continue
 			cands.append(Vector2i(xx, yy))
 	cands.shuffle()
+	@warning_ignore("integer_division")
 	for i in range(cands.size() / 2):
 		if BuildingManager.ruin_building_at(cands[i], grid, sim):
 			ruined += 1

@@ -28,6 +28,7 @@ func setup(g: GameGrid, s: SimulationCore, c: CourtSystem, cm: CitizenManager) -
 	sim.turn_advanced.connect(_on_turn)
 
 func _on_turn(_turn: int, _season: int, _year: int) -> void:
+	var um: UrbanEvolutionManager = UrbanEvolutionManager.instance
 	var houses := 0
 	_hg_anchor = Vector2i(-1, -1)
 	for y in range(grid.size):
@@ -45,9 +46,23 @@ func _on_turn(_turn: int, _season: int, _year: int) -> void:
 			seodangs += 1
 			if citizens != null and citizens.has_method("spawn_seodang_students"):
 				citizens.spawn_seodang_students(p)
-			emit_signal("notice", "마을 아이들이 모여 글을 배우는 서당이 문을 열었습니다! (학문력 +1/달)", "📖")
+			if um != null and um.has_university():
+				emit_signal("notice", "동네에 초등학교가 문을 열었습니다! (학문력 +1/달)", "🏫")
+			else:
+				emit_signal("notice", "마을 아이들이 모여 글을 배우는 서당이 문을 열었습니다! (학문력 +1/달)", "📖")
 	# 매곡서원: 하나뿐, 박석길 1칸 이상 인접한 방리(흙길 방리도 허용)
 	var has_seowon: bool = not grid.list_plazas("seowon").is_empty()
+	# 근대화 시대 수원 대학교 개편 뒤: 서당=초등학교, 서원=중등학교. 중등학교는 초등학교 5곳당 1곳(한 턴에 하나씩)
+	if um != null and um.has_university():
+		var seowons: int = grid.list_plazas("seowon").size()
+		@warning_ignore("integer_division")
+		if seowons < seodangs / UrbanEvolutionManager.SECONDARY_PER_ELEMENTARY:
+			var ms := grid.allocate_edu_site("seowon", 3, 0, true)
+			if ms.x < 0:
+				ms = grid.allocate_edu_site("seowon", 3, 0, true, true)
+			if ms.x >= 0:
+				has_seowon = true
+				emit_signal("notice", "초등학교 졸업생을 받을 중등학교가 새로 문을 열었습니다! (초등학교 %d곳 → 중등학교 %d곳)" % [seodangs, seowons + 1], "🏫")
 	# PORT-TRACE [서원 조건]: 사용자 — 서당이 3곳 생긴 뒤에 서원 1곳(도시에 하나뿐은 그대로)
 	if not has_seowon and seodangs >= 3 and randf() < 0.3:
 		# need_stone=1: 박석길 1칸 이상, allow_huts=true: 초가집 자리도 헐고 확보

@@ -1,0 +1,8 @@
+tree_willow_spring
+tree_willow_summer
+tree_willow_autumn
+tree_willow_winter
+tree_maple_spring
+tree_maple_summer
+tree_maple_autumn
+tree_maple_winter

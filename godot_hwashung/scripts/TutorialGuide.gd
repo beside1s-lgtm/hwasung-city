@@ -198,6 +198,10 @@ var _advice_cooldown: float = 0.0
 ## "알겠어요" 또는 "닫기"를 누른 key는 이 집합에 등록되어 해당 세션 동안 재출력하지 않는다.
 ## 단, 상태가 바뀐 조언(호환 새로 발생 등)은 별도 key로 생성되므로 자동 표시된다.
 var _dismissed_affairs: Dictionary = {}
+## PORT-TRACE [인구 조언 1년 1회]: 사용자 요청 — "인구 관련 조언은 확인한 뒤 1년 동안 다시 하지 않도록".
+## 인구 수용 한계 조언을 마지막으로 보여 준 턴(저장됨). 그 뒤 12턴(1년) 동안은 목록에 올리지 않는다.
+const POP_CAP_ADVICE_INTERVAL := 12
+var _pop_cap_seen_turn: int = -9999
 ## 초야 인재 건의에서 [등용 안 함] — 누른 인재는 _dismissed_affairs에 올라 다시 건의되지 않는다(저장됨)
 var _decline_btn: Button
 ## 조언 간 최소 간격(초) - 같은 조언이 연속으로 쏟아지지 않도록
@@ -505,7 +509,7 @@ func _collect_affairs_advices() -> Array[Dictionary]:
 			"prio": 11 if months_left <= 12 else 8
 		})
 	# 1-2. 인구 상한: 도시가 감당할 수 있는 인구에 이르렀으면 무엇이 막고 있는지 아뢴다
-	if sim != null and sim.pop_manager != null and bool(sim.pop_manager.last_pop_cap.get("at_cap", false)):
+	if sim != null and sim.pop_manager != null and bool(sim.pop_manager.last_pop_cap.get("at_cap", false)) 			and sim.turn - _pop_cap_seen_turn >= POP_CAP_ADVICE_INTERVAL:
 		var pc: Dictionary = sim.pop_manager.last_pop_cap
 		var tax_cap: int = int(pc.get("tax_cap", 0))
 		var prod_cap: int = int(pc.get("prod_cap", 0))
@@ -513,9 +517,16 @@ func _collect_affairs_advices() -> Array[Dictionary]:
 		if tax_cap < prod_cap:
 			cap_why = "세율이 높아 백성이 %d명 넘게는 모여들지 않사옵니다. 세율을 낮추면 더 모이나 세수가 줄어 국고가 적자가 될 수 있사옵니다." % tax_cap
 		else:
-			cap_why = "집·저잣거리·공방·대유둔전이 %d명까지만 먹여 살릴 수 있사옵니다. 방·리, 저잣거리, 공방, 둔전을 더 지어야 인구가 늘어나옵니다." % prod_cap
+			cap_why = "집·저잣거리·공방·대유둔전이 %d명까지만 먹여 살릴 수 있사옵니다. 빈 땅이 있으면 방·리, 저잣거리, 공방, 둔전을 더 지으시옵소서." % prod_cap
+			# 땅이 다 찼으면 더 지을 수 없으니, 같은 땅에서 더 많이 먹여 살리는 길(근대 개편)을 아뢴다
+			if UrbanEvolutionManager.is_active():
+				cap_why += "
+땅이 다 찼다면, 도시가 석조(1.25배)·다층 건물(2배)로 개편될수록 같은 땅에서 더 많은 백성이 살 수 있사옵니다. 서학 진척과 근대 과학 연구, 외교로 근대화를 앞당기시옵소서. (지금 도시 평균 %.2f배)" % float(pc.get("modern_mult", 1.0))
+			else:
+				cap_why += "
+땅이 다 찼다면 지금의 기와·초가로는 더 늘리기 어렵사옵니다. 훗날 근대 기술로 석조·다층 건물이 들어서면 같은 땅에서 더 많은 백성이 살 수 있사옵니다."
 		list.append({
-			"key": "affair_pop_cap_%d" % yr,
+			"key": "affair_pop_cap_%d" % sim.turn,
 			"title": "인구 수용 한계",
 			"text": "전하, 화성의 인구가 도시가 감당할 수 있는 한계(%d명)에 이르렀사옵니다.\n%s" % [int(pc.get("cap", 0)), cap_why],
 			"btn": "⚖️ 호조 조세",
@@ -679,12 +690,12 @@ func _collect_affairs_advices() -> Array[Dictionary]:
 	)
 	return list
 
-func _switch_tab(tab_name: String) -> void:
+func _switch_tab(tab_name: String, by_user: bool = false) -> void:
 	_current_tab = tab_name
 	if tab_name == "quest":
 		_show_quest_tab()
 	else:
-		_show_affairs_tab(0)
+		_show_affairs_tab(0, by_user)
 
 func _update_tab_buttons() -> void:
 	if _tab_quest_btn == null or _tab_affairs_btn == null:
@@ -702,7 +713,8 @@ func _update_tab_buttons() -> void:
 		_set_btn_style(_tab_quest_btn, Color(0.40, 0.35, 0.30))
 		_set_btn_style(_tab_affairs_btn, Color(0.65, 0.25, 0.15))
 
-func _show_affairs_tab(idx: int = 0) -> void:
+## by_user: 플레이어가 [정무 조언] 탭을 직접 눌렀을 때만 true
+func _show_affairs_tab(idx: int = 0, by_user: bool = false) -> void:
 	if not GameSettings.is_judge_advice_enabled():
 		if _box != null: _box.visible = false
 		return
@@ -713,6 +725,12 @@ func _show_affairs_tab(idx: int = 0) -> void:
 	_update_tab_buttons()
 
 	if _affairs_list.is_empty():
+		# PORT-TRACE [할 일 없으면 안 뜸]: 사용자 요청 — "할 일이 없으면 김판관 팝업이 안 떴으면".
+		# 인재 천거·어명 완수 뒤 등 저절로 정무 조언을 열었는데 목록이 비었으면 "평온" 화면을 띄우지 않고 조용히 접는다.
+		# (플레이어가 탭을 직접 누르면 그대로 "평온"을 보여 준다)
+		if not by_user:
+			_hide_when_idle()
+			return
 		_page_lbl.text = "🏛️ 정무 조언 (평온)"
 		_say("전하, 현재 시급히 결단하실 정무 과제는 없사옵니다.\n수원 화성 성곽 축성과 신도시 번영에 힘써 주시옵소서!")
 		_set_buttons(false, false, false, true, false)
@@ -722,6 +740,8 @@ func _show_affairs_tab(idx: int = 0) -> void:
 
 	var cur: Dictionary = _affairs_list[_affair_idx]
 	_advice_now = cur
+	if str(cur.get("key", "")).begins_with("affair_pop_cap") and sim != null:
+		_pop_cap_seen_turn = sim.turn
 	_page_lbl.text = "🏛️ %s (%d/%d)" % [str(cur.get("title", "정무 조언")), _affair_idx + 1, _affairs_list.size()]
 	_say(str(cur.get("text", "")))
 
@@ -1272,7 +1292,7 @@ func _build_ui() -> void:
 	_tab_affairs_btn = _make_btn("🏛️ 정무 조언", Color(0.52, 0.35, 0.16))
 	_tab_affairs_btn.custom_minimum_size = Vector2(130, 28)
 	_tab_affairs_btn.add_theme_font_size_override("font_size", 12)
-	_tab_affairs_btn.pressed.connect(Callable(self, "_switch_tab").bind("affairs"))
+	_tab_affairs_btn.pressed.connect(Callable(self, "_switch_tab").bind("affairs", true))
 	tab_bar.add_child(_tab_affairs_btn)
 
 	_text_lbl = Label.new()
@@ -1645,6 +1665,17 @@ func _set_buttons(skip: bool, tool: bool, where: bool, fold: bool, next: bool) -
 	if _fold_btn != null: _fold_btn.visible = fold
 	if _next_btn != null: _next_btn.visible = next
 	if _decline_btn != null: _decline_btn.visible = false
+
+## 아뢸 일이 없을 때 창을 접는다. 플레이어가 접은 것(_is_user_folded)과 달리 다음 급한 조언은 그대로 저절로 뜬다.
+func _hide_when_idle() -> void:
+	_resume_after_talk() # 다시 펼쳤을 때 보일 내용(남은 어명 또는 완수 인사)을 채워 둔다
+	if _dim != null:
+		_dim.visible = false
+	if _box != null:
+		_box.visible = false
+	if _reopen_btn != null:
+		_reopen_btn.visible = true
+		_reopen_btn.text = "🧑‍⚖️ " + _gname()
 
 func _fold() -> void:
 	_is_user_folded = true

@@ -5380,6 +5380,7 @@ func _market_vignettes(x0: float, y0: float, n: float, t: float, busy: bool) -> 
 	var yp := _cc(yg.x, yg.y)
 	items.append([yp.y, func() -> void:
 		_kind_at(yp, "yeot_seller", ydir, true, t)
+		GoodsArt.draw(self, yp + Vector2(-3, -5), "yeot_tray", 0.75, ydir.x < 0.0) # 가슴 앞에 멘 엿판
 		var snip := absf(sin(t * 8.0)) * 3.0 # 엿가위 철컥철컥
 		var hp := yp + Vector2(5, -14)
 		draw_line(hp, hp + Vector2(5, -2 - snip), Color("6a6a70"), 1.2)

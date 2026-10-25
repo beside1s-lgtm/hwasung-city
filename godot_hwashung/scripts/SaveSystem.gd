@@ -162,7 +162,7 @@ const SNAP_SKIP := {
 	"court": ["hired_scholars", "sim"],
 }
 const SNAP_ONLY := {
-	"guide": ["_advice_seen", "_reported_unique_buildings", "_dismissed_affairs"],
+	"guide": ["_advice_seen", "_reported_unique_buildings", "_dismissed_affairs", "_pop_cap_seen_turn"],
 	"time": ["current_year", "current_month", "current_day", "total_ticks", "last_season"],
 }
 

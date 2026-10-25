@@ -1101,23 +1101,6 @@ static func paint_special_facility(img: Image, c_size: Vector2, facility_key: St
 			draw_hanok_structure(img, o, -0.35, 0.35, 0.45, 0.85, 0.0, 18.0, tw, th, 3, 1, 1, Color("7f1d1d"), Color("fdfbf7"), Color("cbd5e1"), false)
 			draw_iso_roof(img, o, -0.4, 0.4, 0.4, 0.9, 17.0, 32.0, Color("1e293b"), Color("f8fafc"), false, tw, th)
 
-		"women_play_yard": # 2x2 여인 놀이마당: 긴 널뛰기 판 + 높은 그네틀 (바닥은 지표면 폴리곤이 전담하므로 투명 처리)
-			# 높은 그네틀 2개 기둥과 가로보
-			var p_swing: Vector2 = iso_point(o, -0.4, 0.2, 0.0, tw, th)
-			draw_line_img(img, p_swing - Vector2(6, 0), p_swing - Vector2(6, 26), Color("5c3a21"), 1.8)
-			draw_line_img(img, p_swing + Vector2(6, 0), p_swing + Vector2(6, 26), Color("5c3a21"), 1.8)
-			draw_line_img(img, p_swing - Vector2(7, 26), p_swing + Vector2(7, 26), Color("5c3a21"), 1.8)
-			# 긴 널뛰기 판
-			var p_board: Vector2 = iso_point(o, 0.3, 0.3, 0.0, tw, th)
-			draw_rect_img(img, Rect2(p_board - Vector2(10, 2), Vector2(20, 3)), Color("b45309"))
-			draw_circle_img(img, p_board + Vector2(0, 1), 2.2, Color("78350f")) # 볏짚 받침
-
-		"children_play_yard": # 2x2 어린이 골목 놀이터: 말뚝박기/제기차기 마당 (투명 배경)
-			var p_play: Vector2 = iso_point(o, 0.0, 0.0, 0.0, tw, th)
-			# 팽이 돌리기와 제기
-			draw_circle_img(img, p_play - Vector2(4, 2), 2.0, Color("dc2626"))
-			draw_circle_img(img, p_play + Vector2(5, 1), 2.0, Color("2563eb"))
-
 		"well": # 1x1 공동 우물
 			paint_well(img, c_size)
 

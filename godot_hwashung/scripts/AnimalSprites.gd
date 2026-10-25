@@ -37,8 +37,7 @@ static func _animal_tex(kind: String) -> Texture2D:
 		return null
 	if not _sheet_tex.has(kind):
 		var sid: String = ANIMAL_SHEETS[kind]
-		var path := ProjectSettings.globalize_path("res://assets/sprites/npcs/%s.png" % sid)
-		_sheet_tex[kind] = SpriteCacheManager.get_npc_texture(sid) if FileAccess.file_exists(path) else null
+		_sheet_tex[kind] = SpriteCacheManager.get_npc_texture(sid) if AssetPaths.asset_exists("res://assets/sprites/npcs/%s.png" % sid) else null
 	return _sheet_tex[kind]
 
 static func draw(ci: CanvasItem, p: Vector2, kind: String, frame: int, right: bool = true, col: Color = Color(0, 0, 0, 0), alpha: float = 1.0) -> void:

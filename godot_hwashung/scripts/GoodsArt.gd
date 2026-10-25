@@ -24,8 +24,8 @@ static func tex(id: String) -> Texture2D:
 	var path := DIR % id
 	if ResourceLoader.exists(path):
 		t = load(path) as Texture2D
-	elif FileAccess.file_exists(ProjectSettings.globalize_path(path)):
-		var img := Image.load_from_file(ProjectSettings.globalize_path(path))
+	elif FileAccess.file_exists(AssetPaths.disk_path(path)):
+		var img := Image.load_from_file(AssetPaths.disk_path(path))
 		if img != null and not img.is_empty():
 			t = ImageTexture.create_from_image(img)
 	_cache[id] = t

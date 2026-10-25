@@ -302,12 +302,14 @@ static func _paengi(ci: CanvasItem, c: Vector2, t: float) -> void:
 	FastDraw.poly(ci, PackedVector2Array([c + Vector2(-18, 0), c + Vector2(0, -8), c + Vector2(18, 0), c + Vector2(0, 8)]), Color(0.85, 0.93, 1.0, 0.5))
 	for i in range(3):
 		var tp := c + Vector2((float(i) - 1.0) * 9.0, float(i % 2) * 3.0)
+		var kid := tp + Vector2(5, 2)
+		# PORT-TRACE [팽이 두 개]: 동작 그림(act_paengi)에 이미 팽이가 있는데 코드 팽이를 먼저 따로 그려 얼굴 앞에서 겹쳐 돌았다 —
+		# 동작 그림이 있으면 그것만, 없을 때만 코드 팽이와 아이를 그린다.
+		if _act(ci, kid, "act_paengi", t + float(i), 4.0, false, 0.52):
+			continue
 		FastDraw.poly(ci, PackedVector2Array([tp, tp + Vector2(-2.5, -3), tp + Vector2(2.5, -3)]), Color("8a5a32"))
 		var ang := t * 20.0 + float(i)
 		ci.draw_line(tp + Vector2(0, -3), tp + Vector2(cos(ang) * 2.5, -3 + sin(ang) * 0.8), Color("c0392b"), 1.0)
-		var kid := tp + Vector2(5, 2)
-		if _act(ci, kid, "act_paengi", t + float(i), 4.0, false, 0.52):
-			continue
 		person(ci, kid, Color("c9d6e2") if i != 1 else Color("e88aa8"), 0, 0.5 + sin(t * 6.0 + float(i)) * 0.5, Color(0, 0, 0, 0), 0.8)
 		ci.draw_line(kid + Vector2(-3.5, -9), tp + Vector2(1, -2), Color("6e4a2c"), 0.7)
 

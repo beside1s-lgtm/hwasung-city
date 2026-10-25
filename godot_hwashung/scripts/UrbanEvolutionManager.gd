@@ -392,6 +392,7 @@ func _process_pollution() -> void:
 				if z == ZONE_RES or z == ZONE_COM or z == ZONE_FIN:
 					hit[ny * n + nx] = true
 	polluted_cells = hit.size()
+	@warning_ignore("integer_division")
 	pollution_penalty = mini(POLLUTION_MAX_PENALTY, polluted_cells / POLLUTION_CELLS_PER_POINT)
 	if pollution_penalty > 0:
 		sim.loyalty = maxi(0, sim.loyalty - pollution_penalty)

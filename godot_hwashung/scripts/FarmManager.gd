@@ -22,7 +22,8 @@ static func calculate_tile_yield(tile: Dictionary, base_yield: float, is_grace: 
 	return int(round(base_yield * mult))
 
 ## 분기별 둔전 수확 정산 및 물류 세입 산출 위임 래퍼
-static func calculate_harvest(grid: GameGrid, sim: SimulationCore, season_index: int) -> Dictionary:
+## refresh_irrigation: false면 관개 현황을 다시 계산하지 않는다(턴 계산이 바로 앞 프레임에 이미 계산했을 때)
+static func calculate_harvest(grid: GameGrid, sim: SimulationCore, season_index: int, refresh_irrigation: bool = true) -> Dictionary:
 	if grid == null or sim == null:
 		return {
 			"gross_yield": 0,
@@ -34,7 +35,8 @@ static func calculate_harvest(grid: GameGrid, sim: SimulationCore, season_index:
 		}
 
 	# 턴 정산 전 최신 관개 현황 동기화
-	IrrigationManager.recalculate_irrigation(grid, sim)
+	if refresh_irrigation:
+		IrrigationManager.recalculate_irrigation(grid, sim)
 
 	var is_grace: bool = is_grace_period(sim)
 	var base_yield: int = 0

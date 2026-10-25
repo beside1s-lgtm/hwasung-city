@@ -17,7 +17,8 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 config/name="화성성역: 정조의 24년 (Hwashung City Tycoon)"
 run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
-config/icon="res://icon.svg"
+config/icon="res://assets/app_icon.png"
+config/windows_native_icon="res://assets/app_icon.ico"
 
 [autoload]
 

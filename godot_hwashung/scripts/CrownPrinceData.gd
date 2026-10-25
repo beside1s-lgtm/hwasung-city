@@ -73,8 +73,8 @@ static func get_portrait_texture(stage_index: int) -> Texture2D:
 		var tex: Texture2D = null
 		if ResourceLoader.exists(path):
 			tex = load(path) as Texture2D
-		elif FileAccess.file_exists(ProjectSettings.globalize_path(path)):
-			var img := Image.load_from_file(ProjectSettings.globalize_path(path))
+		elif FileAccess.file_exists(AssetPaths.disk_path(path)):
+			var img := Image.load_from_file(AssetPaths.disk_path(path))
 			if img != null and not img.is_empty():
 				tex = ImageTexture.create_from_image(img)
 		if tex != null:

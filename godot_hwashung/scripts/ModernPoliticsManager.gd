@@ -221,7 +221,7 @@ func _make_proposal() -> Dictionary:
 	if unified < 57:
 		opts.append({"kind": "tax_up", "source": "재무부", "title": "통합세 인상 (%d%% → %d%%)" % [unified, unified + 3], "base": 0})
 	if mm.current_field == "":
-		for f in ModernizationManager.FIELDS:
+		for f in ModernizationManager.FIELDS + (ModernizationManager.MEDICAL_FIELDS if mm.medical_unlocked() else []):
 			if not mm.field_done(f["id"]):
 				opts.append({"kind": "research", "source": "학부", "title": "근대 과학 연구 착수: %s" % f["name"], "base": 0, "arg": f["id"]})
 				break
@@ -292,8 +292,11 @@ func approve(id: int) -> void:
 		"tax_down", "tax_up":
 			var u: int = sim.tax_rate_land + sim.tax_rate_market + sim.tax_rate_military + (3 if p["kind"] == "tax_up" else -3)
 			u = clampi(u, 3, 60)
+			@warning_ignore("integer_division")
 			sim.tax_rate_land = u / 3
+			@warning_ignore("integer_division")
 			sim.tax_rate_market = u / 3
+			@warning_ignore("integer_division")
 			sim.tax_rate_military = u / 3
 		"research":
 			ok = mm.start_field(String(p["arg"]))

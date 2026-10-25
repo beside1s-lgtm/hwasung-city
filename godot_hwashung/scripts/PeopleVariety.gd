@@ -36,7 +36,7 @@ static var _tinted := {}   # "시트|색" → Texture2D
 static var _anchors := {}  # 시트 → [칸별 [머리 꼭대기 y, 가운데 x, 머리 폭]] (8칸: 행 0~3 × 열 0~1)
 
 static func _has(sid: String) -> bool:
-	return FileAccess.file_exists(ProjectSettings.globalize_path("res://assets/sprites/npcs/%s.png" % sid))
+	return AssetPaths.asset_exists("res://assets/sprites/npcs/%s.png" % sid)
 
 static func _rng(id: int, salt: int) -> int:
 	return absi(hash(id * 7919 + salt * 104729))

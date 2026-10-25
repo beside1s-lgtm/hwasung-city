@@ -9,7 +9,7 @@ const SEASONS := ["봄", "여름", "가을", "겨울"]
 static func generate(sim: SimulationCore, grid: GameGrid, historic_event: String) -> Dictionary:
 	var y := sim.current_year
 	var season: String = SEASONS[sim.season_now()]
-	var date_str := "정조 %d년(%d년) %s호" % [y - 1776 + 1, y, season]
+	var date_str := "%s %s호" % [TimeManager.era_label(y), season] # 1800년 엔딩 뒤는 순조 이후 연호
 	var season_index := sim.season_now()
 	if historic_event == "wonhaeng1789":
 		return _a(date_str, "정조 대왕, 현륭원 원행 단행! 한강에 웅장한 주교(舟橋) 개통",

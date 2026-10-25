@@ -132,7 +132,7 @@ func show_piece(board: Dictionary, piece: Dictionary, art: Texture2D, crop: Rect
 		l.add_theme_font_size_override("font_size", 15)
 		_body.add_child(l)
 	var yr := GameProgressManager.found_year(String(board["id"]), String(piece["id"]))
-	_badge.text = "[최초 발견 일자: 정조 %d년 (%d)]" % [maxi(1, yr - 1775), yr] if yr > 0 else "[최초 발견 일자: 기록 없음]"
+	_badge.text = "[최초 발견 일자: %s]" % TimeManager.era_label(yr) if yr > 0 else "[최초 발견 일자: 기록 없음]"
 	_build_illustration(board, piece, art, crop)
 	visible = true
 
@@ -143,7 +143,7 @@ func _load_piece_texture(piece_id: String) -> Texture2D:
 			var res: Texture2D = load(p) as Texture2D
 			if res != null:
 				return res
-		var gpath: String = ProjectSettings.globalize_path(p)
+		var gpath: String = AssetPaths.disk_path(p)
 		if FileAccess.file_exists(gpath):
 			var img: Image = Image.new()
 			var err: Error = img.load(gpath)

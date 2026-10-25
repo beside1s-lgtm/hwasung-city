@@ -9,7 +9,7 @@ from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BDIR = os.path.join(HERE, "..", "assets", "sprites", "buildings")
-SKIP = ("children_play_yard", "women_play_yard", "manseokgeo", "chukmanje", "haenggung", "seojangdae", "yeonmudae", "yusubu")
+SKIP = ("manseokgeo", "chukmanje", "haenggung", "seojangdae", "yeonmudae", "yusubu")
 SNOW = (236, 242, 250)
 SNOW_SHADE = (196, 210, 228)
 

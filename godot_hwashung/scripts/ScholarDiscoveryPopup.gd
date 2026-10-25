@@ -107,8 +107,8 @@ func _build_ui() -> void:
 
 	_name_label = Label.new()
 	_name_label.text = "성명: -"
-	_name_label.add_theme_font_size_override("font_size", 16)
-	_name_label.add_theme_color_override("font_color", Color("1c1917"))
+	ThemeManager.apply_title_font(_name_label, 16)
+	_name_label.add_theme_color_override("font_color", Color("1d4ed8"))
 	info_vbox.add_child(_name_label)
 
 	_role_label = Label.new()

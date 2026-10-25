@@ -234,7 +234,7 @@ func _refresh_ui() -> void:
 
 	var has_funds: bool = (sim != null and sim.gold >= cost_gold and sim.rice >= cost_rice)
 
-	_info_lbl.text = "• 서장대 건립 여부: %s\n• 현재 장용영 총 공격력: %d\n• 야조 누적 성장 가산: +%d (최대 +1000)\n• 훈련 상태: %s\n• 훈련 비용: 금화 %s냥, 군량 %s석 (난이도 배율 적용)\n• 기본 보상 (100%%): 공격력 영구 +50, 왕권 +5, 민심 +3, 횃불 점등" % [
+	_info_lbl.text = "• 서장대 건립 여부: %s\n• 현재 장용영 총 공격력: %d\n• 야조 누적 성장 가산: +%d (최대 +1000)\n• 훈련 상태: %s\n• 훈련 비용: 금화 %s냥, 군량 %s석 (난이도 배율 적용)\n• 기본 보상 (100%%): 공격력 +50(해마다 1월 -50), 왕권 +5, 민심 +3, 횃불 점등" % [
 		"완공됨" if has_sj else "미완공 (서장대 필요)",
 		cur_atk, drill_b, status_text,
 		_fmt_num(cost_gold), _fmt_num(cost_rice)

@@ -26,7 +26,7 @@ static func get_current_gazette_edition(sim: SimulationCore, grid: GameGrid, iss
 	var ganji_str: String = KOREAN_YEAR_CYCLE[ganji_idx]
 	# 시보는 계절이 끝나며 나온다 — 호 이름은 지난달(끝난 계절)
 	var si: int = SimulationCore.season_of_month(posmod(sim.month_now() - 2, 12) + 1) if sim != null else 0
-	var header_date := "정조 %d년(%s) %s호 | 제 %d호 | 수원유수부 발행 | 정가: 무료 배포" % [king_year, ganji_str, SEASON_NAMES[si], issue_num]
+	var header_date := "%s(%s) %s호 | 제 %d호 | 수원유수부 발행 | 정가: 무료 배포" % [TimeManager.era_name(year), ganji_str, SEASON_NAMES[si], issue_num] # 1800년 엔딩 뒤는 순조 이후 연호
 
 	var f := _flags(sim, grid)
 	var rng := RandomNumberGenerator.new()
@@ -73,8 +73,8 @@ const ART_FALLBACK := {"flood": "fishing", "fire": "blacksmith", "famine_relief"
 static func _load_png(p: String) -> Texture2D:
 	if ResourceLoader.exists(p):
 		return load(p) as Texture2D
-	if FileAccess.file_exists(ProjectSettings.globalize_path(p)):
-		var img := Image.load_from_file(ProjectSettings.globalize_path(p))
+	if FileAccess.file_exists(AssetPaths.disk_path(p)):
+		var img := Image.load_from_file(AssetPaths.disk_path(p))
 		if img != null and not img.is_empty():
 			return ImageTexture.create_from_image(img)
 	return null

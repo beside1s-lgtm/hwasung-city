@@ -41,6 +41,19 @@ var is_invested: bool = false
 func is_education_active() -> bool:
 	return status == EducationStatus.ACTIVE or status == EducationStatus.PAUSED_NO_FUNDS or status == EducationStatus.COMPLETED or progress > 0.0
 
+## PORT-TRACE [1800년 뒤 세자 추천]: 사용자 보고 — "1800년 엔딩을 본 뒤 얼마 안 지나 세자 교육을 다시 권한다".
+## 1800년 정조 승하(1차 엔딩)로 세자(순조)가 즉위했으니 그 뒤로는 세자서연이 없다(추천·정무 메뉴·행궁 집무·교육 진척과 비용 모두).
+## 현대 정치체제 전환 뒤(왕조 끝)도 마찬가지.
+const SUNJO_ACCESSION_YEAR := 1800
+
+static func prince_affairs_closed(year: int) -> bool:
+	if ModernPoliticsManager.is_post_monarchy():
+		return true
+	if year < SUNJO_ACCESSION_YEAR:
+		return false
+	# 1800년 1월 턴 정산은 엔딩 판정(같은 틱의 year_changed) 바로 앞, 정조 재위 마지막 달이라 세자 교육을 그대로 친다
+	return EndingManager.instance == null or EndingManager.instance.ending_triggered_flag
+
 func _init() -> void:
 	name = "CrownPrinceEducationManager"
 	process_mode = Node.PROCESS_MODE_ALWAYS

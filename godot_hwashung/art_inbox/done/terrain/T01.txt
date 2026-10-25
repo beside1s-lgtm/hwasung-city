@@ -1,0 +1,8 @@
+tree_pine_spring
+tree_pine_summer
+tree_pine_autumn
+tree_pine_winter
+tree_zelkova_spring
+tree_zelkova_summer
+tree_zelkova_autumn
+tree_zelkova_winter

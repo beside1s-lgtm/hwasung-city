@@ -110,14 +110,19 @@ func set_job_action(p_action: String) -> void:
 
 func _update_texture() -> void:
 	if sprite != null:
-		var sheet_id: String = npc_type_id + "_sheet"
-		var tex: Texture2D = SpriteCacheManager.get_npc_texture(sheet_id)
+		var tex: Texture2D = SpriteCacheManager.get_npc_texture(npc_type_id)
 		if tex == null:
-			tex = SpriteCacheManager.get_or_create_texture("npcs", sheet_id, Vector2i(96, 192))
-		sprite.texture = tex
-		sprite.hframes = 2
-		sprite.vframes = 4
-		_apply_directional_sprite_frame()
+			tex = SpriteCacheManager.get_npc_texture("npc_" + npc_type_id)
+		if tex == null:
+			var sheet_id: String = npc_type_id + "_sheet"
+			tex = SpriteCacheManager.get_npc_texture(sheet_id)
+		if tex == null:
+			tex = SpriteCacheManager.get_npc_texture("npc_farmer")
+		if tex != null:
+			sprite.texture = tex
+			sprite.hframes = 2
+			sprite.vframes = 4
+			_apply_directional_sprite_frame()
 
 ## 유효 이동 경로 존재 여부 검사
 func has_valid_path() -> bool:

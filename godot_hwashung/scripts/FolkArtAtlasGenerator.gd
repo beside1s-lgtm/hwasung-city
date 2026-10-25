@@ -28,7 +28,7 @@ static var _atlas_texture: Texture2D = null
 static var _atlas_sub_textures: Dictionary = {}
 
 static func ensure_atlas_generated() -> void:
-	if FileAccess.file_exists(ATLAS_PATH):
+	if AssetPaths.asset_exists(ATLAS_PATH):
 		return
 	generate_and_save_atlas()
 
@@ -57,9 +57,9 @@ static func get_art_texture(key: String) -> Texture2D:
 		return _atlas_sub_textures[key]
 
 	if _atlas_texture == null:
-		if not FileAccess.file_exists(ATLAS_PATH):
+		if not AssetPaths.asset_exists(ATLAS_PATH):
 			generate_and_save_atlas()
-		if FileAccess.file_exists(ATLAS_PATH):
+		if AssetPaths.asset_exists(ATLAS_PATH):
 			_atlas_texture = load(ATLAS_PATH)
 		else:
 			# 메모리 직접 렌더링

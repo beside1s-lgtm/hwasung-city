@@ -7,6 +7,7 @@ extends Node2D
 @onready var map_loader: TiledMapLoader = $TiledMapLoader
 
 # PORT-TRACE P10: TS 기능 이식 모듈 (docs/godot_port_log.md). 씬 파일 수정 없이 코드로 생성한다.
+const JONGNU_AUTHORITY := 3 # 종루 새해 타종 1회당 왕권
 var grid: GameGrid
 var citizens: CitizenManager
 var court: CourtSystem
@@ -131,6 +132,11 @@ func _ready() -> void:
 		# PORT-TRACE [렉: 계절 바뀌는 달 멈칫]: 지형 계절 색 다시 계산(30ms 남짓)이 그 달 턴 정산 첫 프레임과 겹쳐 멈칫했다 →
 		# 턴 계산이 끝난 뒤 무거운 일 차례(GameGrid.frame_claim)를 받아 _process에서 바꾼다(그동안 계절 색 필터가 먼저 바뀐다)
 		_season_apply_pending = s
+		# PORT-TRACE [불러오기 인구 상한 1만]: 사용자 보고 — "맵이 꽉 찼는데 인구 수용 한계가 1만으로 나온다".
+		# 불러오기는 지도(tiles)를 되살리기 전에 계절을 알리려고 season_changed를 쏜다. 그때 정산이 돌면 이전 판(새 게임) 지도로
+		# 인구 상한을 재서 1만이 나오고 초과분 1/4이 떠나며(59만 → 45만), 유지비도 한 번 더 나갔다 → 불러오는 중에는 정산하지 않는다
+		if SaveSystem.is_loading:
+			return
 		# 계절 운영 유지비 및 인재 녹봉 정산
 		var res: Dictionary = simulation_core.process_seasonal_maintenance(grid)
 		if res.get("total", 0) > 0 and not res.get("deficit", false):
@@ -500,10 +506,14 @@ func _setup_port_modules() -> void:
 			hud._show_toast("정조 대왕 화성 행차! 서장대에서 야조(夜操)가 열려 횃불과 청사초롱이 밝혀지고 오방기 신호로 진법을 펼칩니다.", "🏯")
 			audio.play("yajo")
 	)
-	# PORT-TRACE [종루(여민각) 2x2]: 매달 초하루(계절이 바뀌는 날 포함) 종루 타종 — 범종 소리 + 주변 활력
-	time_manager.time_changed.connect(func(_y: int, _s: String, _m: int, d: int):
-		if d == 1 and citizens.ring_bell():
+	# PORT-TRACE [종루(여민각) 2x2]: 사용자 요청 — "종루는 1년에 한 번 종을 울리고 울릴 때마다 왕권 +3".
+	# 해마다 1월 초하루 새해 타종 — 범종 소리 + 주변 활력 + 왕권 +3 (불러오는 중에는 울리지 않는다)
+	time_manager.time_changed.connect(func(_y: int, _s: String, m: int, d: int):
+		if d == 1 and m == 1 and not SaveSystem.is_loading and citizens.ring_bell():
 			audio.play("bell")
+			simulation_core.authority = mini(100, simulation_core.authority + JONGNU_AUTHORITY)
+			CityStats.set_royal_power(simulation_core.authority)
+			hud._show_toast("새해 첫날 종루(여민각)에서 타종식이 열렸습니다! 왕권 +%d" % JONGNU_AUTHORITY, "🔔")
 	)
 	# 행궁 앞 박석 십자로가 열리는 순간 종루 자동 착공(지도가 바뀐 뒤 한 번, 다음 프레임에)
 	grid.grid_changed.connect(func():
@@ -1085,7 +1095,7 @@ func _do_rebake_world() -> void:
 	if not full and baker._vertex_colors_dirty:
 		if changed.is_empty():
 			baker._vertex_colors_dirty = false # 바뀐 칸이 없으면 꼭짓점 색도 그대로
-		elif changed.size() <= grid.size * grid.size / 8: # 많이 바뀌었으면(불러오기 등) 전체 계산이 더 빠르다
+		elif changed.size() * 8 <= grid.size * grid.size: # 많이 바뀌었으면(불러오기 등) 전체 계산이 더 빠르다
 			baker.update_vertex_colors_around(changed)
 	baker.prepare_bands()
 	for bi in range(bake_bands.size()):

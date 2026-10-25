@@ -4,11 +4,12 @@ extends RefCounted
 ## 전역 전통 서체 및 타이포그래피 시스템
 ## 기본 본문 서체: 궁서체 (gungsuh.ttf)
 ## 강조 및 타이틀 서체: 휴먼옛체 (human_old.ttf)
-## 도장/관인 서체: 양재인장체 (yangjae_injang.ttf)
+## 도장/관인 서체: hunminjeongeum.ttf
+## (yangjae_injang.ttf는 이 파일과 내용이 똑같은 사본이라 내보내기에서 빼고 한 벌만 쓴다)
 
 const FONT_BASE_PATH := "res://assets/fonts/gungsuh.ttf"
 const FONT_TITLE_PATH := "res://assets/fonts/human_old.ttf"
-const FONT_SEAL_PATH := "res://assets/fonts/yangjae_injang.ttf"
+const FONT_SEAL_PATH := "res://assets/fonts/hunminjeongeum.ttf"
 const FONT_HUNMIN_PATH := "res://assets/fonts/hunminjeongeum.ttf"
 const FONT_FALLBACK_PATH := "res://assets/fonts/neodgm.ttf"
 

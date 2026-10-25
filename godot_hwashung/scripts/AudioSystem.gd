@@ -14,6 +14,7 @@ var _players: Array = []
 var _pool_idx: int = 0
 
 const POOL_SIZE := 6
+var _warm_task := -1
 
 func _ready() -> void:
 	for i in range(POOL_SIZE):
@@ -21,11 +22,30 @@ func _ready() -> void:
 		p.bus = "Master"
 		add_child(p)
 		_players.append(p)
+	# PORT-TRACE [렉: 첫 종소리 멈칫]: 종·취타·포성은 처음 울릴 때 그 자리에서 합성하느라(0.1초 남짓) 첫 달 정산 때 멈칫했다
+	# → 시작할 때 일꾼 스레드에서 미리 합성해 둔다
+	_warm_task = WorkerThreadPool.add_task(_warm_streams)
+
+func _warm_streams() -> void:
+	_bell_stream()
+	_yajo_stream()
+	_cannon_stream()
+
+## 미리 합성이 아직 도는 중이면 끝날 때까지 기다린다(같은 소리를 두 스레드가 함께 만들지 않게)
+func _wait_warm() -> void:
+	if _warm_task >= 0:
+		WorkerThreadPool.wait_for_task_completion(_warm_task)
+		_warm_task = -1
+
+func _exit_tree() -> void:
+	_wait_warm()
 
 ## type: "hammer" | "wall" | "coin" | "season" | "demolish" | "error" | "gavel"
 func play(type: String) -> void:
 	if not enabled:
 		return
+	if type == "bell" or type == "yajo" or type == "cannon":
+		_wait_warm()
 	var stream: AudioStreamWAV = _bell_stream() if type == "bell" else (_yajo_stream() if type == "yajo" else (_cannon_stream() if type == "cannon" else (_fx_stream(type) if type in ["gun", "roar", "scream", "gavel"] else _synthesize(type))))
 	if stream == null:
 		return

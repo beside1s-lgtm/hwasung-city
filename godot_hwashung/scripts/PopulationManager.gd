@@ -42,6 +42,8 @@ var total_population: int = 120
 var current_tax_policy: TaxPolicy = TaxPolicy.STANDARD
 var haenggung_completed: bool = false
 var haenggung_boost_applied: bool = false
+## 지난 정산의 인구 상한 {cap, tax_cap, prod_cap, at_cap} — 김판관 조언·화면 표시용
+var last_pop_cap: Dictionary = {}
 
 # 5. O(1) 가옥 캐싱 리스트
 var active_houses_list: Array[Vector2i] = []
@@ -327,7 +329,11 @@ func process_seasonal_tick(current_loyalty: int, grid_ref, sim_ref) -> Dictionar
 
 	# [조세 저항선 평가] 인구 규모별 3대 조세 합계 임계치 초과 시 자연 증가 차단 및 인구 유출
 	var total_tax: float = TaxManager.get_total_tax_rate(sim_ref)
-	var pop_res: Dictionary = CityStats.update_population(total_population, natural_delta, total_tax)
+	# [인구 상한] 세율 상한(최저 세율 100만)과 생산력 상한(민가·상점·공방·둔전) 중 작은 쪽
+	var cap_info: Dictionary = TaxManager.get_population_cap(total_tax, grid_ref)
+	last_pop_cap = cap_info
+	var pop_res: Dictionary = CityStats.update_population(total_population, natural_delta, total_tax, int(cap_info["cap"]))
+	last_pop_cap["at_cap"] = bool(pop_res.get("at_cap", false))
 	var delta_pop: int = int(pop_res.get("delta", natural_delta))
 	total_population = int(pop_res.get("new_population", total_population))
 

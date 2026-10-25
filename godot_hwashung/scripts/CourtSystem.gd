@@ -488,14 +488,26 @@ func _turn_scholars() -> void:
 			hired.append(id)
 	hired.sort_custom(func(a, b): return get_scholar_salary(a) > get_scholar_salary(b))
 	var _paid := 0
+	# PORT-TRACE [방치하면 인재 전원 사직]: 유지비가 국고보다 커서 국고가 0이 된 달에 녹봉을 못 받은 인재가 한꺼번에 모두 사직했다 —
+	# 한 달에 한 명(녹봉이 가장 비싼 사람)만 떠나고, 나머지는 밀린 녹봉을 기다리며 남는다.
+	var resigned := false
+	var unpaid: Array[String] = []
 	for id2 in hired:
 		var sal: int = get_scholar_salary(id2)
 		if sim.gold >= sal:
 			sim.gold -= sal
 			_paid += sal
-		else:
+		elif not resigned:
+			resigned = true
 			sim.retainers[SCHOLARS[id2]["key"]] = false
+			ScholarManager.hired_scholars.erase(SCHOLARS[id2]["key"])
 			emit_signal("notice", "국고가 바닥나 녹봉을 주지 못하자 %s이(가) 사직하고 낙향했습니다." % SCHOLARS[id2]["name"])
+		else:
+			unpaid.append(str(SCHOLARS[id2]["name"]))
+	if not unpaid.is_empty():
+		emit_signal("notice", "녹봉이 밀린 신하 %d명(%s)이 조정을 떠날까 동요하고 있습니다. 국고를 채우지 않으면 다음 달에도 한 명씩 떠납니다." % [unpaid.size(), ", ".join(unpaid)])
+	if resigned:
+		update_faction_and_academic()
 	# 2) 학문력: 민심 하락이면 깎이고, 홍대용·유득공은 조금씩 쌓는다
 	if sim.loyalty < 25:
 		sim.academic = maxi(0, sim.academic - 2)

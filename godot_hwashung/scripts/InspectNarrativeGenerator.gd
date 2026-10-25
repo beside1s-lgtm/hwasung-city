@@ -1725,7 +1725,8 @@ static func build_inspect_data(entity: Dictionary, sim: SimulationCore = null, g
 		out["category"] = "facility"
 		out["title"] = "수원 우시장 (쇠전)"
 		out["texture"] = get_portrait("cattle")
-		out["description"] = "정조 대왕의 둔전 경영과 권농 정책으로\n전국 최대 규모로 성장한 수원 소시장.\n질 좋은 황소가 팔도 각지에서 모여들어\n화성 경제와 우하장터 번영을 이끕니다."
+		out["description"] = "정조 대왕의 둔전 경영과 권농 정책으로\n전국 최대 규모로 성장한 수원 소시장.\n질 좋은 황소가 팔도 각지에서 모여들어\n화성 경제와 우하장터 번영을 이끕니다.
+[효과] 세입 +1%"
 		return out
 	elif plaza_kind == "play" or fac_type == "play" or kind == "play" or b_code_check in ["play", "play_yard"]:
 		out["category"] = "facility"
@@ -1970,7 +1971,8 @@ static func build_inspect_data(entity: Dictionary, sim: SimulationCore = null, g
 			"jongnu", "jongnu_site", "bell_tower":
 				out["title"] = "화성 십자로 종루 (鐘樓)"
 				out["texture"] = get_portrait("jongnu")
-				out["description"] = "화성 중심 가로가 교차하는 십자로 누각.\n종을 울려 성문을 여닫고 시각을 알리며\n상업 거리의 중심축을 잡는 상징적 건물로\n도심의 질서와 치안을 통제하는 기준점입니다."
+				out["description"] = "화성 중심 가로가 교차하는 십자로 누각.\n종을 울려 성문을 여닫고 시각을 알리며\n상업 거리의 중심축을 잡는 상징적 건물로\n도심의 질서와 치안을 통제하는 기준점입니다.
+[효과] 해마다 새해 타종 때 왕권 +3"
 				return out
 			"seojangdae":
 				out["title"] = "화성 서장대 (西將臺)"

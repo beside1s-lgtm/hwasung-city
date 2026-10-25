@@ -12,13 +12,13 @@ func _init() -> void:
 
 func _bake_all() -> void:
 	var buildings: Array[Dictionary] = [
-		{"id": "haenggung", "src": "res://assets/sprites/buildings/haenggung.png", "scale": 0.52},
+		{"id": "haenggung", "src": "res://assets/sprites/buildings/lm_haenggung.png", "scale": 0.52},
 		{"id": "seojangdae", "src": "res://assets/sprites/buildings/seojangdae.png", "scale": 1.4},
 		{"id": "yeonmudae", "src": "res://assets/sprites/buildings/yeonmudae.png", "scale": 1.4},
 		{"id": "seodang", "src": "res://assets/sprites/buildings/seodang.png", "scale": 1.4},
-		{"id": "hyanggyo", "src": "res://assets/sprites/buildings/maegok_seowon.png", "scale": 1.15},
-		{"id": "patrol", "src": "res://assets/sprites/buildings/yusubu.png", "scale": 1.4},
-		{"id": "jinhulso", "src": "res://assets/sprites/buildings/tile_house_10_3x2.png", "scale": 1.25},
+		{"id": "hyanggyo", "src": "res://assets/sprites/buildings/lm_hyanggyo.png", "scale": 0.95},
+		{"id": "patrol", "src": "res://assets/sprites/buildings/lm_gwana.png", "scale": 1.3},
+		{"id": "jinhulso", "src": "res://assets/sprites/buildings/lm_jinhulso.png", "scale": 1.3},
 		{"id": "jangmadang", "src": "res://assets/sprites/buildings/market_shop.png", "scale": 1.6},
 	]
 

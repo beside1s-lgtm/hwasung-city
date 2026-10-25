@@ -89,9 +89,8 @@ var btn_pan: Button
 var btn_demolish: Button
 
 # 상단 중앙 토스트 배너 & 10초 큐 배너
-var toast_panel: PanelContainer
-var toast_label: Label
-var toast_tween: Tween
+var toast_box: VBoxContainer
+var _toast_sb: StyleBoxFlat
 var top_alert_banner: TopAlertBanner = null
 
 
@@ -942,37 +941,35 @@ func _build_toast_banner() -> void:
 	else:
 		add_child(top_alert_banner)
 
-	toast_panel = PanelContainer.new()
-	toast_panel.visible = false
-	# 우측 하단 영역 — TopAlertStack 바로 아래 위치 (스택과 겹치지 않도록 offset_top 여유)
-	toast_panel.anchor_left = 1.0
-	toast_panel.anchor_right = 1.0
-	toast_panel.offset_left = -400.0
-	toast_panel.offset_right = -12.0
-	toast_panel.offset_top = 56.0
-	toast_panel.offset_bottom = 96.0
-	toast_panel.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	toast_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# PORT-TRACE [알림 겹침]: 사용자 보고 — "팝업 알림이 겹쳐 뒷내용을 확인할 수 없다".
+	# 토스트가 긴급 배너(TopAlertStack)와 같은 자리에 따로 떠 배너를 덮었고, 새 토스트가 앞 토스트 글을 바로 지웠다 →
+	# 토스트도 TopAlertStack 안(배너 아래)에 세로로 쌓고, 한 건마다 따로 4초 보였다가 사라진다(최대 TOAST_MAX건).
+	toast_box = VBoxContainer.new()
+	toast_box.name = "ToastBox"
+	toast_box.add_theme_constant_override("separation", 4)
+	toast_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if top_alert_stack != null:
+		top_alert_stack.add_child(toast_box)
+	else:
+		toast_box.anchor_left = 1.0
+		toast_box.anchor_right = 1.0
+		toast_box.offset_left = -400.0
+		toast_box.offset_right = -12.0
+		toast_box.offset_top = 56.0
+		toast_box.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		add_child(toast_box)
 
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.45, 0.11, 0.08, 0.96) # 단청 붉은색
-	sb.border_color = Color(0.96, 0.62, 0.07, 1.0) # 황금 테두리
-	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(6)
-	sb.shadow_color = Color(0, 0, 0, 0.7)
-	sb.shadow_size = 8
-	sb.content_margin_left = 12
-	sb.content_margin_right = 12
-	toast_panel.add_theme_stylebox_override("panel", sb)
-	add_child(toast_panel)
-
-	toast_label = Label.new()
-	toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	toast_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	toast_label.add_theme_color_override("font_color", Color.WHITE)
-	toast_label.add_theme_font_size_override("font_size", 13)
-	toast_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	toast_panel.add_child(toast_label)
+	_toast_sb = StyleBoxFlat.new()
+	_toast_sb.bg_color = Color(0.45, 0.11, 0.08, 0.96) # 단청 붉은색
+	_toast_sb.border_color = Color(0.96, 0.62, 0.07, 1.0) # 황금 테두리
+	_toast_sb.set_border_width_all(2)
+	_toast_sb.set_corner_radius_all(6)
+	_toast_sb.shadow_color = Color(0, 0, 0, 0.7)
+	_toast_sb.shadow_size = 8
+	_toast_sb.content_margin_left = 12
+	_toast_sb.content_margin_right = 12
+	_toast_sb.content_margin_top = 6
+	_toast_sb.content_margin_bottom = 6
 
 func _on_location_view_requested(world_pos: Vector2) -> void:
 	if not GameSettings.is_incident_goto_enabled():
@@ -982,22 +979,39 @@ func _on_location_view_requested(world_pos: Vector2) -> void:
 	if citizen_layer != null and citizen_layer.has_method("ping_incident"):
 		citizen_layer.call("ping_incident", world_pos, "사건 현장")
 
+const TOAST_MAX := 4
+const TOAST_HOLD := 4.0
+
 func _show_toast(msg: String, icon: String = "📢") -> void:
 	var full_msg := "%s %s" % [icon, msg] if icon != "" else msg
-	if not toast_label or not toast_panel:
+	if toast_box == null:
 		return
-	toast_label.text = full_msg
-	toast_panel.visible = true
-	toast_panel.modulate.a = 1.0
-	if toast_tween and toast_tween.is_valid():
-		toast_tween.kill()
-	toast_tween = create_tween()
-	toast_tween.tween_interval(2.5)
-	toast_tween.tween_property(toast_panel, "modulate:a", 0.0, 0.5)
-	toast_tween.tween_callback(func():
-		if toast_panel:
-			toast_panel.visible = false
-	)
+	# 똑같은 글이 아직 떠 있으면 새로 쌓지 않는다
+	for ch in toast_box.get_children():
+		if ch is PanelContainer and not ch.is_queued_for_deletion() and ch.get_meta("msg", "") == full_msg:
+			return
+	var panel := PanelContainer.new()
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_theme_stylebox_override("panel", _toast_sb)
+	panel.set_meta("msg", full_msg)
+	var lbl := Label.new()
+	lbl.text = full_msg
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lbl.add_theme_color_override("font_color", Color.WHITE)
+	lbl.add_theme_font_size_override("font_size", 13)
+	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.add_child(lbl)
+	toast_box.add_child(panel)
+	# 너무 많이 쌓이면 가장 오래된 것부터 내린다
+	var live: Array = toast_box.get_children().filter(func(c: Node) -> bool: return not c.is_queued_for_deletion())
+	while live.size() > TOAST_MAX:
+		(live.pop_front() as Node).queue_free()
+	var tw := panel.create_tween()
+	tw.tween_interval(TOAST_HOLD)
+	tw.tween_property(panel, "modulate:a", 0.0, 0.5)
+	tw.tween_callback(panel.queue_free)
 
 # ------------------------------------------------------------ 도구 상태 업데이트
 func set_selected_tool(tool_id: String) -> void:

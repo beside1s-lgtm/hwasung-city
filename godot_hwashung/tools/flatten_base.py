@@ -14,7 +14,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 BDIR = os.path.join(HERE, "..", "assets", "sprites", "buildings")
 BACKUP = os.path.join(HERE, "..", "..", "_backup_sprites", "flatten")
 SKIP_SUFFIX = ("_winter", "_spring", "_summer", "_autumn")
-SKIP = ("children_play_yard", "women_play_yard", "haenggung", "seojangdae", "yeonmudae", "yusubu", "workshop", "market_shop", "tile_house", "thatch_house", "well")
+SKIP = ("haenggung", "seojangdae", "yeonmudae", "yusubu", "workshop", "market_shop", "tile_house", "thatch_house", "well")
 # 위 SKIP의 "market_shop"·"tile_house"·"thatch_house"·"workshop"·"well"은 번호 없는 옛 기본 그림만(아래 _skip 참고)
 
 

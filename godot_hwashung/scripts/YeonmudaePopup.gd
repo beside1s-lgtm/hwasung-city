@@ -213,7 +213,7 @@ func _refresh_ui() -> void:
 
 	var has_funds: bool = (sim != null and sim.gold >= cost_gold and sim.rice >= cost_rice)
 
-	_info_lbl.text = "• 연무대 건립 여부: %s\n• 현재 장용영 총 공격력: %d\n• 훈련 상태: %s\n• 훈련 비용: 금화 %s냥, 군량 %s석 (난이도 배율 적용)\n• 기본 보상 (100%%): 공격력 영구 +40, 국방력 +5, 왕권 +5(백동수 +8), 민심 +3, 무예 사열 연출" % [
+	_info_lbl.text = "• 연무대 건립 여부: %s\n• 현재 장용영 총 공격력: %d\n• 훈련 상태: %s\n• 훈련 비용: 금화 %s냥, 군량 %s석 (난이도 배율 적용)\n• 기본 보상 (100%%): 공격력 +50(해마다 1월 -50), 국방력 +5, 왕권 +5(백동수 +8), 민심 +3, 무예 사열 연출" % [
 		"완공됨" if has_ym else "미완공 (연무대 필요)",
 		cur_atk, status_text,
 		_fmt_num(cost_gold), _fmt_num(cost_rice)

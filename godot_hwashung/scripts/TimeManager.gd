@@ -105,6 +105,23 @@ func skip_to_year(target_year: int) -> void:
 	var diff_years: int = target_year - current_year
 	advance_year(diff_years)
 
+## 근대화 시대 진입: 틱을 하나씩 돌리지 않고 해당 연도 1월 1일로 바로 넘어간다.
+func jump_to_year(target_year: int) -> void:
+	if target_year <= current_year:
+		return
+	total_ticks = (target_year - START_YEAR) * 360
+	current_day = 1
+	current_month = 1
+	current_year = target_year
+	tick_accumulator = 0.0
+	var cur_season: String = get_current_season()
+	emit_signal("time_changed", current_year, cur_season, current_month, current_day)
+	emit_signal("month_changed", current_month)
+	emit_signal("year_changed", current_year)
+	if cur_season != last_season:
+		last_season = cur_season
+		emit_signal("season_changed", cur_season)
+
 func get_total_months() -> int:
 	return int(float(total_ticks) / 30.0)
 
@@ -116,5 +133,37 @@ func get_current_season() -> String:
 	else: return "겨울"
 
 func get_era_string() -> String:
-	var reign_year: int = current_year - 1776 + 1
-	return "정조 %d년(%d) %s %d월 %d일" % [reign_year, current_year, get_current_season(), current_month, current_day]
+	return "%s %s %d월 %d일" % [era_label(current_year), get_current_season(), current_month, current_day]
+
+## PORT-TRACE [1800년 뒤 연호]: 사용자 요청 — "1800년 엔딩 뒤 상단 연호를 정조 N년 대신 순조 N년으로(1803 → 순조 3년)".
+## 1800년 엔딩(정조 승하·순조 즉위) 뒤로는 실제 왕위 계승을 따른다. 즉위한 해는 '즉위년', 이듬해가 원년(유년칭원).
+## 대한제국 때는 연호(광무·융희), 1910년 뒤나 현대 정치체제(왕조 끝)에서는 서기 연도만.
+const REIGNS_AFTER_1800 := [
+	# [이름, 원년의 앞해(즉위한 해), 마지막 해]
+	["순조", 1800, 1834],
+	["헌종", 1834, 1849],
+	["철종", 1849, 1863],
+	["고종", 1863, 1896],
+	["광무", 1896, 1906],
+	["융희", 1906, 1910],
+]
+
+## "정조 14년(1789)", "순조 즉위년(1800)", "순조 3년(1803)", "광무 원년(1897)", "1915년"
+static func era_label(year: int) -> String:
+	var en := era_name(year)
+	return en if en == "%d년" % year else "%s(%d)" % [en, year]
+
+## 괄호 속 서기 연도 없이: "정조 14년", "순조 즉위년", "순조 3년", "1915년"(왕조가 없으면 서기 연도만)
+static func era_name(year: int) -> String:
+	var after_ending := year > 1800 or (year == 1800 and EndingManager.instance != null and EndingManager.instance.ending_triggered_flag)
+	if not after_ending:
+		return "정조 %d년" % (year - 1776 + 1)
+	if ModernPoliticsManager.is_post_monarchy() or year > 1910:
+		return "%d년" % year
+	if year == 1800:
+		return "순조 즉위년"
+	for r: Array in REIGNS_AFTER_1800:
+		if year <= int(r[2]):
+			var n: int = year - int(r[1])
+			return "%s %s" % [r[0], "원년" if n == 1 else "%d년" % n]
+	return "%d년" % year

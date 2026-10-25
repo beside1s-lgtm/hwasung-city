@@ -437,6 +437,8 @@ func _advance_monthly_turn(ticks: int) -> void:
 		seojangdae_drill_cd_months -= 1
 	if yeonmudae_drill_cd_months > 0:
 		yeonmudae_drill_cd_months -= 1
+	if month_idx == 1 and current_year > 1789:
+		_apply_annual_drill_decay()
 
 	# 자연재해 지속 턴 감소 처리 (1계절 지속)
 	var has_jh: bool = false
@@ -738,7 +740,7 @@ func _process_monthly_budget() -> void:
 	# 상업세, 전세(지대), 군포
 	var market_tax: int = int(float(population) * 0.6 * (float(tax_rate_market) / 7.0))
 	var land_tax: int = int(float(rice) * 0.03 * (float(tax_rate_land) / 7.0))
-	gold += market_tax + land_tax
+	gold += int(float(market_tax + land_tax) * TaxManager.revenue_mult(grid_ref)) # 쇠전·사대문 교역로 세입 가산
 
 	# [공공시설 턴당 운영자금 및 도로 유지비 정산]
 	# 행궁, 관아, 서장대, 연무대, 순라청, 멸화군, 성곽 방어시설, 사대문, 수문, 수리시설, 도로망 등 턴당 금화/곡식 일괄 정산
@@ -1027,7 +1029,7 @@ func apply_seojangdae_drill_rewards(grid: GameGrid, citizens: CitizenManager, mu
 ## - 쿨다운 및 조건: 1년에 단 1회(12개월 주기). 서장대 완공 상태.
 ## - 소모 비용: 금화 2,000냥, 군량 1,000석
 ## - 효과: 실행 즉시 성곽 야경 횃불 연출(start_yajo) 발화,
-##         장용영 공격력 영구 +50 상승 (누적 최대 1000까지 성장 가능),
+##         장용영 공격력 +50 상승 (누적 최대 1000, 해마다 1월 -50),
 ##         왕권 +5, 군사 사기 진작으로 민심 +3 상승
 func execute_seojangdae_drill(grid: GameGrid, citizens: CitizenManager, multiplier: float = 1.0) -> Dictionary:
 	var check: Dictionary = can_execute_seojangdae_drill(grid)
@@ -1057,6 +1059,20 @@ func can_execute_yeonmudae_drill(grid: GameGrid) -> Dictionary:
 
 	return {"success": true, "cost_gold": cost_gold, "cost_rice": cost_rice}
 
+## PORT-TRACE [훈련 안 하면 군사력 감소]: 사용자 요청 — "훈련을 안 하면 매년 -50, 둘 중 하나만 하면 현상 유지, 둘 다 하면 증가".
+## 해마다 1월 훈련 누적 공격력(서장대 야조·연무대 사열로 쌓인 몫, 0~1000)이 -50 깎인다.
+## 훈련 한 번이 +50(성과에 따라 40~60)이므로 하나만 하면 제자리, 둘 다 하면 +50 남짓 오른다.
+## 건물(행궁·서장대·연무대·순라청)에서 나오는 기본 공격력은 깎이지 않는다.
+const DRILL_DECAY_PER_YEAR := 50
+func _apply_annual_drill_decay() -> void:
+	var before: int = CityStats.get_seojangdae_drill_bonus()
+	if before <= 0:
+		return
+	CityStats.add_seojangdae_drill_bonus(-DRILL_DECAY_PER_YEAR)
+	if grid_ref != null:
+		CityStats.recalculate_defense_and_attack(grid_ref, self)
+	emit_signal("disaster_alert", "새해가 밝아 군기가 조금 풀렸습니다. 훈련으로 쌓은 군사 공격력 -%d (%d → %d). 해마다 서장대 야조와 연무대 사열 가운데 하나는 해야 제자리를 지키고, 둘 다 하면 오릅니다." % [before - CityStats.get_seojangdae_drill_bonus(), before, CityStats.get_seojangdae_drill_bonus()])
+
 ## 연무대 훈련 비용 선차감 및 쿨다운 설정
 func pay_yeonmudae_drill_cost(grid: GameGrid) -> Dictionary:
 	var check: Dictionary = can_execute_yeonmudae_drill(grid)
@@ -1076,7 +1092,7 @@ func pay_yeonmudae_drill_cost(grid: GameGrid) -> Dictionary:
 ## 연무대 훈련 보상 정산 (배율 multiplier: 0.80x ~ 1.20x 적용)
 func apply_yeonmudae_drill_rewards(grid: GameGrid, multiplier: float = 1.0) -> Dictionary:
 	var eff_mult: float = clampf(multiplier, 0.80, 1.20)
-	var atk_bonus: int = int(round(40.0 * eff_mult))
+	var atk_bonus: int = int(round(50.0 * eff_mult)) # 서장대 야조와 같은 +50: 해마다 -50 감소를 훈련 하나로 메운다
 	var mil_bonus: int = int(round(5.0 * eff_mult))
 	var loy_bonus: int = int(round(3.0 * eff_mult))
 	var auth_gain: int = 8 if retainers.get("baek_dongsu", false) else 5
@@ -1115,7 +1131,7 @@ func apply_yeonmudae_drill_rewards(grid: GameGrid, multiplier: float = 1.0) -> D
 ## - 쿨다운 및 조건: 1년에 단 1회(12개월 주기). 연무대 완공 상태.
 ## - 소모 비용: 금화 2,000냥, 군량 2,000석 (난이도 배율 적용)
 ## - 효과: 실행 즉시 카메라 연무대 자동 이동 및 국궁 일제 사격·창검술 시각화 발화,
-##         장용영 공격력 영구 +40 상승 (누적 최대 1000 상한), 민심 +3, 군사력 +5, 왕권 +5(백동수 +8) 상승
+##         장용영 공격력 +50 상승 (누적 최대 1000 상한, 해마다 1월 -50), 민심 +3, 군사력 +5, 왕권 +5(백동수 +8) 상승
 func execute_yeonmudae_drill(grid: GameGrid, multiplier: float = 1.0) -> Dictionary:
 	var check: Dictionary = can_execute_yeonmudae_drill(grid)
 	if not check.get("success", false):
@@ -1251,7 +1267,8 @@ func process_seasonal_population(target_grid: GameGrid = null) -> Dictionary:
 	population = pop_manager.total_population
 	
 	# 계절 세수 국고 입고: floor(현재 인구 * 0.15 * 세율 계수)
-	var seasonal_tax: int = int(res.get("seasonal_tax", 0))
+	var seasonal_tax: int = int(float(res.get("seasonal_tax", 0)) * TaxManager.revenue_mult(active_grid)) # 쇠전·사대문 교역로 세입 가산
+	res["seasonal_tax"] = seasonal_tax
 	if seasonal_tax > 0:
 		ResourceManager.add_gold(seasonal_tax, self)
 		
@@ -1282,7 +1299,7 @@ func process_turn_economy(target_grid: GameGrid = null) -> Dictionary:
 	)
 
 	# 차등 과세 세수 국고 입고 (난이도별 세수 배율 반영)
-	var tax_mult: float = DifficultyManager.get_tax_multiplier()
+	var tax_mult: float = DifficultyManager.get_tax_multiplier() * TaxManager.revenue_mult(active_grid) # 쇠전·사대문 교역로 세입 가산
 	var diff_total_tax: int = int(diff_tax_res.get("total_tax", 0))
 	if diff_total_tax > 0:
 		var final_diff_tax: int = int(floor(float(diff_total_tax) * tax_mult))

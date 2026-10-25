@@ -2366,7 +2366,9 @@ func _build_tax() -> void:
 		# 안에서는 세 세목에 똑같이 나눠 넣으므로 세수·수요·조세 저항선 계산은 본편과 같다.
 		desc.text = "근대 통합 세제: 토지세·영업세·군포세를 하나로 통합했습니다 (3~60%). 세율이 낮으면 인구 유입과 수요가 늘어납니다."
 		var unified: int = clampi(int(round(float(_temp_tax_land + _temp_tax_market + _temp_tax_military) / 3.0)) * 3, 3, 60)
+		@warning_ignore("integer_division")
 		_temp_tax_land = unified / 3
+		@warning_ignore("integer_division")
 		_temp_tax_market = unified / 3
 		_temp_tax_military = unified / 3
 		var hb := HBoxContainer.new()
@@ -2384,8 +2386,11 @@ func _build_tax() -> void:
 		sld.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		sld.value_changed.connect(func(v: float):
 			lbl.text = "근대 통합세: %d%%" % int(v)
+			@warning_ignore("integer_division")
 			_temp_tax_land = int(v) / 3
+			@warning_ignore("integer_division")
 			_temp_tax_market = int(v) / 3
+			@warning_ignore("integer_division")
 			_temp_tax_military = int(v) / 3
 			update_tax_ui.call()
 		)
@@ -2508,6 +2513,22 @@ func _build_west_promo() -> void:
 		_body.add_child(bar)
 		if not mm.field_done(fid) and mm.current_field != fid:
 			_modern_button("착수 (매달 %d냥)" % ModernizationManager.RESEARCH_TURN_COST, true, func(): mm.start_field(fid))
+
+	_modern_label("
+【근대 의학】 분야 하나를 마칠 때마다 인구 부양력 +%d%% (지금 %.1f배)" % [int(ModernizationManager.MEDICAL_POP_BONUS * 100.0), ModernizationManager.medical_pop_mult()], Color("7c2d12"))
+	if not mm.medical_unlocked():
+		_modern_label("[서양 의학·종두법] 연구를 마치면 열립니다.", Color("57534e"))
+	for f: Dictionary in ModernizationManager.MEDICAL_FIELDS:
+		var mid: String = f["id"]
+		var state := "[완료] " if mm.field_done(mid) else ("[연구 중] " if mm.current_field == mid else "")
+		_modern_label("%s%s — %s  (완료 효과: %s)" % [state, f["name"], f["desc"], f["effect"]], Color("15803d") if mm.field_done(mid) else (Color("1c1917") if mm.medical_unlocked() else Color("a8a29e")))
+		var mbar := ProgressBar.new()
+		mbar.max_value = 100.0
+		mbar.value = float(mm.field_progress.get(mid, 0.0))
+		mbar.custom_minimum_size = Vector2(0, 14)
+		_body.add_child(mbar)
+		if mm.medical_unlocked() and not mm.field_done(mid) and mm.current_field != mid:
+			_modern_button("착수 (매달 %d냥)" % ModernizationManager.RESEARCH_TURN_COST, true, func(): mm.start_field(mid))
 
 	_modern_label("
 【서양 서적 구입】 %d / %d권 — 권당 연구 속도 +%.1f배" % [mm.books_bought, ModernizationManager.MAX_BOOKS, ModernizationManager.BOOK_BONUS], Color("7c2d12"))
@@ -3855,7 +3876,7 @@ func _build_wall_repair() -> void:
 	var cost_r_sj: int = int(drill_cost_sj.get("rice", 1000))
 
 	var drill_info_sj := Label.new()
-	drill_info_sj.text = "• 서장대(사령부) 완공: %s\n• 현재 공격력: %d (야조 누적: +%d / 최대 1000)\n• 훈련 비용: 금 %s냥, 곡 %s석 | 주기: 1년(12개월)에 1회\n• 효과: 성곽 야경 횃불 점등, 공격력 영구 +50, 왕권 +5, 민심 +3" % [
+	drill_info_sj.text = "• 서장대(사령부) 완공: %s\n• 현재 공격력: %d (야조 누적: +%d / 최대 1000)\n• 훈련 비용: 금 %s냥, 곡 %s석 | 주기: 1년(12개월)에 1회\n• 효과: 성곽 야경 횃불 점등, 공격력 +50(해마다 1월 -50), 왕권 +5, 민심 +3" % [
 		"완공됨" if has_sj else "미완공 (서장대 필요)", cur_atk, drill_b, _fmt_num(cost_g_sj), _fmt_num(cost_r_sj)
 	]
 	drill_info_sj.add_theme_color_override("font_color", Color("451a03"))
@@ -3916,7 +3937,7 @@ func _build_wall_repair() -> void:
 	var cost_r_ym: int = int(drill_cost_ym.get("rice", 2000))
 
 	var drill_info_ym := Label.new()
-	drill_info_ym.text = "• 연무대(동장대) 완공: %s\n• 현재 공격력: %d\n• 훈련 비용: 금 %s냥, 곡 %s석 | 주기: 1년(12개월)에 1회\n• 효과: 무예24반 사열, 공격력 +40, 군사력 +5, 왕권 +5, 민심 +3" % [
+	drill_info_ym.text = "• 연무대(동장대) 완공: %s\n• 현재 공격력: %d\n• 훈련 비용: 금 %s냥, 곡 %s석 | 주기: 1년(12개월)에 1회\n• 효과: 무예24반 사열, 공격력 +50(해마다 1월 -50), 군사력 +5, 왕권 +5, 민심 +3" % [
 		"완공됨" if has_ym else "미완공 (연무대 필요)", cur_atk, _fmt_num(cost_g_ym), _fmt_num(cost_r_ym)
 	]
 	drill_info_ym.add_theme_color_override("font_color", Color("451a03"))
@@ -3993,7 +4014,7 @@ func _build_seojangdae_drill() -> void:
 		drill_state_desc = "【올해 야조 실시 완료】 (다음 훈련까지 %d개월 남음)" % cd_months
 
 	var stat_lbl := Label.new()
-	stat_lbl.text = "• 서장대 건립 여부: %s\n• 현재 장용영 총 공격력: %d\n• 야조 훈련 누적 성장 가산: +%d (최대 +1000)\n• 훈련 상태: %s\n• 필요 소모: 금화 %s냥, 군량 %s석 (난이도 배율 적용)\n• 즉시 보상: 성곽 야경 횃불 점등, 공격력 영구 +50, 왕권 +5, 민심 +3" % [
+	stat_lbl.text = "• 서장대 건립 여부: %s\n• 현재 장용영 총 공격력: %d\n• 야조 훈련 누적 성장 가산: +%d (최대 +1000)\n• 훈련 상태: %s\n• 필요 소모: 금화 %s냥, 군량 %s석 (난이도 배율 적용)\n• 즉시 보상: 성곽 야경 횃불 점등, 공격력 +50(해마다 1월 -50), 왕권 +5, 민심 +3" % [
 		"완공됨" if has_sj else "미완공 (서장대를 먼저 건설하십시오)", cur_atk, drill_b, drill_state_desc,
 		_fmt_num(cost_gold), _fmt_num(cost_rice)
 	]
@@ -4092,7 +4113,7 @@ func _build_yeonmudae_drill() -> void:
 		drill_state_desc = "【올해 사열 실시 완료】 (다음 사열까지 %d개월 남음)" % cd_months
 
 	var stat_lbl := Label.new()
-	stat_lbl.text = "• 연무대 건립 여부: %s\n• 현재 장용영 총 공격력: %d\n• 훈련 상태: %s\n• 필요 소모: 금화 %s냥, 군량 %s석 (난이도 배율 적용)\n• 즉시 보상: 장용영 공격력 영구 +40, 국방력 +5, 왕권 +5(백동수 +8), 민심 +3" % [
+	stat_lbl.text = "• 연무대 건립 여부: %s\n• 현재 장용영 총 공격력: %d\n• 훈련 상태: %s\n• 필요 소모: 금화 %s냥, 군량 %s석 (난이도 배율 적용)\n• 즉시 보상: 장용영 공격력 +50(해마다 1월 -50), 국방력 +5, 왕권 +5(백동수 +8), 민심 +3" % [
 		"완공됨" if has_ym else "미완공 (연무대를 먼저 건설하십시오)",
 		CityStats.get_military_attack_power(),
 		drill_state_desc,

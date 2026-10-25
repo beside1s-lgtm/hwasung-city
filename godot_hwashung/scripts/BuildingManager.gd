@@ -223,7 +223,7 @@ static func auto_heal_defense_and_attack(grid: GameGrid, sim: SimulationCore = n
 		grid.plant_cherry_groves_around_manseokgeo(y_pos, 2, 2)
 	return CityStats.recalculate_defense_and_attack(grid, sim)
 
-## 성 밖 고립 가옥 및 부적격 둔전 정리 (DistrictSpawner 위임)
+## 성 밖 도로 없는 맹지 방치 가옥 정리 (DistrictSpawner 위임)
 static func clean_isolated_outskirts(grid: GameGrid, sim: SimulationCore = null) -> Dictionary:
 	return DistrictSpawner.clean_isolated_outskirts(grid, sim)
 

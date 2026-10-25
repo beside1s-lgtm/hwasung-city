@@ -347,6 +347,8 @@ func _refresh_buttons() -> void:
 		prince_badge = " [서연 미착수 (0%)]"
 		prince_sub = "세자의 6단계 성장 모습, 전용 초상화와 제왕학 교육을 맡아 봅니다."
 	_update_btn_ui(_btn_prince, "👑 [봉수당·시강원] 왕세자 경연(서연) 집무", prince_badge, prince_sub, prince_is_done, prince_in_prog)
+	# PORT-TRACE [1800년 뒤 세자 추천]: 1800년 엔딩(순조 즉위) 뒤·현대 정치체제 전환 뒤에는 세자 집무가 없다
+	_btn_prince.visible = not CrownPrinceEducationManager.prince_affairs_closed(cur_sim.current_year if cur_sim != null else 1789)
 
 func _update_btn_ui(btn: Button, title: String, badge: String, desc: String, is_done: bool, in_progress: bool) -> void:
 	if btn == null:

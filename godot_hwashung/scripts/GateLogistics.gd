@@ -99,11 +99,11 @@ func refresh() -> void:
 			_announced[k] = true
 			if not _first:
 				var inf: Dictionary = INFO[k]
-				call_deferred("emit_signal", "notice", "%s 밖 %s가 지도 끝까지 이어졌습니다 — %s에서 %s이(가) 들어옵니다." % [inf["gate"], inf["dir"], inf["dest"], inf["goods"]], "🪧")
+				call_deferred("emit_signal", "notice", "%s 밖 %s가 지도 끝까지 이어졌습니다 — %s에서 %s이(가) 들어옵니다. (세입 +2%%)" % [inf["gate"], inf["dir"], inf["dest"], inf["goods"]], "🪧")
 	if kinds_now.size() == 4 and not _announced.has("all"):
 		_announced["all"] = true
 		if not _first:
-			call_deferred("emit_signal", "notice", "사대문 물류망 완성! 사방의 물자가 십자로 시전으로 모여 상업 번영도가 크게 오릅니다.", "🏮")
+			call_deferred("emit_signal", "notice", "사대문 물류망 완성! 사방의 물자가 십자로 시전으로 모여 상업 번영도가 크게 오르고 세입이 +2% 더 늡니다. (교역로 세입 합계 +10%)", "🏮")
 	for k2 in _announced.keys():
 		if k2 != "all" and not (k2 in kinds_now):
 			_announced.erase(k2) # 길이 끊기면 다시 이어질 때 또 알린다

@@ -316,7 +316,7 @@ static func recalculate_academic_power(grid, retainers: Dictionary) -> int:
 ## - 서장대 (화성장대 사령부): 공격력 +150
 ## - 순라청: 개소당 공격력 +50
 ## - 장용영 군영/훈련원 (연무대 등): 개소당 공격력 +80
-## - 서장대 연례 군사 훈련(야조): 훈련 1회당 영구 +50 상승 (최대 1000까지 성장)
+## - 서장대 연례 군사 훈련(야조): 훈련 1회당 +50 상승 (최대 1000, 해마다 1월 -50 — 연무대 사열도 같은 몫에 쌓인다)
 static func recalculate_defense_and_attack(grid, sim = null) -> Dictionary:
 	var def_power: int = 0
 	var atk_power: int = 0
@@ -523,7 +523,8 @@ static func calculate_fortress_defense_power_from_grid(fortress_progress: int, g
 ## 인구 규모별 조세 저항선 임계치 초과 여부를 검사하고 인구 증감 반영
 ## 임계치 초과 시: 자연 증가 중단 및 (조세 총합 - 임계치) * 0.5% 비율로 유출(감소)
 ## 임계치 이하 시: 정상 증가율 또는 기본 변화량 반영
-static func update_population(cur_pop: int, natural_delta: int, total_tax_rate: float) -> Dictionary:
+## pop_cap(>0): 인구 상한 — 넘으면 늘지 않고, 이미 넘어 있으면 초과분의 1/4씩 떠나 상한으로 돌아온다
+static func update_population(cur_pop: int, natural_delta: int, total_tax_rate: float, pop_cap: int = -1) -> Dictionary:
 	var threshold: float = TaxManager.get_tax_threshold_for_population(cur_pop)
 	var is_resisting: bool = TaxManager.is_tax_resistance_active(cur_pop, total_tax_rate)
 
@@ -539,6 +540,16 @@ static func update_population(cur_pop: int, natural_delta: int, total_tax_rate: 
 	else:
 		final_delta = natural_delta
 
+	var at_cap := false
+	if pop_cap > 0:
+		if cur_pop > pop_cap:
+			# 상한보다 많으면 일자리·집을 못 구한 백성이 떠난다(초과분의 1/4씩, 최소 1명)
+			final_delta = mini(final_delta, -maxi(1, int(round(float(cur_pop - pop_cap) * 0.25))))
+			at_cap = true
+		elif cur_pop + final_delta >= pop_cap:
+			final_delta = pop_cap - cur_pop
+			at_cap = true
+
 	var new_pop: int = maxi(0, cur_pop + final_delta)
 	return {
 		"old_population": cur_pop,
@@ -546,7 +557,8 @@ static func update_population(cur_pop: int, natural_delta: int, total_tax_rate: 
 		"delta": final_delta,
 		"is_resisting": is_resisting,
 		"threshold": threshold,
-		"penalty_rate": penalty_rate
+		"penalty_rate": penalty_rate,
+		"at_cap": at_cap
 	}
 
 # ==================== 민심 획득 감쇠(Morale Drag) 및 가산 시스템 ====================

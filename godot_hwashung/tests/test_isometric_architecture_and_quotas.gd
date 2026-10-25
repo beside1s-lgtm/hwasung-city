@@ -71,15 +71,15 @@ func test_sprite_cache_generation() -> void:
 		var tex: Texture2D = SpriteCacheManager.get_or_create_texture("buildings", k, sz)
 		assert(tex != null, "공방 텍스처 누락: " + k)
 
-	# D. 특수 공간 5종 검증
-	for sp: String in ["seodang", "maegok_seowon", "women_play_yard", "children_play_yard", "well"]:
+	# D. 특수 공간 3종 검증
+	for sp: String in ["seodang", "maegok_seowon", "well"]:
 		var sz: Vector2i = Vector2i(128, 112)
 		if sp == "maegok_seowon": sz = Vector2i(192, 160)
 		elif sp == "well": sz = Vector2i(64, 72)
 		var tex: Texture2D = SpriteCacheManager.get_or_create_texture("buildings", sp, sz)
 		assert(tex != null, "특수 공간 텍스처 누락: " + sp)
 
-	print("[PASS] 가옥 20종, 상점 20종, 공방 13종, 특수공간 5종 2.5D 에셋 등록 완료!")
+	print("[PASS] 가옥 20종, 상점 20종, 공방 13종, 특수공간 3종 2.5D 에셋 등록 완료!")
 
 func test_paldal_cattle_market_preservation() -> void:
 	print("\n--- 2. 팔달문 우시장(소전) 고유 생성 조건 및 가축 거래 기믹 보존 검증 ---")

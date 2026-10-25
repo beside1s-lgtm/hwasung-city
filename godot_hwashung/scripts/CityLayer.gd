@@ -842,7 +842,7 @@ func _apply_batch_build(tiles: Array[Vector2i], tool: String) -> void:
 		# PORT-TRACE [장마당·세시풍속]: 저잣거리 구획을 넓게 칠하면 약 10%를 장마당(공터)으로 남긴다
 		if tool == "zone_com":
 			if grid.allocate_cattle_market(modified_pts):
-				emit_signal("tool_message", "팔달문 저잣거리에 3x3 수원 쇠전(우시장)이 들어섭니다. 삼남의 소가 모여듭니다!")
+				emit_signal("tool_message", "팔달문 저잣거리에 3x3 수원 쇠전(우시장)이 들어섭니다. 삼남의 소가 모여듭니다! (세입 +1%)")
 			if grid.allocate_salt_store(modified_pts):
 				emit_signal("tool_message", "화서문 어염시장에 2x2 염전 소금 창고가 들어섭니다. 서해 천일염이 쌓입니다!")
 			var made := grid.allocate_plazas(modified_pts)
@@ -5127,7 +5127,9 @@ func _draw_military_base(t: Dictionary) -> bool:
 			y0 = mini(y0, q.y)
 			x1 = maxi(x1, q.x)
 			y1 = maxi(y1, q.y)
+		@warning_ignore("integer_division")
 		cx = (x0 + x1) / 2
+		@warning_ignore("integer_division")
 		cy = (y0 + y1) / 2
 	else:
 		var ce: Vector2i = (t["ym5"] as Dictionary).get("center", a)

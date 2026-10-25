@@ -55,9 +55,10 @@ func _ready() -> void:
 
 	# 4. 우측 상단 건너뛰기 버튼
 	skip_btn = Button.new()
-	skip_btn.text = "건너뛰기  [Esc · 띄어쓰기 글쇠]"
+	skip_btn.text = "넘기기(esc)"
 	skip_btn.custom_minimum_size = Vector2(160, 36)
 	skip_btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	skip_btn.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	skip_btn.offset_left = -180.0
 	skip_btn.offset_top = 20.0
 	skip_btn.offset_right = -20.0

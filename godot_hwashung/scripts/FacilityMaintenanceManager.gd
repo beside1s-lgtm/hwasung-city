@@ -60,6 +60,7 @@ static func get_maintenance_multiplier() -> float:
 ## 행궁 인구 비례 턴당 금화 소모량 계산 (쉬움 기준)
 ## - 인구 1,000명 미만: 100냥으로 시작
 ## - 인구 1,000명 이상: 1,000명 증가마다 1,000냥씩 추가 소모 (예: 10,000명일 때 10,000냥)
+## (참고: 국고를 늘 채워 둔 채 잰 실제 수지 — 최저 세율(합 3%) 약 92만 명 달마다 약 −52만 냥, 6% 약 59만 명 +4만 냥, 9% 약 40만 명 +46만 냥)
 static func calculate_haenggung_base_gold(population: int) -> int:
 	if population < 1000:
 		return 100
@@ -281,6 +282,7 @@ static func apply_turn_maintenance(sim: SimulationCore, grid: GameGrid) -> Dicti
 
 	var deficit_gold: bool = false
 	var deficit_rice: bool = false
+	var _shortage_gold: int = 0 # 못 낸 유지비(김판관 재정 조언용)
 
 	# 1. 금화 정산
 	if req_gold > 0:
@@ -289,11 +291,12 @@ static func apply_turn_maintenance(sim: SimulationCore, grid: GameGrid) -> Dicti
 		else:
 			# 국고 고갈 체납 페널티
 			deficit_gold = true
-			var _shortage_gold: int = req_gold - sim.gold
+			_shortage_gold = req_gold - sim.gold
 			sim.gold = 0
 			sim.loyalty = maxi(0, sim.loyalty - 6)
 			sim.authority = maxi(0, sim.authority - 4)
-			sim.emit_signal("disaster_alert", "🚨 [재정 비상] 국고가 고갈되어 공공시설 운영자금이 체납되었습니다! 관리와 군사들의 사기가 꺾이고 민심이 하락합니다. (민심 -6, 왕권 -4)")
+			# 알림에 금액을 밝힌다(예전엔 국고가 남아 보여도 왜 고갈인지 알 수 없었다 — 이 달 유지비가 국고보다 컸던 것)
+			sim.emit_signal("disaster_alert", "🚨 [재정 비상] 이달 공공시설 유지비 %d냥이 국고 %d냥보다 많아 운영자금이 체납되었습니다! (민심 -6, 왕권 -4)" % [req_gold, req_gold - _shortage_gold])
 
 	# 2. 곡식(군량) 정산
 	if req_rice > 0:
@@ -308,5 +311,6 @@ static func apply_turn_maintenance(sim: SimulationCore, grid: GameGrid) -> Dicti
 			sim.emit_signal("disaster_alert", "🌾 [군량 고갈] 군량미가 바닥나 순라군과 관공서 양곡 지급이 중단되었습니다! (민심 -8)")
 
 	m_res["deficit_gold"] = deficit_gold
+	m_res["shortage_gold"] = _shortage_gold
 	m_res["deficit_rice"] = deficit_rice
 	return m_res

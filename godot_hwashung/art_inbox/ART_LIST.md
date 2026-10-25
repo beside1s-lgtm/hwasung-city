@@ -99,12 +99,10 @@ Row 3: little boy with braided hair. Row 4: peddler (bobusang) with a wooden bac
 | 3x3 | 192×160 | `tile_house_10_3x3` | 대갓집 기와집(진휼소 등) |
 | 3x3 | 192×160 | `ws_3x3_royal_arsenal` | 군기시(왕실 무기고) |
 | 3x2 | 160×136 | `tile_house_10_3x2` | 큰 기와집 ㄱ자 |
-| 2x2 | 128×112 | `children_play_yard` | 아이들 놀이마당(제기·팽이) |
 | 2x2 | 128×112 | `seodang` | 서당 |
 | 2x2 | 128×112 | `seojangdae` | 서장대(지휘 누각) |
 | 2x2 | 128×112 | `tile_house_08` | 기와집 마당 넓은 집 1 |
 | 2x2 | 128×112 | `tile_house_09` | 기와집 마당 넓은 집 2 |
-| 2x2 | 128×112 | `women_play_yard` | 여인들 놀이마당(널뛰기·그네) |
 | 2x2 | 128×112 | `ws_2x2_ceramics` | 도자기 가마 공방 |
 | 2x2 | 128×112 | `ws_2x2_lumber_machinery` | 제재·목재 기계 공방 |
 | 2x2 | 128×112 | `yeonmudae` | 연무대(활터 누각) |

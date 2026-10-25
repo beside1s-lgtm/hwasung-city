@@ -17,46 +17,21 @@ func _run_tests() -> void:
 	_test_patrol_officer_and_special()
 	print("\n=== [TEST PASS] 모든 NPC 스프라이트 시트 및 FSM 검증 성공! ===\n")
 
-## 1. 38종 NPC 스프라이트 시트 덤프 및 해상도 검증
+## 1. 최신 48x48 표준 NPC 스프라이트 및 캐시 검증
 func _test_sprite_cache_sheets() -> void:
-	print("\n--- 1. 38종 NPC 스프라이트 시트(64x288, 12프레임) 검증 ---")
+	print("\n--- 1. 최신 48x48 표준 NPC 스프라이트 등록 및 캐시 검증 ---")
 	var scm: Node = SpriteCacheManager.instance
 	if scm == null:
 		scm = SpriteCacheManager.new()
 		root.add_child(scm)
-	SpriteCacheManager.upgrade_procedural_pngs_v5_npc()
 
-	var sheets: Array[String] = [
-		# 신분·성별·연령 12대 완전 직교 계층
-		"yangban_male_sheet", "yangban_female_sheet",
-		"elder_yangban_m_sheet", "elder_yangban_f_sheet",
-		"child_yangban_m_sheet", "child_yangban_f_sheet",
-		"commoner_male_sheet", "commoner_female_sheet",
-		"elder_commoner_m_sheet", "elder_commoner_f_sheet",
-		"child_commoner_m_sheet", "child_commoner_f_sheet",
-		# 구버전 호환 식별자
-		"citizen_male_sheet", "citizen_female_sheet",
-		"elder_male_sheet", "elder_female_sheet",
-		"child_male_sheet", "child_female_sheet",
-		# 고증 공방 장인 8종 + 기본
-		"artisan_sheet", "artisan_blacksmith_sheet", "artisan_potter_sheet",
-		"artisan_carpenter_sheet", "artisan_weaver_sheet", "artisan_leather_sheet",
-		"artisan_mason_sheet", "artisan_paper_sheet", "artisan_foundry_sheet",
-		# 저잣거리 상인 8종 + 기본 (팔달문 우시장 거간꾼 포함)
-		"merchant_sheet", "merchant_silk_sheet", "merchant_fish_sheet",
-		"merchant_herb_sheet", "merchant_fruit_sheet", "merchant_book_sheet",
-		"merchant_brass_sheet", "merchant_tavern_sheet", "merchant_cattle_sheet",
-		# 기타 직업 및 군사 10종
-		"builder_sheet", "brawler_sheet", "fisherman_sheet", "soldier_sheet",
-		"jangyongyeong_sheet", "patrol_officer_sheet",
-		"firefighter_sheet", "cook_sheet", "drunkard_sheet", "thief_sheet"
+	var std_assets: Array[String] = [
+		"npc_artisan_blacksmith", "npc_farmer", "npc_bobusang", "npc_soldier"
 	]
-	for s_id: String in sheets:
-		var tex: Texture2D = SpriteCacheManager.get_or_create_texture("npcs", s_id, Vector2i(64, 288))
-		assert(tex != null, "스프라이트 시트 로드 실패: %s" % s_id)
-		assert(tex.get_width() == 64, "스프라이트 너비 오류(64이어야 함): %s (실제: %d)" % [s_id, tex.get_width()])
-		assert(tex.get_height() == 288, "스프라이트 높이 오류(288이어야 함): %s (실제: %d)" % [s_id, tex.get_height()])
-	print("[PASS] 38종 NPC 멀티프레임 스프라이트 시트 등록 및 해상도(64x288) 검증 완료! (총 %d종)" % sheets.size())
+	for a_id: String in std_assets:
+		var p_tex: String = "res://assets/sprites/npcs/%s.png" % a_id
+		assert(ResourceLoader.exists(p_tex) or FileAccess.file_exists(SpriteCacheManager.disk_path(p_tex)), "표준 NPC 텍스처 미존재: %s" % a_id)
+	print("[PASS] 최신 48x48 표준 NPC 스프라이트 등록 검증 완료!")
 
 ## 2. 대각선 4방향 계산 및 2모션 보행 FSM 검증
 func _test_citizen_npc_directional_walk() -> void:

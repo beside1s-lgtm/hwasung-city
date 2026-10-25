@@ -56,6 +56,12 @@ const SPECS := {
 	"ending_ignorance_swamp": {"label": "결말 — 무지의 늪", "bpm": 54, "bars": 8, "root": 58, "scale": "gye", "lead": "flute", "density": 0.3, "perc": 0, "arp": 1, "drone": true, "seed": 110},
 	"ending_defense_fortress": {"label": "결말 — 수호의 성", "bpm": 68, "bars": 8, "root": 60, "scale": "pyeong", "lead": "flute", "density": 0.5, "perc": 1, "arp": 2, "drone": true, "seed": 111},
 	"ending_true_renaissance": {"label": "결말 — 대조선의 문예 부흥", "bpm": 84, "bars": 12, "root": 62, "scale": "wu", "lead": "flute", "density": 0.7, "perc": 1, "arp": 3, "drone": true, "seed": 112},
+	# 근대화 시대(1820~) 퓨전 BGM 5곡: 36턴마다 UrbanEvolutionManager가 무작위로 고른다
+	"modern_bgm_01": {"label": "근대 — 개항의 아침", "bpm": 92, "bars": 8, "root": 60, "scale": "wu", "lead": "pluck", "density": 0.6, "perc": 1, "arp": 3, "drone": false, "seed": 201},
+	"modern_bgm_02": {"label": "근대 — 전차가 달리는 거리", "bpm": 108, "bars": 8, "root": 62, "scale": "pyeong", "lead": "flute", "density": 0.65, "perc": 2, "arp": 3, "drone": false, "seed": 202},
+	"modern_bgm_03": {"label": "근대 — 붉은 벽돌의 저녁", "bpm": 72, "bars": 8, "root": 57, "scale": "gye", "lead": "bow", "density": 0.45, "perc": 1, "arp": 2, "drone": true, "seed": 203},
+	"modern_bgm_04": {"label": "근대 — 증기 공장의 박동", "bpm": 116, "bars": 8, "root": 55, "scale": "tense", "lead": "pluck", "density": 0.55, "perc": 2, "arp": 2, "drone": true, "seed": 204},
+	"modern_bgm_05": {"label": "근대 — 석조전의 왈츠", "bpm": 84, "bars": 12, "root": 64, "scale": "wu", "lead": "flute", "density": 0.55, "perc": 0, "arp": 3, "drone": false, "seed": 205},
 	"ending_bandit_fall": {"label": "결말 — 도적에게 넘어간 화성", "bpm": 60, "bars": 8, "root": 54, "scale": "tense", "lead": "bow", "density": 0.3, "perc": 1, "arp": 0, "drone": true, "seed": 113},
 }
 
@@ -201,6 +207,8 @@ func _context_track() -> Array:
 		if sim.drought_active or sim.rice <= 0:
 			return ["event_famine", PRIORITY["famine"]]
 
+	if UrbanEvolutionManager.is_active() and UrbanEvolutionManager.instance.current_bgm != "":
+		return [UrbanEvolutionManager.instance.current_bgm, 0]
 	var season := time_manager.get_current_season() if time_manager != null else "봄"
 	match season:
 		"여름": return ["season_summer", 0]
@@ -260,6 +268,8 @@ func _crossfade_with_duration(st: AudioStream, dur: float) -> void:
 
 ## 사계절 BGM 자동 전환 슬롯 (명세 규격 1.5초 크로스페이드)
 func on_season_changed(new_season: String) -> void:
+	if UrbanEvolutionManager.is_active() and UrbanEvolutionManager.instance.current_bgm != "":
+		return # 근대화 시대에는 계절곡 대신 36턴 주기 근대곡을 유지한다
 	var season_track: String = "season_spring"
 	match new_season:
 		"여름", "summer": season_track = "season_summer"
