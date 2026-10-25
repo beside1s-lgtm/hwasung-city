@@ -174,6 +174,105 @@ const ENDING_DATA: Dictionary = {
 		"art_tag": "■ [제13결말: 도적 함락] 도적 떼의 난입과 불타는 화성행궁 ■",
 		"video_file": "res://assets/endings/ending_bandit_fall.ogv"
 	},
+	"COLONIZED": {
+		"id": "COLONIZED",
+		"num": 15,
+		"type": "COLONIZED",
+		"title": "식민지의 암운 (주권 상실)",
+		"subtitle": "열강의 포화 앞에 무너진 근대화의 꿈",
+		"desc": "성문이 외세의 포화에 무너지고 주권을 빼앗겨 식민지의 암운에 갇히고 말았습니다.",
+		"theme_color": "1f2937",
+		"art_tag": "■ [근대화 시대] 열강의 침탈과 주권 상실 ■",
+		"video_file": ""
+	},
+	"JAPAN_ANNEXED": {
+		"id": "JAPAN_ANNEXED",
+		"num": 16,
+		"type": "JAPAN_ANNEXED",
+		"title": "일제 침탈 (국권 피탈)",
+		"subtitle": "일본의 침략 앞에 무너진 오백 년 사직",
+		"desc": "일본의 군함과 대군이 화성을 짓밟고, 불평등한 조약이 조선의 손발을 묶었습니다.\n외교권과 군대를 차례로 빼앗긴 조선은 끝내 일제에 나라를 넘겨주고 말았습니다.\n정조 대왕이 꿈꾼 이상도시 화성은 식민지의 어둠 속에 잠겼습니다.",
+		"theme_color": "450a0a",
+		"art_tag": "■ [근대화 시대] 일제의 침략과 국권 피탈 ■",
+		"video_file": ""
+	},
+	"GLOBAL_ADVANCED": {
+		"id": "GLOBAL_ADVANCED",
+		"num": 17,
+		"type": "GLOBAL_ADVANCED",
+		"title": "글로벌 선진국 도약 [근대 참 결말]",
+		"subtitle": "옛 성곽을 품은 채 세계로 나아간 근대 도시 화성",
+		"desc": "1945년, 화성은 성곽과 사대문, 행궁을 온전히 지켜 낸 채 전차와 공장, 대학이 어우러진 근대 대도시가 되었습니다.\n열강과 대등하게 손잡고 학문과 기술을 꽃피운 조선은 마침내 세계의 선진국 대열에 올라섰습니다.\n정조 대왕이 꿈꾼 이상도시는 이제 과거와 미래가 함께 숨 쉬는 세계의 도시가 되었습니다.",
+		"theme_color": "b8860b",
+		"art_tag": "★ [근대화 시대] 글로벌 선진국 도약 ★",
+		"video_file": ""
+	},
+	"MIDDLE_TRAP": {
+		"id": "MIDDLE_TRAP",
+		"num": 18,
+		"type": "MIDDLE_TRAP",
+		"title": "중진국의 늪",
+		"subtitle": "근대화의 문턱에서 멈춰 선 도시",
+		"desc": "1945년, 화성은 근대 도시의 모습을 갖추었으나 문화재와 학문, 외교 가운데 어느 하나가 끝내 받쳐 주지 못했습니다.\n성장은 더뎌지고 열강과의 격차는 좁혀지지 않았습니다.\n조선은 선진국의 문턱에서 오랜 정체의 늪에 빠졌습니다.",
+		"theme_color": "a16207",
+		"art_tag": "▲ [근대화 시대] 중진국의 늪 ▲",
+		"video_file": ""
+	},
+	"UNDERDEVELOPED": {
+		"id": "UNDERDEVELOPED",
+		"num": 19,
+		"type": "UNDERDEVELOPED",
+		"title": "후진국화",
+		"subtitle": "개화의 기회를 놓치고 뒤처진 나라",
+		"desc": "1945년, 부서진 성곽과 멈춘 공장, 텅 빈 학교만이 남았습니다.\n근대화의 물결을 제대로 타지 못한 조선은 열강과의 격차가 벌어져 가난한 나라로 뒤처졌습니다.\n화성의 영광은 옛이야기 속에만 남았습니다.",
+		"theme_color": "475569",
+		"art_tag": "■ [근대화 시대] 후진국화 ■",
+		"video_file": ""
+	},
+	"IMO_REBELLION": {
+		"id": "IMO_REBELLION",
+		"num": 20,
+		"type": "IMO_REBELLION",
+		"title": "임오군란 (반란군의 화성 장악)",
+		"subtitle": "차별받던 구식 군대의 분노가 도시를 삼키다",
+		"desc": "밀린 군료와 차별에 분노한 구식 군대가 들고일어나 연무대와 관아를 불태웠습니다.\n반란군은 화성을 장악하고 개화 정책을 모두 뒤엎었습니다.\n근대화의 꿈은 군대의 칼끝에서 무너졌습니다.",
+		"theme_color": "7c2d12",
+		"art_tag": "■ [근대화 시대] 임오군란 ■",
+		"video_file": ""
+	},
+	"YIELD_TO_PEOPLE": {
+		"id": "YIELD_TO_PEOPLE",
+		"num": 21,
+		"type": "YIELD_TO_PEOPLE",
+		"title": "국민에게 자리를 양보하다",
+		"subtitle": "권력을 내려놓고 국민의 선택을 따르다",
+		"desc": "현대 정치체제 아래에서 국민은 새로운 지도자를 골랐습니다.\n당신은 평화롭게 자리를 물려주고 한 사람의 시민으로 돌아갔습니다.\n화성은 이제 국민이 주인인 도시로서 새 시대를 이어 갑니다.",
+		"theme_color": "1d4ed8",
+		"art_tag": "◆ [근대화 시대] 국민에게 자리를 양보하다 ◆",
+		"video_file": ""
+	},
+	"POLITICAL_RUIN": {
+		"id": "POLITICAL_RUIN",
+		"num": 22,
+		"type": "POLITICAL_RUIN",
+		"title": "정치적 파멸 (계엄의 끝)",
+		"subtitle": "국회를 해산한 독재자의 몰락",
+		"desc": "계엄령으로 국회를 해산하고 다시 홀로 권력을 쥐었으나, 1년 만에 거리마다 독재 타도의 함성이 울렸습니다.\n군대마저 등을 돌리자 당신은 모든 것을 잃고 쫓겨났습니다.\n역사는 그 이름을 독재자로 기록했습니다.",
+		"theme_color": "450a0a",
+		"art_tag": "■ [근대화 시대] 정치적 파멸 ■",
+		"video_file": ""
+	},
+	"JOSEON_REVOLUTION": {
+		"id": "JOSEON_REVOLUTION",
+		"num": 23,
+		"type": "JOSEON_REVOLUTION",
+		"title": "조선 혁명 (왕조의 끝)",
+		"subtitle": "새 시대를 거스른 왕조, 백성의 손에 막을 내리다",
+		"desc": "1897년 왕조를 지키기로 했으나, 학교와 신문으로 깨어난 백성들은 더 이상 왕정을 받아들이지 않았습니다.\n이듬해 혁명의 불길이 화성행궁을 에워싸고, 오백 년 왕조는 막을 내렸습니다.\n새 나라는 백성의 손으로 세워졌습니다.",
+		"theme_color": "831843",
+		"art_tag": "■ [근대화 시대] 조선 혁명 ■",
+		"video_file": ""
+	},
 	"FALLEN_TO_BANDITS": {
 		"id": "FALLEN_TO_BANDITS",
 		"num": 14,
@@ -551,7 +650,8 @@ func play_ending_sequence_flow(ending_data: Dictionary) -> void:
 	# 역사 사전 [엔딩 모음] 퍼즐 조각 영구 해금(본 엔딩은 사전에서 다시 볼 수 있다)
 	var enum_n: int = int(ending_data.get("num", 0))
 	if enum_n > 0:
-		GameProgressManager.unlock_puzzle_piece("endings", "ending_%d" % enum_n, int(ending_data.get("year", 0)))
+		var board_id := PuzzleData.ending_board(String(ending_data.get("id", "")), enum_n)
+		GameProgressManager.unlock_puzzle_piece(board_id, "ending_%d" % enum_n, int(ending_data.get("year", 0)))
 	var video_path: String = get_ending_video_path(ending_data)
 
 	# 헤드리스 모드(CLI 테스트)이거나 비디오 경로가 없는 경우 즉시 엔딩 팝업 오픈
@@ -592,6 +692,9 @@ func show_ending_popup(ending_data: Dictionary) -> void:
 		ending_popup_instance.popup_closed.connect(func():
 			is_ending_active = false
 			emit_signal("ending_closed")
+			# 11·12번 긍정 엔딩 뒤 1820 근대화 시대 제안 (근대화 진행 중이 아닐 때만)
+			if ModernizationManager.is_positive_ending(ending_data) and ModernizationManager.instance and not ModernizationManager.is_active():
+				ModernizationManager.instance.offer_modernization()
 		)
 
 static var instance: EndingManager = null

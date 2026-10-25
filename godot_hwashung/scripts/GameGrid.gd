@@ -25,6 +25,24 @@ signal water_gate_signboard_bestowed(facility_id: String, fac_name: String, cent
 
 const TERRAIN_PATH := "res://maps/terrain_data.json"
 
+## PORT-TRACE [렉: 턴 정산 멈칫]: 지도가 바뀌면(턴 정산·건설) 시민 길 정보, 가림막, 놀이마당 목록, 지도 굽기가
+## 저마다 지도 전체를 다시 세는데(각 20~40ms), 한 프레임에 몰려 0.1~0.2초씩 멈췄다.
+## 무거운 다시 계산은 프레임마다 하나만 하도록 차례를 나눈다 — 이번 프레임에 이미 누가 썼으면 다음 프레임에 다시 청한다.
+## 턴 계산은 자기 프레임마다 frame_take()로 차례를 먼저 차지해, 다른 다시 계산은 턴이 끝난 뒤로 미룬다.
+static var _budget_frame := -1
+
+## 이번 프레임 차례가 비었으면 차지하고 true, 아니면 false(다음 프레임에 다시 청할 것)
+static func frame_claim() -> bool:
+	var f := Engine.get_process_frames()
+	if f == _budget_frame:
+		return false
+	_budget_frame = f
+	return true
+
+## 이번 프레임 차례를 무조건 차지한다(턴 계산처럼 미룰 수 없는 일)
+static func frame_take() -> void:
+	_budget_frame = Engine.get_process_frames()
+
 enum BuildingType {
 	NONE = 0,
 	RESIDENTIAL = 1,
@@ -64,6 +82,7 @@ const COST_MAP := {
 	"firefighter": {"gold": 100, "rice": 20},
 	"chukmanje": {"gold": 2080, "rice": 880}, # 축만제 (서호) 6x6 만석거와 동일 금액 및 기간 (턴당 260냥/110석 x 8턴)
 	"jinhulso": {"gold": 5000, "rice": 5000}, # 진휼소 2x2 관영 구휼 복지 시설 (턴당 2,500냥/2,500석 x 2턴)
+	"sewage": {"gold": 30000, "rice": 0}, # 근대화 시대 하수처리시설 2x2 (턴당 10,000냥 x 3턴)
 }
 
 var _logistics_cache: Dictionary = {}
@@ -265,9 +284,11 @@ const SITE_BUILDINGS := {
 	"hyanggyo": {"w": 4, "h": 4, "turns": 3, "cost_per_turn": {"gold": 300, "rice": 150}},
 	# 영화정(迎華亭) 2x2: 만석거 남쪽 실용적 관청형 누정
 	"yeonghwajeong": {"w": 2, "h": 2, "turns": 2, "cost_per_turn": {"gold": 150, "rice": 50}},
+	# 근대화 시대 하수처리시설 2x2: 하단 메뉴바의 홍예성문 자리에서 짓는다(근대화 시대에만)
+	"sewage": {"w": 2, "h": 2, "turns": 3, "cost_per_turn": {"gold": 10000, "rice": 0}},
 }
 
-const SITE_OUTSIDE_OK := ["manseokgeo", "chukmanje", "yeonghwajeong", "hyanggyo", "jinhulso"] # 성 밖(outside) 들판에도 지을 수 있는 부지 건물
+const SITE_OUTSIDE_OK := ["manseokgeo", "chukmanje", "yeonghwajeong", "hyanggyo", "jinhulso", "sewage"] # 성 밖(outside) 들판에도 지을 수 있는 부지 건물
 
 var active_sites: Array = [] # [{building, anchor, tiles, turns_left, total_turns, cost_per_turn}]
 
@@ -463,6 +484,8 @@ func validate_site(building: String, cx: int, cy: int) -> String:
 	var info: Dictionary = SITE_BUILDINGS[building]
 	var w: int = info["w"]
 	var h: int = info["h"]
+	if building == "sewage" and not UrbanEvolutionManager.is_active():
+		return "하수처리시설은 근대화 시대에만 지을 수 있습니다."
 	# PORT-TRACE [영화정 2x2]: 만석거가 완공된 뒤, 만석거 둑에서 3칸 안에만 세운다(저수지 물을 굽어보는 관청형 정자)
 	if building == "yeonghwajeong":
 		if count_completed("manseokgeo") == 0:
@@ -753,9 +776,13 @@ func is_wall_planned_boundary(x: int, y: int) -> bool:
 				return true
 	return false
 
+## 순찰로를 만드는 성곽·방어시설(이 건물에 맞닿은 칸이 순찰로)
+const PATROL_ANCHORS := {"wall": true, "gate": true, "poru": true, "gongsimdon": true, "gongsimdon_wall": true, "seojangdae": true, "yeonmudae": true, "banghwasuryu": true}
+
 ## 성곽 순찰로(순라길) 및 보행로 판정: 성벽/성문/방어시설 바로 옆 1칸 바닥면 타일
+## PORT-TRACE [렉: 턴 정산 멈칫]: 거리장·시민 길 정보가 지도 전체 칸마다 부르므로 부를 때마다 배열을 만들지 않고 이웃 넷을 바로 본다
 func is_patrol_road(x: int, y: int) -> bool:
-	if not in_bounds(x, y):
+	if x < 0 or y < 0 or x >= size or y >= size:
 		return false
 	var t: Dictionary = grid[y][x]
 	if t.get("terrain", "") == "water" and not t.get("is_bridge", false):
@@ -764,13 +791,15 @@ func is_patrol_road(x: int, y: int) -> bool:
 	if b == "wall" or b == "gate":
 		return false
 	# 성벽, 성문, 방어시설에 맞닿아 있는 타일 판정 (상부 및 바로 옆 1칸 라인 보행로)
-	for d: Vector2i in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
-		var nx: int = x + d.x
-		var ny: int = y + d.y
-		if in_bounds(nx, ny):
-			var nb: String = grid[ny][nx].get("building", "")
-			if nb in ["wall", "gate", "poru", "gongsimdon", "gongsimdon_wall", "seojangdae", "yeonmudae", "banghwasuryu"]:
-				return true
+	var row: Array = grid[y]
+	if x + 1 < size and PATROL_ANCHORS.has(row[x + 1].get("building", "")):
+		return true
+	if x > 0 and PATROL_ANCHORS.has(row[x - 1].get("building", "")):
+		return true
+	if y + 1 < size and PATROL_ANCHORS.has(grid[y + 1][x].get("building", "")):
+		return true
+	if y > 0 and PATROL_ANCHORS.has(grid[y - 1][x].get("building", "")):
+		return true
 	return false
 
 func is_road_connector(x: int, y: int) -> bool:
@@ -1066,6 +1095,9 @@ func has_fire_coverage(x: int, y: int) -> bool:
 
 ## 물이 모자란 가옥·상점(물방울 표시용)
 func water_shortage_tiles() -> Array[Vector2i]:
+	# 근대화 시대(석조 전환 뒤): 근대 수도 영향권 밖이 물방울. 물방울이 없으면 상하수도 보급률 100%
+	if UrbanEvolutionManager.instance and UrbanEvolutionManager.is_active() and UrbanEvolutionManager.instance.water_modern_active():
+		return UrbanEvolutionManager.instance.water_uncovered_tiles()
 	var out: Array[Vector2i] = []
 	for y in range(size):
 		for x in range(size):
@@ -3240,7 +3272,14 @@ func develop_and_harvest(demand_res: int, demand_com: int, demand_agr: int, hyor
 	var add_rice := 0
 	var add_pop := 0
 	var closed := 0
+	var closed_tax := 0
+	var closed_unrest := 0
+	var closed_site := 0
 	var dist_field := build_road_distance_field() # PORT-TRACE P24: O(size^2) 1회로 거리장 선계산
+	# PORT-TRACE [렉: 턴 정산 멈칫]: 거리장(20ms 남짓), 치안·생활 수준장·물류(20ms 남짓), 첫 줄들을 프레임마다 나눈다
+	if stepped and is_inside_tree():
+		await get_tree().process_frame
+		GameGrid.frame_take()
 	_refresh_gate_list()
 	_build_security_field()
 	_build_lv_fields()
@@ -3249,6 +3288,9 @@ func develop_and_harvest(demand_res: int, demand_com: int, demand_agr: int, hyor
 	logistics.refresh()
 	jongnu_pos = find_building_anchor("jongnu")
 	maehyang_pos = _find_maehyang()
+	if stepped and is_inside_tree():
+		await get_tree().process_frame
+		GameGrid.frame_take()
 	var tax_m := float(policy["tax_market"])
 	var tax_r := (float(policy["tax_land"]) + float(policy["tax_military"])) * 0.5
 	var loyalty := int(policy["loyalty"])
@@ -3257,6 +3299,7 @@ func develop_and_harvest(demand_res: int, demand_com: int, demand_agr: int, hyor
 	for y in range(size):
 		if stepped and y % 16 == 15 and is_inside_tree():
 			await get_tree().process_frame
+			GameGrid.frame_take()
 		for x in range(size):
 			var t: Dictionary = grid[y][x]
 			var d: int = dist_field[y][x] if dist_field[y][x] >= 0 else 99
@@ -3344,6 +3387,13 @@ func develop_and_harvest(demand_res: int, demand_com: int, demand_agr: int, hyor
 					var close_p := 0.06 + maxf(0.0, tax_m - 10.0) * 0.04 + (0.06 if loyalty < 40 else 0.0)
 					if randf() < close_p:
 						closed += 1
+						# 폐업 까닭: 세금 → 민심 → 입지 순으로 하나만 센다(알림이 실제 까닭을 말하도록)
+						if tax_m >= 11.0:
+							closed_tax += 1
+						elif loyalty < 40:
+							closed_unrest += 1
+						else:
+							closed_site += 1
 						shut = true
 						if b == "com_2":
 							t["building"] = "com_1"
@@ -3427,7 +3477,14 @@ func develop_and_harvest(demand_res: int, demand_com: int, demand_agr: int, hyor
 				if t3.get("irrigated", false) and String(t3["building"]).begins_with("agr"):
 					irr_n += 1
 		add_rice += int(round(float(irr_n) * 9.0))
+	# PORT-TRACE [렉: 턴 정산 멈칫]: 민가 묶음(10ms 남짓)·공방 묶음(20ms 남짓)을 마지막 줄들과 한 프레임에 몰지 않는다
+	if stepped and is_inside_tree():
+		await get_tree().process_frame
+		GameGrid.frame_take()
 	_form_house_groups(tax_r)
+	if stepped and is_inside_tree():
+		await get_tree().process_frame
+		GameGrid.frame_take()
 	_form_workshop_groups()
 	_security_field_valid = false # 턴 계산이 끝나면 다시 실시간 판정으로(건설로 치안망이 바뀔 수 있음)
 	_lv_fast = false
@@ -3438,7 +3495,8 @@ func develop_and_harvest(demand_res: int, demand_com: int, demand_agr: int, hyor
 		add_gold = int(float(add_gold) * 0.5)
 		add_rice = int(float(add_rice) * 0.5)
 	emit_signal("grid_changed")
-	return {"gold": add_gold, "rice": add_rice, "pop": add_pop, "shops_closed": closed}
+	return {"gold": add_gold, "rice": add_rice, "pop": add_pop, "shops_closed": closed,
+		"shops_closed_tax": closed_tax, "shops_closed_unrest": closed_unrest, "shops_closed_site": closed_site}
 
 ## 반경 r 이내에 2x2 이상 또는 3x2/3x3 대형 저택이 존재하는지 검사 (희소성 Spacing Quota 강제)
 func _is_near_large_mansion(cx: int, cy: int, radius: int, min_w: int = 2) -> bool:

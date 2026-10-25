@@ -79,8 +79,8 @@ func register_signboard(building_id: String, world_pos: Vector2, display_name: S
 	var found_in_tree: GateSignboard = null
 	var target_node_name: String = "Signboard_" + norm_id
 	for child: Node in get_children():
-		if not is_instance_valid(child):
-			continue
+		if not is_instance_valid(child) or child.is_queued_for_deletion():
+			continue # clear_all_markers가 지우는 중인 노드를 되살려 쓰면 새 현판까지 함께 사라진다
 		if child is GateSignboard:
 			# 특수 건물(sp_) 현판은 이름이 같아도(서당 여러 곳) 따로 둔다
 			if child.name == target_node_name or (display_name != "" and not building_id.begins_with("sp_") and (child as GateSignboard).gate_name == display_name):

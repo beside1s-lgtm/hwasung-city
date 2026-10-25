@@ -10,6 +10,41 @@ class_name TutorialGuide
 ## 말풍선은 접었다 펼 수 있다. 게임 규칙에는 손대지 않고 QuestSystem 신호만 듣는다.
 
 const GUIDE_NAME := "길잡이 김판관"
+const SECRETARY_NAME := "비서실장 김종수"
+
+## 대통령제(1897~)가 되면 길잡이는 비서실장 김종수가 된다
+func _gname() -> String:
+	return SECRETARY_NAME if GuidePortrait.is_secretary() else GUIDE_NAME
+
+## 비서실장 말투: 궁중 말투(전하·~하옵소서·~사옵니다)를 현대 존댓말(대통령님·~하십시오·~습니다)로 바꾼다.
+## 조언 문장은 그대로 두고 말풍선에 띄울 때만 바꾼다.
+static var _rx_jeonha: RegEx = null
+static var _rx_ob: RegEx = null
+static func secretary_speech(t: String) -> String:
+	if _rx_jeonha == null:
+		_rx_jeonha = RegEx.create_from_string("(^|[^가-힣])전하(?=$|[^가-힣]|께)")
+		_rx_ob = RegEx.create_from_string("([가-힣])옵니다")
+	t = _rx_jeonha.sub(t, "$1대통령님", true)
+	for pair in [["하시옵소서", "하십시오"], ["시옵소서", "십시오"], ["옵소서", "십시오"], ["소서", "십시오"],
+			["사옵니다", "습니다"], ["이옵니다", "입니다"], ["하옵니다", "합니다"], ["되옵니다", "됩니다"],
+			["사오니", "으니"], ["하오니", "하니"], ["이오니", "이니"], ["사옵고", "고"], ["옵고", "고"]]:
+		t = t.replace(pair[0], pair[1])
+	# 남은 "~옵니다": 앞 글자에 받침 ㅂ을 붙인다(지키옵니다 → 지킵니다, 떠나옵니다 → 떠납니다)
+	var out := ""
+	var last := 0
+	for m in _rx_ob.search_all(t):
+		var ch := m.get_string(1)
+		var code := ch.unicode_at(0) - 0xAC00
+		out += t.substr(last, m.get_start() - last)
+		if code >= 0 and code % 28 == 0:
+			out += String.chr(ch.unicode_at(0) + 17) + "니다"
+		else:
+			out += ch + "습니다"
+		last = m.get_end()
+	return out + t.substr(last)
+
+func _gshort() -> String:
+	return "김종수 실장" if GuidePortrait.is_secretary() else "김판관"
 const GUIDE_TITLE := "수원부 판관"
 
 const INTRO_PAGES := [
@@ -133,6 +168,7 @@ var _current_tab: String = "quest" # "quest" or "affairs"
 var _dim: ColorRect
 var _box: PanelContainer
 var _portrait: GuidePortrait
+var _name_lbl: Label
 var _text_lbl: Label
 var _page_lbl: Label
 var _next_btn: Button
@@ -162,6 +198,8 @@ var _advice_cooldown: float = 0.0
 ## "알겠어요" 또는 "닫기"를 누른 key는 이 집합에 등록되어 해당 세션 동안 재출력하지 않는다.
 ## 단, 상태가 바뀐 조언(호환 새로 발생 등)은 별도 key로 생성되므로 자동 표시된다.
 var _dismissed_affairs: Dictionary = {}
+## 초야 인재 건의에서 [등용 안 함] — 누른 인재는 _dismissed_affairs에 올라 다시 건의되지 않는다(저장됨)
+var _decline_btn: Button
 ## 조언 간 최소 간격(초) - 같은 조언이 연속으로 쏟아지지 않도록
 const AFFAIRS_MIN_INTERVAL: float = 30.0
 var _affairs_cooldown: float = 0.0
@@ -313,8 +351,8 @@ func _advice_expired(adv: Dictionary) -> bool:
 	var prince_invested: bool = (court != null and (court.crown_prince.get("invested", false) or court.crown_prince.get("education", 0) > 0))
 	if sim != null and sim.crown_prince_manager != null and sim.crown_prince_manager.has_method("is_education_active") and sim.crown_prince_manager.is_education_active():
 		prince_invested = true
-	if key == "prince" and prince_invested:
-		return true
+	if key == "prince" and (prince_invested or CrownPrinceEducationManager.prince_affairs_closed(court.current_year if court != null else 1789)):
+		return true # 1800년 엔딩(순조 즉위) 뒤에는 세자 책봉 권유도 철 지남
 	var tomb_done: bool = (court != null and court.hyoryungwon.get("visited", false)) or CityStats.get_hyeonryungwon_visits() > 0 or (court != null and court.hyeonryungwon_visits > 0)
 	if key.begins_with("hyo_") and tomb_done:
 		return true
@@ -349,6 +387,8 @@ func _on_turn(_turn: int, season_index: int, year: int) -> void:
 	_affairs_shown_this_turn.clear()
 	_affairs_list = _collect_affairs_advices()
 	_update_tab_buttons()
+	if _name_lbl != null:
+		_name_lbl.text = _gname()
 
 	if _reopen_btn != null:
 		var undismissed_count: int = 0
@@ -356,9 +396,9 @@ func _on_turn(_turn: int, season_index: int, year: int) -> void:
 			if not _dismissed_affairs.has(str(aff.get("key", ""))):
 				undismissed_count += 1
 		if undismissed_count > 0:
-			_reopen_btn.text = "🧑‍⚖️ 김판관 (정무 조언 %d건 💡)" % undismissed_count
+			_reopen_btn.text = ("🧑‍⚖️ %s (정무 조언 %%d건 💡)" % _gshort()) % undismissed_count
 		else:
-			_reopen_btn.text = "🧑‍⚖️ 길잡이 김판관"
+			_reopen_btn.text = "🧑‍⚖️ " + _gname()
 
 	# [자동 표시]: prio 11+(도적·호환 실제 발생)만 자동 표시, 쿨다운+dismiss+이번턴 미표시 조건 모두 충족
 	if _affairs_cooldown <= 0.0 and not _is_user_folded:
@@ -384,6 +424,8 @@ func _on_turn(_turn: int, season_index: int, year: int) -> void:
 ## 인재 등용, 호포책, 현륭원 친림, 서장대 훈련, 도적떼 소탕 등 모든 정무 조언을 실시간 수집
 ## ===================================================================
 func _collect_affairs_advices() -> Array[Dictionary]:
+	if ModernizationManager.is_active():
+		return _collect_modern_advices()
 	var list: Array[Dictionary] = []
 	var yr: int = court.current_year if court != null else 1789
 	var s_idx: int = maxi(0, ["봄", "여름", "가을", "겨울"].find(time_manager.get_current_season())) if time_manager != null else 0
@@ -391,9 +433,13 @@ func _collect_affairs_advices() -> Array[Dictionary]:
 	# 1. 인재 등용 (조정 인사)
 	if court != null:
 		var unhired_cands: Array[Dictionary] = []
+		var has_declined := false
 		for cand: Dictionary in court.candidates:
 			var cid: String = str(cand.get("id", ""))
 			if not ScholarManager.is_scholar_hired(cid, sim.retainers if sim != null else {}):
+				if _dismissed_affairs.has("affair_scholar_" + cid): # [등용 안 함]으로 물린 인재는 다시 건의하지 않는다
+					has_declined = true
+					continue
 				unhired_cands.append(cand)
 		if not unhired_cands.is_empty():
 			var cand: Dictionary = unhired_cands[0]
@@ -413,7 +459,7 @@ func _collect_affairs_advices() -> Array[Dictionary]:
 				"cand": cid,
 				"prio": 10
 			})
-		elif (sim != null and sim.retainers.values().count(true) < 3):
+		elif not has_declined and (sim != null and sim.retainers.values().count(true) < 3):
 			list.append({
 				"key": "affair_court_hire",
 				"title": "인재 발탁 권고",
@@ -423,6 +469,60 @@ func _collect_affairs_advices() -> Array[Dictionary]:
 				"target": "court",
 				"prio": 5
 			})
+
+	# 1-1. 재정 조언: 지난 한 달 국고가 줄었으면 까닭(세수 부족/유지비 과다)과 버틸 수 있는 달 수를 아뢴다
+	# 국고가 이미 바닥나 이달 유지비를 다 못 냈으면(달마다 민심 -6·왕권 -4) 그것부터 아뢴다 — 이때는 국고가 0 근처에서
+	# 오르내려 석 달 합으로는 적자가 잘 드러나지 않는다
+	var unpaid: int = int(sim.last_maintenance_result.get("shortage_gold", 0)) if (sim != null and sim.last_maintenance_result is Dictionary) else 0
+	if sim != null and unpaid > 0:
+		var tax_sum_u: int = sim.tax_rate_land + sim.tax_rate_market + sim.tax_rate_military
+		list.append({
+			"key": "affair_finance_unpaid_%d" % int(float(sim.turn) / 3.0), # 석 달마다 다시 아뢴다
+			"title": "운영자금 체납",
+			"text": "전하, 국고가 바닥나 이달 공공시설 유지비 가운데 %d냥을 치르지 못했사옵니다! 체납이 이어지면 달마다 민심 -6, 왕권 -4가 깎이고 녹봉 밀린 신하가 떠나옵니다.\n%s\n3대 조세의 합을 6%% 이상으로 올리시거나, 삼남 교역에서 곳간의 곡식을 내다 파시옵소서." % [unpaid, ("3대 조세의 합이 %d%%로 너무 낮아 세수가 유지비를 감당하지 못하고 있사옵니다." % tax_sum_u) if tax_sum_u < 6 else "세수보다 공공시설 유지비와 녹봉·공사비가 더 많이 나가고 있사옵니다."],
+			"btn": "⚖️ 호조 조세",
+			"kind": "modal",
+			"target": "tax",
+			"prio": 12
+		})
+	elif sim != null and sim.get_recent_season_gold_delta() < 0:
+		var season_loss: int = -sim.get_recent_season_gold_delta()
+		var loss: int = int(ceil(float(season_loss) / 3.0)) # 한 달 평균
+		var months_left: int = int(floor(float(sim.gold) / float(loss))) if loss > 0 else 999
+		var tax_sum: int = sim.tax_rate_land + sim.tax_rate_market + sim.tax_rate_military
+		var why: String
+		if tax_sum < 6:
+			why = "3대 조세의 합이 %d%%로 너무 낮아 세수가 공공시설 유지비를 감당하지 못하고 있사옵니다." % tax_sum
+		else:
+			why = "세수보다 공공시설 유지비(특히 인구에 비례하는 화성행궁 운영비)와 녹봉·공사비가 더 많이 나가고 있사옵니다."
+		list.append({
+			"key": "affair_finance_deficit_%d" % int(float(sim.turn) / 6.0), # 반년마다 다시 아뢴다
+			"title": "국고 적자 경고",
+			"text": "전하, 지난 석 달 동안 국고가 달마다 평균 %d냥씩 줄었사옵니다. 이대로면 %s 뒤에 국고가 바닥나옵니다.\n%s\n3대 조세의 합을 6%% 이상으로 올리시거나, 삼남 교역에서 곳간의 곡식을 내다 파시거나, 녹봉이 비싼 신하를 정리하시옵소서.\n국고가 바닥나면 운영자금 체납으로 민심·왕권이 깎이고 녹봉 밀린 신하가 떠나옵니다." % [loss, ("약 %d달" % months_left) if months_left < 999 else "머지않아", why],
+			"btn": "⚖️ 호조 조세",
+			"kind": "modal",
+			"target": "tax",
+			"prio": 11 if months_left <= 12 else 8
+		})
+	# 1-2. 인구 상한: 도시가 감당할 수 있는 인구에 이르렀으면 무엇이 막고 있는지 아뢴다
+	if sim != null and sim.pop_manager != null and bool(sim.pop_manager.last_pop_cap.get("at_cap", false)):
+		var pc: Dictionary = sim.pop_manager.last_pop_cap
+		var tax_cap: int = int(pc.get("tax_cap", 0))
+		var prod_cap: int = int(pc.get("prod_cap", 0))
+		var cap_why: String
+		if tax_cap < prod_cap:
+			cap_why = "세율이 높아 백성이 %d명 넘게는 모여들지 않사옵니다. 세율을 낮추면 더 모이나 세수가 줄어 국고가 적자가 될 수 있사옵니다." % tax_cap
+		else:
+			cap_why = "집·저잣거리·공방·대유둔전이 %d명까지만 먹여 살릴 수 있사옵니다. 방·리, 저잣거리, 공방, 둔전을 더 지어야 인구가 늘어나옵니다." % prod_cap
+		list.append({
+			"key": "affair_pop_cap_%d" % yr,
+			"title": "인구 수용 한계",
+			"text": "전하, 화성의 인구가 도시가 감당할 수 있는 한계(%d명)에 이르렀사옵니다.\n%s" % [int(pc.get("cap", 0)), cap_why],
+			"btn": "⚖️ 호조 조세",
+			"kind": "modal",
+			"target": "tax",
+			"prio": 6
+		})
 
 	# 2. 호포책 (팔달산 호환 대책) — 호환이 실제 발생했을 때만 표시
 	if court != null:
@@ -509,7 +609,7 @@ func _collect_affairs_advices() -> Array[Dictionary]:
 	var p_active: bool = court != null and (court.crown_prince.get("invested", false) or court.crown_prince.get("education", 0) > 0)
 	if sim != null and sim.crown_prince_manager != null and sim.crown_prince_manager.has_method("is_education_active") and sim.crown_prince_manager.is_education_active():
 		p_active = true
-	if yr >= 1790 and not p_active:
+	if yr >= 1790 and not p_active and not CrownPrinceEducationManager.prince_affairs_closed(yr): # 1800년 엔딩(순조 즉위) 뒤에는 권하지 않음
 		list.append({
 			"key": "affair_prince",
 			"title": "시강원 세자서연",
@@ -629,6 +729,8 @@ func _show_affairs_tab(idx: int = 0) -> void:
 	_set_buttons(false, btn_txt != "", false, true, false)
 	if btn_txt != "" and _tool_btn != null:
 		_tool_btn.text = btn_txt
+	if _decline_btn != null:
+		_decline_btn.visible = str(cur.get("cand", "")) != ""
 	if _prev_advice_btn != null:
 		_prev_advice_btn.visible = (_affairs_list.size() > 1)
 	if _next_advice_btn != null:
@@ -648,6 +750,18 @@ func _show_quest_tab() -> void:
 		_show_step(quests.get_current_quest())
 	else:
 		_mode = "step"
+
+## [등용 안 함]: 이 인재를 건의 목록에서 영구히 뺀다(조정 인사 창에서 직접 등용하는 것은 그대로 가능)
+func _on_decline_scholar() -> void:
+	var cid: String = str(_advice_now.get("cand", ""))
+	if cid == "":
+		return
+	_dismissed_affairs["affair_scholar_" + cid] = true
+	_affairs_list = _collect_affairs_advices()
+	if _affairs_list.is_empty():
+		_show_affairs_tab(0)
+	else:
+		_show_affairs_tab(clampi(_affair_idx, 0, _affairs_list.size() - 1))
 
 func _on_prev_advice() -> void:
 	if _affairs_list.is_empty():
@@ -674,6 +788,15 @@ func _set_btn_style(btn: Button, col: Color) -> void:
 	btn.add_theme_stylebox_override("hover", sh)
 
 func _advise_for_turn(season_index: int, year: int) -> void:
+	# 근대화 시대(1820~)에는 1800년 본편의 시기별 조언 대신 근대화 업무를 안내한다
+	if ModernizationManager.is_active():
+		_push_advice("modern_intro",
+			"전하, 1820년 근대화의 시대가 열렸사옵니다! 이제 해야 할 일이 바뀌었사옵니다.
+① [정무 → 🔬 서학 진흥]에서 근대 과학 연구를 착수하시고, 서양 서적과 해외 유학으로 연구 속도를 높이시옵소서.
+② 서양 열강이 1~2년마다 화성을 침공하옵니다. 성곽 방호·장용영·순라청으로 국방력을 키우시옵소서.
+③ 첫 침공을 격퇴하면 [정무 → 🌐 외교]와 사대문에서 국제외교 회담을 열 수 있사옵니다.",
+			"🔬 서학 진흥 열기", "modal", "west_promo")
+		return
 	# 1) 지금 벌어진 정무 과제 — 가장 먼저
 	if court != null and court.tiger.get("active", false):
 		_push_advice("tiger_%d_%d" % [year, season_index],
@@ -686,7 +809,7 @@ func _advise_for_turn(season_index: int, year: int) -> void:
 	var p_active: bool = court != null and (court.crown_prince.get("invested", false) or court.crown_prince.get("education", 0) > 0)
 	if sim != null and sim.crown_prince_manager != null and sim.crown_prince_manager.has_method("is_education_active") and sim.crown_prince_manager.is_education_active():
 		p_active = true
-	if year >= 1790 and not p_active:
+	if year >= 1790 and not p_active and not CrownPrinceEducationManager.prince_affairs_closed(year): # 1800년 엔딩(순조 즉위) 뒤에는 권하지 않음
 		_push_advice("prince",
 			"1790년, 원자(훗날의 순조 임금)께서 태어나셨어요!\n[세자서연]에서 훌륭한 스승을 정해 세자로 책봉해 주세요.",
 			"👑 세자서연 열기", "modal", "crown_prince")
@@ -791,7 +914,7 @@ func _show_next_advice() -> void:
 		if _is_user_folded:
 			# 사용자가 접어두었으면 강제로 화면을 덮지 않고 재오픈 버튼에 알림 배지만 표시
 			if _reopen_btn != null:
-				_reopen_btn.text = "🧑‍⚖️ 김판관 (새 조언 💡)"
+				_reopen_btn.text = "🧑‍⚖️ %s (새 조언 💡)" % _gshort()
 			return
 		_unfold()
 		var btn: String = _advice_now.get("btn", "")
@@ -802,7 +925,7 @@ func _show_next_advice() -> void:
 			_next_btn.text = "알겠어요 ▶"
 		if _page_lbl != null:
 			var yr: int = court.current_year if court != null else 1789
-			_page_lbl.text = "김판관의 조언 (%d년)" % yr
+			_page_lbl.text = "%s의 조언 (%d년)" % [_gshort(), yr]
 		_say(_advice_now.get("text", ""))
 		return
 
@@ -810,6 +933,8 @@ func _do_advice_action() -> void:
 	var kind: String = _advice_now.get("kind", "")
 	var target: String = _advice_now.get("target", "")
 	if kind == "modal" and panels:
+		if _dim != null:
+			_dim.visible = false # 팝업이 어두운 막 아래에 갇히지 않게
 		panels.open_action_modal(target)
 	elif kind == "tool" and panels:
 		panels.select_tool(target)
@@ -820,6 +945,72 @@ func _do_advice_action() -> void:
 			hud._show_toast("추천 위치로 이동했습니다. 이곳에 건설하십시오!", "📍")
 		else:
 			_say("좋아요! 이제 지도에서 알맞은 땅을 골라 주세요.")
+
+## 근대화 시대 정무 조언: 서학 진흥·국방·외교
+func _collect_modern_advices() -> Array[Dictionary]:
+	var list: Array[Dictionary] = []
+	var mm: ModernizationManager = ModernizationManager.instance
+	if mm.current_field == "" and mm.western_progress() < 100:
+		list.append({"key": "modern_research", "title": "근대 과학 연구 착수",
+			"text": "지금 진행 중인 근대 과학 연구가 없사옵니다.
+[서학 진흥]에서 포술·화학·증기기관·의학·측량 가운데 하나를 골라 착수하시옵소서. 연구비는 매달 %d냥이옵니다." % ModernizationManager.RESEARCH_TURN_COST,
+			"btn": "🔬 서학 진흥", "kind": "modal", "target": "west_promo", "prio": 9})
+	elif mm.research_paused:
+		list.append({"key": "modern_research_paused", "title": "근대 과학 연구 중단",
+			"text": "국고가 모자라 근대 과학 연구가 멈췄사옵니다. 매달 %d냥이 필요하옵니다.
+조세를 조율하시거나 외교 회담으로 차관을 들여오시옵소서." % ModernizationManager.RESEARCH_TURN_COST,
+			"btn": "⚖️ 조세 조율", "kind": "modal", "target": "tax", "prio": 10})
+	if mm.speed_mult() < 3.0:
+		list.append({"key": "modern_speed", "title": "연구 속도 높이기",
+			"text": "서학 연구가 더디옵니다(현재 %.1f배). 서양 서적을 들여오시거나, 학문이 뛰어난 인재를 해외 유학 보내시옵소서.
+유학생은 %d개월 뒤 돌아와 능력만큼 연구를 앞당기옵니다." % [mm.speed_mult(), ModernizationManager.STUDY_TURNS],
+			"btn": "🔬 서학 진흥", "kind": "modal", "target": "west_promo", "prio": 6})
+	var mon: int = time_manager.current_month if time_manager != null else 1
+	var yr_now: int = time_manager.current_year if time_manager != null else 1820
+	if yr_now == ModernizationManager.JAPAN_INVASION_YEAR - 1:
+		list.append({"key": "modern_japan_warn", "title": "일본의 대규모 침공 경고",
+			"text": "전하, 일본이 군함과 대군을 모으고 있다는 첩보이옵니다! 내년(1875년) 정초에 평소의 두 배가 넘는 군세로 쳐들어올 것이옵니다.
+현재 아군 국방력은 %d(동맹 원군 %d 포함 시 %d)이옵니다. 성곽을 보수하고 신식 군대를 키우시옵소서." % [mm.defense_power(), mm.ally_reinforcement(), mm.defense_power() + mm.ally_reinforcement()],
+			"btn": "🛡️ 성곽 보수", "kind": "modal", "target": "wall_repair", "prio": 13})
+	elif yr_now == ModernizationManager.JAPAN_TREATY_YEAR - 1 and mm.japan_1875_done and not mm.treaty_1876_done:
+		list.append({"key": "modern_treaty_warn", "title": "일본의 조약 요구 예고",
+			"text": "내년(1876년) 정초에 일본 전권대신이 강화도에 와서 조약을 요구할 것이옵니다.
+운요호 사건, 영사재판권, 무관세, 해안 측량, 일본 화폐 유통, 양곡 유출, 수신사, 왜양일체론을 미리 공부해 두시옵소서. 한 번이라도 잘못 답하면 나라를 잃사옵니다.",
+			"btn": "", "kind": "", "target": "", "prio": 13})
+	elif mon == 12:
+		list.append({"key": "modern_war_%d" % yr_now, "title": "내년 열강 침공 대비",
+			"text": "새해 정초에 열강이 쳐들어올 확률은 %d%%이옵니다. (외교 신뢰도 %d/10 — 신뢰도가 높을수록 줄어드옵니다)
+현재 아군 국방력 %d, 동맹 원군 %d이옵니다." % [int(round(mm.invasion_chance() * 100.0)), mm.trust, mm.defense_power(), mm.ally_reinforcement()],
+			"btn": "🌐 외교", "kind": "modal", "target": "diplomacy", "prio": 10})
+	var um: UrbanEvolutionManager = UrbanEvolutionManager.instance
+	if um != null and um.heritage_condition < 70.0:
+		list.append({"key": "modern_heritage_%d" % int(um.heritage_condition / 10.0), "title": "화성 문화재 훼손",
+			"text": "성곽과 사대문이 많이 낡고 부서졌사옵니다! (문화재 보존도 %d%%)\n문화재 보존도는 1945년 결산의 30%%를 차지하옵니다. [문화재 보수]로 되살리시옵소서." % int(um.heritage_condition),
+			"btn": "🧱 문화재 보수", "kind": "modal", "target": "wall_repair", "prio": 9})
+	var pol: ModernPoliticsManager = ModernPoliticsManager.instance
+	if pol != null and not pol.decided and yr_now == ModernPoliticsManager.DECISION_YEAR - 1:
+		list.append({"key": "modern_1897_warn", "title": "정치체제 결단 예고",
+			"text": "내년(1897년)에 왕조를 이어 갈지, 현대 정치체제로 바꿀지 정하셔야 하옵니다.\n현대 정치체제를 고르시면 민심이 %d 이상이어야 대통령으로 통치를 이어 가실 수 있사옵니다. (현재 민심 %d)" % [ModernPoliticsManager.ELECTION_LOYALTY, sim.loyalty],
+			"btn": "", "kind": "", "target": "", "prio": 12})
+	if ModernPoliticsManager.is_presidential() and not pol.pending.is_empty():
+		list.append({"key": "modern_proposals_%d" % sim.turn, "title": "국정 건의 검토",
+			"text": "국회·행정 각부의 건의 %d건이 대통령의 결재를 기다리고 있사옵니다." % pol.pending.size(),
+			"btn": "📜 국정 건의", "kind": "modal", "target": "proposals", "prio": 8})
+	if ModernPoliticsManager.is_presidential() and yr_now == pol.next_election - 1:
+		list.append({"key": "modern_election_%d" % pol.next_election, "title": "대통령 선거 예고",
+			"text": "내년(%d년)이 대통령 선거이옵니다. 민심이 %d 이상이어야 연임하실 수 있사옵니다. (현재 민심 %d)" % [pol.next_election, ModernPoliticsManager.ELECTION_LOYALTY, sim.loyalty],
+			"btn": "", "kind": "", "target": "", "prio": 11})
+	if um != null and um.pollution_penalty > 0:
+		list.append({"key": "modern_pollution_%d" % sim.turn, "title": "공장 매연 민원",
+			"text": "공업지역 공장의 매연이 택지와 상가까지 퍼져 백성의 원성이 높사옵니다! (오염된 칸 %d개, 매달 민심 -%d)
+공장 가까이의 주거·상업 구역을 옮기시거나, 공장과 주거지 사이를 %d칸 넘게 띄우시옵소서." % [um.polluted_cells, um.pollution_penalty, UrbanEvolutionManager.POLLUTION_RADIUS],
+			"btn": "", "kind": "", "target": "", "prio": 9})
+	if mm.diplomacy_unlocked and mm.diplomacy_turns_left() == 0:
+		list.append({"key": "modern_diplomacy_%d" % sim.turn, "title": "국제외교 회담",
+			"text": "열강의 사절과 회담할 수 있사옵니다. 차관, 신식 무기, 기술 교류 가운데 하나를 얻을 수 있사옵니다.
+서학 진척도와 학문력이 높을수록 회담이 성사되기 쉽사옵니다.",
+			"btn": "🌐 외교", "kind": "modal", "target": "diplomacy", "prio": 7})
+	return list
 
 ## [완료 보고 김판관 전담 엔진]
 ## 학문 연구, 세자 교육, 국책 대역사 완공, 주요 건물 완성을 상단 배너나 팝업 없이 김판관이 전담 보고한다.
@@ -1048,7 +1239,8 @@ func _build_ui() -> void:
 	_portrait.court = court
 	left.add_child(_portrait)
 	var name_lbl := Label.new()
-	name_lbl.text = GUIDE_NAME
+	_name_lbl = name_lbl
+	name_lbl.text = _gname()
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.add_theme_color_override("font_color", Color("5a2d0c"))
 	name_lbl.add_theme_font_size_override("font_size", 14)
@@ -1121,6 +1313,11 @@ func _build_ui() -> void:
 	_where_btn = _make_btn("📍 어디에?", Color(0.10, 0.30, 0.45))
 	_where_btn.pressed.connect(_on_where)
 	btns.add_child(_where_btn)
+	_decline_btn = _make_btn("🙅 등용 안 함", Color(0.38, 0.33, 0.28))
+	_decline_btn.visible = false
+	_decline_btn.tooltip_text = "이 인재는 등용하지 않습니다. 앞으로 이 인물은 다시 천거하지 않습니다."
+	_decline_btn.pressed.connect(_on_decline_scholar)
+	btns.add_child(_decline_btn)
 	_fold_btn = _make_btn("접기", Color(0.45, 0.40, 0.34))
 	_fold_btn.pressed.connect(_fold)
 	btns.add_child(_fold_btn)
@@ -1129,7 +1326,7 @@ func _build_ui() -> void:
 	btns.add_child(_next_btn)
 
 	# 접었을 때 다시 부르는 작은 버튼
-	_reopen_btn = _make_btn("🧑‍⚖️ 길잡이 김판관", Color(0.20, 0.42, 0.22))
+	_reopen_btn = _make_btn("🧑‍⚖️ " + _gname(), Color(0.20, 0.42, 0.22))
 	_reopen_btn.anchor_top = 1.0
 	_reopen_btn.anchor_bottom = 1.0
 	_reopen_btn.offset_left = 14.0
@@ -1160,6 +1357,8 @@ func _make_btn(text: String, col: Color) -> Button:
 
 # ------------------------------------------------------------------ 말하기(타자기 효과)
 func _say(text: String) -> void:
+	if GuidePortrait.is_secretary():
+		text = secretary_speech(text)
 	if _text_lbl != null:
 		_text_lbl.text = text
 		_text_lbl.visible_characters = 0
@@ -1173,6 +1372,10 @@ func _typing_done() -> bool:
 	return _text_lbl.visible_characters < 0 or _text_lbl.visible_characters >= _text_lbl.get_total_character_count()
 
 func _process(delta: float) -> void:
+	# PORT-TRACE [어두운 화면 갇힘]: 긴급 경보(alert) 중에 천거·정무 조언이 창을 넘겨받으면 _mode만 바뀌고 어두운 막이 남아
+	# (layer 20) 그 아래 열린 팝업 버튼이 눌리지 않았다 — 막은 첫 안내·긴급 경보 동안에만 둔다.
+	if _dim != null and _dim.visible and _mode not in ["intro", "alert"]:
+		_dim.visible = false
 	if _advice_cooldown > 0.0:
 		_advice_cooldown -= delta
 		if _advice_cooldown <= 0.0 and _mode in ["step", "done"] and not _advice_queue.is_empty():
@@ -1441,6 +1644,7 @@ func _set_buttons(skip: bool, tool: bool, where: bool, fold: bool, next: bool) -
 	if _where_btn != null: _where_btn.visible = where
 	if _fold_btn != null: _fold_btn.visible = fold
 	if _next_btn != null: _next_btn.visible = next
+	if _decline_btn != null: _decline_btn.visible = false
 
 func _fold() -> void:
 	_is_user_folded = true
@@ -1452,9 +1656,9 @@ func _fold() -> void:
 		_reopen_btn.visible = true
 		_affairs_list = _collect_affairs_advices()
 		if not _affairs_list.is_empty():
-			_reopen_btn.text = "🧑‍⚖️ 김판관 (정무 조언 %d건 💡)" % _affairs_list.size()
+			_reopen_btn.text = ("🧑‍⚖️ %s (정무 조언 %%d건 💡)" % _gshort()) % _affairs_list.size()
 		else:
-			_reopen_btn.text = "🧑‍⚖️ 길잡이 김판관"
+			_reopen_btn.text = "🧑‍⚖️ " + _gname()
 
 func _unfold() -> void:
 	_is_user_folded = false

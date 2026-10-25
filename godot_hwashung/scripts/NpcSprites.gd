@@ -250,7 +250,43 @@ static func draw_agent(ci: CanvasItem, p: Vector2, kind: String, a: Dictionary, 
 	var variant := floori(float(absi(id)) / float(CROWD.size())) % 4
 	var frame := int(float(a.get("anim", 0.0))) % FRAMES
 	var alpha: float = float(a.get("fade_alpha", 1.0))
-	draw_kind(ci, p, kind, variant, winter, dir_of(a), frame, "", alpha)
+	draw_kind(ci, p, _modern_kind(kind, a), variant, winter, dir_of(a), frame, "", alpha)
+
+## 근대화 시대: 관공서·학교 개편에 맞는 근대 인물, 그리고 해마다 늘어나는 근대 복식 시민("m:<시트>").
+## 근대 시트 그림 파일이 없으면 원래 그림 그대로.
+const MODERN_POOLS := {
+	"m": ["npc_modern_gentleman", "npc_modern_worker", "npc_modern_cyclist", "npc_modern_vendor"],
+	"w": ["npc_modern_girl", "npc_modern_lady"],
+	"child_m": ["npc_modern_student"],
+	"child_f": ["npc_modern_schoolgirl"],
+}
+const FEMALE_KINDS := ["lady", "commoner_w", "maiden", "grandma"]
+static func _modern_kind(kind: String, a: Dictionary) -> String:
+	var um := UrbanEvolutionManager.instance
+	if um == null or not UrbanEvolutionManager.is_active():
+		return kind
+	# 1) 학교 개편 뒤 학생·교사
+	var by_type := um.modern_npc_for_type(String(a.get("type", "")))
+	if by_type != "" and _has_sheet(by_type):
+		return "m:" + by_type
+	# 2) 관공서 개편 뒤 그 건물 사람(순라군 → 경찰 등)
+	var sh := sheet_for(kind)
+	if not sh.is_empty() and not bool(sh[1]):
+		var mapped := um.modern_npc_sprite(String(sh[3]))
+		if mapped != String(sh[3]) and _has_sheet(mapped):
+			return "m:" + mapped
+	# 3) 해마다 늘어나는 근대 복식 시민
+	if not um.citizen_is_modern(str(a.get("id", 0))):
+		return kind
+	var pool_key := "m"
+	if kind in ["child_m", "child_f"]:
+		pool_key = kind
+	elif kind in FEMALE_KINDS or kind.contains("_w") or kind.contains("woman"):
+		pool_key = "w"
+	var avail: Array = (MODERN_POOLS[pool_key] as Array).filter(func(x: String) -> bool: return _has_sheet(x))
+	if avail.is_empty():
+		return kind
+	return "m:" + String(avail[absi(int(a.get("id", 0))) % avail.size()])
 
 ## PORT-TRACE [새 시트 교체 지점]: 옛 코드 인물 종류 → 새 48x48 시트. 색만 다른 인물(custom_kind "c:")은 색 대신
 ## 아래 묶음에서 키(색 조합)마다 다른 시트를 골라 구경꾼·아낙들이 같은 사람으로 줄지어 서지 않게 한다.
@@ -284,7 +320,9 @@ static func sheet_for(kind: String) -> Array:
 	else:
 		var sid := ""
 		var base_k := kind
-		if KIND_TO_GENERIC_48.has(kind):
+		if kind.begins_with("m:"): # 근대 복식 시트(_modern_kind)
+			sid = kind.substr(2) if _has_sheet(kind.substr(2)) else ""
+		elif KIND_TO_GENERIC_48.has(kind):
 			sid = _first_sheet(KIND_TO_GENERIC_48[kind])
 		elif kind.begins_with("c:"):
 			var c_dict: Dictionary = _custom.get(kind, {})
@@ -306,7 +344,7 @@ static func sheet_for(kind: String) -> Array:
 static var _has_cache := {}
 static func _has_sheet(sid: String) -> bool:
 	if not _has_cache.has(sid):
-		_has_cache[sid] = FileAccess.file_exists(ProjectSettings.globalize_path("res://assets/sprites/npcs/%s.png" % sid))
+		_has_cache[sid] = AssetPaths.asset_exists("res://assets/sprites/npcs/%s.png" % sid)
 	return bool(_has_cache[sid])
 
 ## 연결 값이 배열이면 [새 그림, 대체 그림…] 중 파일이 있는 첫 번째
@@ -323,12 +361,7 @@ static func _first_sheet(v: Variant) -> String:
 static func action_texture(action_id: String) -> Texture2D:
 	if _action_cache.has(action_id):
 		return _action_cache[action_id]
-	var tex: Texture2D = null
-	var path := ProjectSettings.globalize_path("res://assets/sprites/npcs/actions/%s.png" % action_id)
-	if FileAccess.file_exists(path):
-		var img := Image.load_from_file(path)
-		if img != null and not img.is_empty():
-			tex = ImageTexture.create_from_image(img)
+	var tex: Texture2D = AssetPaths.load_asset_texture("res://assets/sprites/npcs/actions/%s.png" % action_id)
 	_action_cache[action_id] = tex
 	return tex
 
@@ -356,6 +389,10 @@ static func action_frames(action_id: String) -> int:
 	return maxi(1, int(float(tex.get_width()) / (96.0 if action_id.ends_with("_pair") else 48.0)))
 
 const KIND_TO_GENERIC_48: Dictionary = {
+	# 천주교당 앞에서 무릎 꿇고 기도하는 교우(짐을 이지 않은 평복 차림)
+	"believer_w": "npc_peasant_woman",
+	"believer_old": "npc_grandma",
+	"believer_m": "npc_cheonmin",
 	"yangban": "npc_yangban_scholar",
 	"seonbi": "npc_yangban_scholar",
 	"yusaeng": "npc_yangban_scholar",

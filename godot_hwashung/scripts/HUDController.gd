@@ -29,6 +29,9 @@ var label_edge_marker: Label = null
 var _current_battle_world_pos: Vector2 = Vector2.ZERO
 var _current_battle_loc_name: String = ""
 var _is_battle_active: bool = false
+## 붉은 경보줄이 알리는 사건("fire"/"raid")과 상태 점검 주기 — 사건이 끝났는데 경보줄이 남아 있지 않게
+var _banner_kind: String = ""
+var _banner_check_t: float = 0.0
 
 # 상단 알림 및 기근 배너 스택 (절대 겹침 방지 VBoxContainer)
 var top_alert_stack: VBoxContainer = null
@@ -249,13 +252,60 @@ func _on_fire_extinguished(pos: Vector2i) -> void:
 			elev = float(citizen_manager.grid.grid[pos.y][pos.x].get("elevation", 0.0))
 		w_pos = city_layer.cell_center(float(pos.x) + 0.5, float(pos.y) + 0.5, elev)
 
+	if _burning_fire_count() > 0:
+		return # 아직 다른 곳에 불길이 남아 있다 — 경보 유지
+	_end_fire_alert("🚒 [화마 진압 완수] 멸화군과 백성들이 힘을 합쳐 화마를 완전히 진압하였습니다!", w_pos)
+
+## 아직 꺼지지 않은 불 개수(진화 판정은 났지만 목록에서 빠지기 전인 불은 뺀다)
+func _burning_fire_count() -> int:
+	if citizen_manager == null:
+		return 0
+	var n := 0
+	for f: Dictionary in citizen_manager.get_active_fires():
+		if not bool(f.get("extinguished", false)):
+			n += 1
+	return n
+
+## 화재 종료: 경보줄을 내리고, 대기 중인 화재 경고를 지우고, 해결 알림을 10초 띄운다
+func _end_fire_alert(msg: String, w_pos: Vector2 = Vector2.ZERO) -> void:
 	hide_fire_alert_banner()
-	push_incident_alert("🚒 [화마 진압 완수] 멸화군과 백성들이 힘을 합쳐 화마를 완전히 진압하였습니다!", w_pos)
+	if _banner_kind == "fire":
+		_banner_kind = ""
+	if top_alert_banner != null:
+		top_alert_banner.resolve("fire", msg, w_pos)
+	else:
+		_show_toast(msg, "🚒")
+
+## 1초마다: 경보줄이 알리는 사건이 이미 끝났으면(불이 다 꺼짐·교전 종료) 경보줄을 내리고 종료 알림을 10초 띄운다.
+## (불이 다 타 버려 꺼진 경우처럼 종료 신호 없이 끝나는 사건도 있어서 상태로 직접 확인한다)
+func _check_banner_still_valid(delta: float) -> void:
+	_banner_check_t -= delta
+	if _banner_check_t > 0.0:
+		return
+	_banner_check_t = 1.0
+	if banner_raid_alert == null or not banner_raid_alert.visible:
+		return
+	match _banner_kind:
+		"fire":
+			if _burning_fire_count() == 0:
+				_end_fire_alert("🚒 [화재 종료] 불길이 모두 잡혀 더 이상 번지는 불이 없습니다.")
+		"raid":
+			var siege_on := false
+			var m: Node = get_parent()
+			if m != null and m.get("siege") != null:
+				siege_on = String(m.get("siege").state) != ""
+			var bandit_on := citizen_manager != null and citizen_manager.is_bandit_battle_active()
+			if not siege_on and not bandit_on:
+				hide_raid_alert_banner()
+				if top_alert_banner != null:
+					top_alert_banner.resolve("raid", "🕊️ [교전 종료] 성 안팎의 교전이 끝났습니다.")
 
 ## 화재 긴급 경보 배너 표시
 func show_fire_alert_banner(world_pos: Vector2, location_desc: String) -> void:
 	_current_battle_loc_name = location_desc
 	_current_battle_world_pos = world_pos
+	if not _is_battle_active:
+		_banner_kind = "fire"
 	if label_raid_alert:
 		label_raid_alert.text = "🚨 [화마 발생] %s에서 화재가 발생하였습니다! 멸화군이 진화 중입니다!" % location_desc
 	if banner_raid_alert:
@@ -272,6 +322,7 @@ func hide_fire_alert_banner() -> void:
 ## 긴급 경보 배너 표시 및 좌표 등록
 func show_raid_alert_banner(world_pos: Vector2, location_name: String) -> void:
 	_is_battle_active = true
+	_banner_kind = "raid"
 	_current_battle_loc_name = location_name
 	_current_battle_world_pos = world_pos
 	if label_raid_alert:
@@ -286,6 +337,10 @@ func show_raid_alert_banner(world_pos: Vector2, location_name: String) -> void:
 ## 긴급 경보 배너 숨김
 func hide_raid_alert_banner() -> void:
 	_is_battle_active = false
+	if _banner_kind == "raid":
+		_banner_kind = ""
+	if top_alert_banner != null:
+		top_alert_banner.resolve("raid") # 대기 중인 교전 경고는 지운다(결과 소식은 부른 쪽이 따로 알림)
 	if banner_raid_alert:
 		banner_raid_alert.visible = false
 	if edge_battle_marker:
@@ -518,7 +573,7 @@ func _build_top_bar() -> void:
 
 	var hbox := HBoxContainer.new()
 	hbox.alignment = BoxContainer.ALIGNMENT_BEGIN
-	hbox.add_theme_constant_override("separation", 8)
+	hbox.add_theme_constant_override("separation", 5)
 	top_bar.add_child(hbox)
 
 	# 1. 연호/계절 뱃지 (단청 붉은색 캡슐)
@@ -605,7 +660,7 @@ func _build_top_bar() -> void:
 
 	# 3. 중앙 상태바 (국고/군량/인구/민심/왕권/치수/성곽)
 	var res_hb := HBoxContainer.new()
-	res_hb.add_theme_constant_override("separation", 8)
+	res_hb.add_theme_constant_override("separation", 6)
 	res_hb.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hbox.add_child(res_hb)
 
@@ -690,14 +745,13 @@ func _build_top_bar() -> void:
 	spacer2.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hbox.add_child(spacer2)
 
-	# 4. 우측: 게임 시스템 설정 (⚙️ 게임 설정, 🎬 인트로, 🏠 타이틀 - 붉은색 지정 영역: 2pt 확대)
+	# 4. 우측: 게임 시스템 설정 (⚙️ 설정, 🏠 처음 - 1280 폭에 맞도록 짧은 이름 유지)
 	var settings_hb := HBoxContainer.new()
 	settings_hb.add_theme_constant_override("separation", 4)
 	hbox.add_child(settings_hb)
 
-	_create_quick_btn(settings_hb, "⚙️ 환경 설정", Color(0.25, 0.16, 0.11), Color(0.85, 0.65, 0.35), "game_settings")
-	_create_quick_btn(settings_hb, "🎬 첫 영상", Color(0.20, 0.16, 0.28), Color(0.65, 0.55, 0.85), "intro_video")
-	_create_quick_btn(settings_hb, "🏠 첫 화면", Color(0.18, 0.12, 0.08), Color(0.85, 0.65, 0.35), "title_screen")
+	_create_quick_btn(settings_hb, "⚙️ 설정", Color(0.25, 0.16, 0.11), Color(0.85, 0.65, 0.35), "game_settings")
+	_create_quick_btn(settings_hb, "🏠 처음", Color(0.18, 0.12, 0.08), Color(0.85, 0.65, 0.35), "title_screen")
 
 	# 구분자
 	var sep := VSeparator.new()
@@ -956,7 +1010,6 @@ func set_selected_tool(tool_id: String) -> void:
 
 # ------------------------------------------------------------ 데이터 업데이트 바인딩
 func _on_time_changed(year: int, season: String, _month: int, _day: int) -> void:
-	var reign = year - 1776 + 1
 	var turn_num = simulation_core.turn if simulation_core else 1
 	var s_icon = "🌸"
 	if season == "여름": s_icon = "☀️"
@@ -964,7 +1017,7 @@ func _on_time_changed(year: int, season: String, _month: int, _day: int) -> void
 	elif season == "겨울": s_icon = "❄️"
 
 	if label_season:
-		label_season.text = "%s 정조 %d년(%d) %s [%d개월째]" % [s_icon, reign, year, season, turn_num]
+		label_season.text = "%s %s %s [%d개월째]" % [s_icon, TimeManager.era_label(year), season, turn_num] # 1800년 엔딩 뒤는 순조 이후 연호
 
 ## PORT-TRACE [자원 실시간 동기화]: 사용자 제보 — "헤더의 금화/식량이 실제 보유량과 다르고, 건설 즉시
 ## 차감이 안 보인다". 비용을 빼는 곳(터 착공·조정 명령·교역·세자서연 등)이 여러 곳이라 일부는
@@ -973,6 +1026,7 @@ func _on_time_changed(year: int, season: String, _month: int, _day: int) -> void
 var _last_res_sig := ""
 
 func _process(_delta: float) -> void:
+	_check_banner_still_valid(_delta)
 	# 교전 위치 추적 및 화면 외곽 위험 지시 마커 갱신
 	if _is_battle_active and citizen_manager != null and citizen_manager.is_bandit_battle_active():
 		_current_battle_world_pos = citizen_manager.get_current_battle_world_pos()
@@ -1035,7 +1089,8 @@ func _on_state_updated(gold: int, rice: int, pop: int, loyalty: int, flood_defen
 	if label_flood: label_flood.text = "%d%%" % flood_defense
 	var def_power: int = CityStats.get_fortress_defense_power()
 	var atk_power: int = CityStats.get_military_attack_power()
-	if label_fortress: label_fortress.text = "%d%% (방호 %d)" % [simulation_core.fortress_progress, def_power]
+	# 방호력은 툴팁에 표시 — 상단바가 1280 폭을 넘지 않도록 라벨은 완공도만
+	if label_fortress: label_fortress.text = "%d%%" % simulation_core.fortress_progress
 	if panel_fortress:
 		var base_tip: String = "성곽 완공도 %d%%" % simulation_core.fortress_progress
 		if city_layer and city_layer.grid and city_layer.grid.wall_loop_validator:
@@ -1243,7 +1298,7 @@ func _check_and_flash_stat(stat_key: String, label: Label, new_val: int) -> void
 func _create_speed_btn(parent: Node, txt: String, mode: int) -> Button:
 	var b := Button.new()
 	b.text = txt
-	b.custom_minimum_size = Vector2(34, 28)
+	b.custom_minimum_size = Vector2(30, 28)
 	b.tooltip_text = ["일시정지 (0배속)", "보통 (1배속)", "빠르게 (2배속)", "매우 빠르게 (3배속)"][clampi(mode, 0, 3)]
 	b.add_theme_font_size_override("font_size", 12)
 	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND

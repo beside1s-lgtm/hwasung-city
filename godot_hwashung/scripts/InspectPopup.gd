@@ -170,6 +170,9 @@ func open_inspect(title_text: String, desc_text: String, tex: Texture2D) -> void
 		_portrait_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 
 	_update_action_buttons(_title_label.text)
+	# 근대화 시대에 개편·조성한 건물은 버튼은 옛 이름으로 고르고, 제목만 새 이름으로 보인다
+	if UrbanEvolutionManager.instance:
+		_title_label.text = UrbanEvolutionManager.instance.modern_title(_title_label.text)
 	visible = true
 
 func _clear_action_buttons() -> void:
@@ -208,6 +211,74 @@ func _add_action_button(label_text: String, on_click: Callable, bg_color: Color 
 func _update_action_buttons(s_title: String) -> void:
 	_clear_action_buttons()
 
+	# 0-2. 관아·순라청·멸화군: 근대 관공서 개편(버튼만 더하고 기존 버튼은 아래에서 그대로 붙는다)
+	var civic_id := UrbanEvolutionManager.civic_id_for_title(s_title)
+	if UrbanEvolutionManager.is_active() and civic_id != "":
+		var cu: UrbanEvolutionManager = UrbanEvolutionManager.instance
+		var info: Dictionary = UrbanEvolutionManager.CIVIC_UPGRADES[civic_id]
+		if ModernPoliticsManager.is_presidential():
+			_add_action_button("📜 대통령제: 개편은 국정 건의로만 승인할 수 있습니다", func(): if panels: panels.open_action_modal("proposals"), Color("1d4ed8"))
+		elif not cu.upgrades_unlocked():
+			_add_action_button("🔒 석조 전환 완료 후 개편 가능 (진행 %d%%)" % int(UrbanEvolutionManager.instance.stone_ratio * 100.0), func(): pass, Color("44403c"))
+		elif cu.is_civic_upgraded(civic_id):
+			_add_action_button("✓ %s 개편 완료" % info["name"], func(): pass, Color("2e5a2e"))
+		else:
+			_add_action_button("🏛️ %s 개편 (금 %d냥, %s)" % [info["name"], int(info["cost"]), info["effect"]], func():
+				var ok := cu.build_civic_upgrade(civic_id)
+				if panels and panels.hud:
+					panels.hud._show_toast(("%s이(가) %s(으)로 개편되었습니다!" % [info["old"], info["name"]]) if ok else "국고가 부족해 개편할 수 없습니다. (%d냥 필요)" % int(info["cost"]), "🏛️" if ok else "⚠")
+			, Color("334155"))
+
+	# 0-3. 난전 마당·어린이 마당·여인 놀이마당: 근대 공원 개편
+	var plaza_kind := UrbanEvolutionManager.plaza_kind_for_title(s_title)
+	if UrbanEvolutionManager.is_active() and plaza_kind != "":
+		var pu: UrbanEvolutionManager = UrbanEvolutionManager.instance
+		var pinfo: Dictionary = UrbanEvolutionManager.PLAZA_UPGRADES[plaza_kind]
+		if ModernPoliticsManager.is_presidential():
+			_add_action_button("📜 대통령제: 개편은 국정 건의로만 승인할 수 있습니다", func(): if panels: panels.open_action_modal("proposals"), Color("1d4ed8"))
+		elif not pu.upgrades_unlocked():
+			_add_action_button("🔒 석조 전환 완료 후 개편 가능 (진행 %d%%)" % int(pu.stone_ratio * 100.0), func(): pass, Color("44403c"))
+		elif pu.is_plaza_upgraded(plaza_kind):
+			_add_action_button("✓ %s 조성 완료" % pinfo["name"], func(): pass, Color("2e5a2e"))
+		else:
+			_add_action_button("🌳 %s(으)로 개편 (금 %d냥, 민심 +%d)" % [pinfo["name"], int(pinfo["cost"]), int(pinfo["loyalty"])], func():
+				var ok := pu.build_plaza_upgrade(plaza_kind)
+				if panels and panels.hud:
+					panels.hud._show_toast(("도시의 %s이(가) 모두 %s(으)로 바뀌었습니다!" % [pinfo["old"], pinfo["name"]]) if ok else "국고가 부족해 개편할 수 없습니다. (%d냥 필요)" % int(pinfo["cost"]), "🌳" if ok else "⚠")
+			, Color("15803d"))
+		return
+
+	# 0-1. 축만제·만석거: 근대화 시대 호수공원 조성
+	var lake_id := UrbanEvolutionManager.lake_park_id_for_title(s_title)
+	if UrbanEvolutionManager.is_active() and lake_id != "":
+		var um: UrbanEvolutionManager = UrbanEvolutionManager.instance
+		var park_name: String = UrbanEvolutionManager.LAKE_PARKS[lake_id]["name"]
+		if ModernPoliticsManager.is_presidential():
+			_add_action_button("📜 대통령제: 개편은 국정 건의로만 승인할 수 있습니다", func(): if panels: panels.open_action_modal("proposals"), Color("1d4ed8"))
+		elif not um.upgrades_unlocked():
+			_add_action_button("🔒 석조 전환 완료 후 개편 가능 (진행 %d%%)" % int(UrbanEvolutionManager.instance.stone_ratio * 100.0), func(): pass, Color("44403c"))
+		elif um.is_lake_park(lake_id):
+			_add_action_button("✓ %s 조성 완료" % park_name, func(): pass, Color("2e5a2e"))
+		else:
+			var cost := UrbanEvolutionManager.LAKE_PARK_COST
+			_add_action_button("🌳 %s 조성 (금 %d냥, 민심 +%d)" % [park_name, cost, UrbanEvolutionManager.LAKE_PARK_LOYALTY], func():
+				var ok := um.build_lake_park(lake_id)
+				if panels and panels.hud:
+					panels.hud._show_toast(("%s이(가) 조성되었습니다! 시민들의 쉼터가 생겼습니다." % park_name) if ok else "국고가 부족해 호수공원을 조성할 수 없습니다. (%d냥 필요)" % cost, "🌳" if ok else "⚠")
+			, Color("15803d"))
+		return
+
+	# 0. 사대문: 근대화 시대 국제외교 회담
+	if ModernizationManager.is_active() and ModernizationManager.is_great_gate(s_title):
+		var open_dip := func():
+			if panels:
+				panels.open_action_modal("diplomacy")
+		if ModernizationManager.instance.diplomacy_unlocked:
+			_add_action_button("🌐 국제외교 회담 개최", open_dip, Color("1d4ed8"))
+		else:
+			_add_action_button("🔒 국제외교 (열강 침공 격퇴 후 해금)", open_dip, Color("44403c"))
+		return
+
 	# 1. 서장대: 서장대 야조훈련
 	if s_title.contains("서장대"):
 		var drill_cost: Dictionary = DifficultyManager.get_military_drill_cost()
@@ -240,6 +311,22 @@ func _update_action_buttons(s_title: String) -> void:
 
 	# 2. 연무대: 장용영 무예 사열 (군사훈련)
 	if s_title.contains("연무대") or s_title.contains("동장대"):
+		# 근대화 시대: 신식 군사기지 개편
+		if UrbanEvolutionManager.is_active():
+			var um: UrbanEvolutionManager = UrbanEvolutionManager.instance
+			if ModernPoliticsManager.is_presidential():
+				_add_action_button("📜 대통령제: 개편은 국정 건의로만 승인할 수 있습니다", func(): if panels: panels.open_action_modal("proposals"), Color("1d4ed8"))
+			elif not um.upgrades_unlocked():
+				_add_action_button("🔒 석조 전환 완료 후 개편 가능 (진행 %d%%)" % int(UrbanEvolutionManager.instance.stone_ratio * 100.0), func(): pass, Color("44403c"))
+			elif um.military_base:
+				_add_action_button("✓ %s (국방 +%d)" % [UrbanEvolutionManager.MILITARY_BASE_NAME, UrbanEvolutionManager.MILITARY_BASE_DEFENSE], func(): pass, Color("2e5a2e"))
+			else:
+				var mb_cost := UrbanEvolutionManager.MILITARY_BASE_COST
+				_add_action_button("🪖 신식 군사기지 개편 (금 %d냥, 국방 +%d)" % [mb_cost, UrbanEvolutionManager.MILITARY_BASE_DEFENSE], func():
+					var ok := um.build_military_base()
+					if panels and panels.hud:
+						panels.hud._show_toast(("연무대가 %s로 개편되었습니다! 신식 군대가 주둔합니다." % UrbanEvolutionManager.MILITARY_BASE_NAME) if ok else "국고가 부족해 군사기지를 개편할 수 없습니다. (%d냥 필요)" % mb_cost, "🪖" if ok else "⚠")
+				, Color("3f3f46"))
 		var drill_cost: Dictionary = DifficultyManager.get_yeonmudae_drill_cost()
 		var g_cost: int = int(drill_cost.get("gold", 2000))
 		var r_cost: int = int(drill_cost.get("rice", 2000))
@@ -300,8 +387,8 @@ func _update_action_buttons(s_title: String) -> void:
 		)
 		return
 
-	# 4. 화성행궁: 시강원 세자서연 (경연)
-	if s_title.contains("행궁") or s_title.contains("봉수당") or s_title.contains("신풍루"):
+	# 4. 화성행궁: 시강원 세자서연 (경연) — 1800년 엔딩(순조 즉위) 뒤·현대 정치체제 전환 뒤(대통령궁)에는 없음
+	if (s_title.contains("행궁") or s_title.contains("봉수당") or s_title.contains("신풍루")) and not CrownPrinceEducationManager.prince_affairs_closed(panels.sim.current_year if panels and panels.sim else 1789):
 		var cb_prince := func():
 			if panels:
 				panels.open_crown_prince_popup()

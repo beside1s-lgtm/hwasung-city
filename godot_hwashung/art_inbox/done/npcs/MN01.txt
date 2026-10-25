@@ -1,0 +1,2 @@
+npc_modern_gentleman
+npc_modern_worker

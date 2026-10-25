@@ -55,6 +55,7 @@ var undo_stack: Array[Dictionary] = []
 
 # 정점 컬러 캐시 (인접 4타일 지형 블렌딩 그라데이션)
 var _vertex_colors: Array = []
+var _vertex_grass: Array = []  # 꼭짓점마다 풀밭 그림 진하기 0~1 (경계에서 서서히·들쭉날쭉 옅어지게)
 var _vertex_colors_dirty: bool = true
 
 # 타일 렌더링 깊이 정렬 캐시 (10,000개 딕셔너리 동적 할당 및 GC 스파이크 방지)
@@ -361,12 +362,14 @@ func cancel_build_or_select() -> void:
 		if audio: audio.play("error")
 	queue_redraw()
 
-func _show_inspect(c: Vector2i) -> void:
+## building_only: 행궁 정무 창의 '행궁 역사 살피기'처럼 건물 자체를 살필 때 사용
+## (인물·놀이판·도적 판정과 행궁 정무 창 재호출을 건너뛰고 건물 살피기 창을 바로 연다)
+func _show_inspect(c: Vector2i, building_only: bool = false) -> void:
 	if not grid.in_bounds(c.x, c.y):
 		return
 
 	# 1. 네임드 NPC 클릭 판정 우선 검사 (정조, 정약용, 김홍도 등)
-	if citizens:
+	if citizens and not building_only:
 		var named_npc: Dictionary = citizens.get_named_npc_near(Vector2(float(c.x) + 0.5, float(c.y) + 0.5), 1.2)
 		if not named_npc.is_empty():
 			emit_signal("named_npc_inspected", named_npc)
@@ -383,7 +386,7 @@ func _show_inspect(c: Vector2i) -> void:
 			return
 
 	# 2. 일반 보행 시민 / 야생 동물 클릭 판정 (상인, 순라군, 농민, 호랑이, 사슴 등)
-	if citizens:
+	if citizens and not building_only:
 		var agent_near: Dictionary = citizens.get_agent_near(Vector2(float(c.x) + 0.5, float(c.y) + 0.5), 1.0)
 		if not agent_near.is_empty():
 			var a_type: String = agent_near.get("type", "시민")
@@ -490,7 +493,7 @@ func _show_inspect(c: Vector2i) -> void:
 					folklore_act = "ACTIVITY_YARD_GAMES"
 					break
 
-	if folklore_act != "":
+	if folklore_act != "" and not building_only:
 		GameProgressManager.on_inspect_activity(folklore_act) # 역사 사전 퍼즐 조각 해금
 		emit_signal("tile_inspected", "[세시풍속] %s" % folklore_act)
 		if inspect_popup:
@@ -505,7 +508,7 @@ func _show_inspect(c: Vector2i) -> void:
 		return
 
 	# 3. 도적 소굴 클릭 판정 (동적 소굴 SSOT 검사)
-	if citizens and citizens.sim:
+	if citizens and citizens.sim and not building_only:
 		var b_mgr: BanditManager = citizens.bandit_mgr
 		if b_mgr != null and not b_mgr.camps.is_empty():
 			var clicked_camp: Dictionary = {}
@@ -534,7 +537,7 @@ func _show_inspect(c: Vector2i) -> void:
 
 	# 화성행궁 본궁 영역 클릭 판정 -> 전각 선택 UI (HaenggungSubBuildingPopup) 오픈
 	var is_haenggung_tile: bool = (b == "haenggung" or b == "haenggung_site" or str(t.get("facility_id", "")).begins_with("haenggung"))
-	if is_haenggung_tile and haenggung_sub_building_popup != null and not bool(t.get("under_construction", false)):
+	if is_haenggung_tile and not building_only and haenggung_sub_building_popup != null and not bool(t.get("under_construction", false)):
 		haenggung_sub_building_popup.open_haenggung_popup(t)
 		emit_signal("tile_inspected", "화성행궁 어전 정무: 전각을 선택하여 정무를 윤허하십시오.")
 		if audio: audio.play("select")
@@ -1034,6 +1037,7 @@ func _draw() -> void:
 	if band_master != null:
 		# 띠 노드: 마스터의 정점 색과 띠 목록을 빌려 자기 띠의 타일만 그린다
 		_vertex_colors = band_master._vertex_colors
+		_vertex_grass = band_master._vertex_grass
 		if band_index >= 0 and band_index < band_master._band_tiles.size():
 			var sz: int = grid.size
 			for pt: Vector2i in band_master._band_tiles[band_index]:
@@ -1209,48 +1213,192 @@ func _update_vertex_colors() -> void:
 	_vertex_colors.clear()
 	_vertex_colors.resize(sz + 1)
 
-	var tile_colors: Array = []
-	tile_colors.resize(sz)
+	_tile_cols.resize(sz * sz)
+	_tile_grass.resize(sz * sz)
 	for y: int in range(sz):
-		var row: Array = []
-		row.resize(sz)
 		for x: int in range(sz):
-			row[x] = _get_tile_base_ground_color(x, y)
-		tile_colors[y] = row
+			_tile_cols[y * sz + x] = _get_tile_base_ground_color(x, y)
+			_tile_grass[y * sz + x] = 1 if _is_grass_tile(x, y) else 0
 
 	for vy: int in range(sz + 1):
 		var vrow: Array = []
 		vrow.resize(sz + 1)
 		for vx: int in range(sz + 1):
-			var r_sum: float = 0.0
-			var g_sum: float = 0.0
-			var b_sum: float = 0.0
-			var count: int = 0
-
-			for dy: int in [-1, 0]:
-				var ty: int = vy + dy
-				if ty < 0 or ty >= sz:
-					continue
-				for dx: int in [-1, 0]:
-					var tx: int = vx + dx
-					if tx < 0 or tx >= sz:
-						continue
-					var c: Color = tile_colors[ty][tx]
-					r_sum += c.r
-					g_sum += c.g
-					b_sum += c.b
-					count += 1
-
-			if count > 0:
-				vrow[vx] = Color(r_sum / float(count), g_sum / float(count), b_sum / float(count), 1.0)
-			else:
-				vrow[vx] = Color("5ea646")
+			vrow[vx] = _vertex_color_at(vx, vy)
 		_vertex_colors[vy] = vrow
 
+	_vertex_grass.resize(sz + 1)
+	for vy: int in range(sz + 1):
+		var grow := PackedFloat32Array()
+		grow.resize(sz + 1)
+		for vx: int in range(sz + 1):
+			grow[vx] = _vertex_grass_at(vx, vy)
+		_vertex_grass[vy] = grow
 	_vertex_colors_dirty = false
+
+## 칸마다 바닥 기본색·풀밭 여부(꼭짓점 계산용 표) — 바뀐 칸만 고쳐 쓴다
+var _tile_cols := PackedColorArray()
+var _tile_grass := PackedByteArray()
+
+## PORT-TRACE [렉: 건설 멈칫]: 건설·철거 한 번에 지도 전체 꼭짓점(4천여 개)을 다시 셈하던 것을, 바뀐 칸 둘레만 다시 센다.
+## 꼭짓점 색은 닿은 네 칸의 바닥색과 이웃 꼭짓점 높이(빛)로 정해지므로 바뀐 칸에서 한 칸 더 넓게 고친다.
+func update_vertex_colors_around(tiles: Array) -> void:
+	var sz: int = grid.size
+	if _vertex_colors.size() != sz + 1 or _vertex_grass.size() != sz + 1 or _tile_cols.size() != sz * sz:
+		_update_vertex_colors()
+		return
+	var verts := {}
+	for pt: Vector2i in tiles:
+		_tile_cols[pt.y * sz + pt.x] = _get_tile_base_ground_color(pt.x, pt.y)
+		_tile_grass[pt.y * sz + pt.x] = 1 if _is_grass_tile(pt.x, pt.y) else 0
+		for vy: int in range(maxi(0, pt.y - 1), mini(sz, pt.y + 2) + 1):
+			for vx: int in range(maxi(0, pt.x - 1), mini(sz, pt.x + 2) + 1):
+				verts[Vector2i(vx, vy)] = true
+	for v: Vector2i in verts:
+		(_vertex_colors[v.y] as Array)[v.x] = _vertex_color_at(v.x, v.y)
+		var grow: PackedFloat32Array = _vertex_grass[v.y]
+		grow[v.x] = _vertex_grass_at(v.x, v.y)
+		_vertex_grass[v.y] = grow # PackedFloat32Array는 값 복사라 다시 넣는다
+	_vertex_colors_dirty = false
+
+## 꼭짓점 (vx, vy)의 색: 닿은 칸들 바닥색 평균 × 경사 빛
+func _vertex_color_at(vx: int, vy: int) -> Color:
+	var sz: int = grid.size
+	var r_sum: float = 0.0
+	var g_sum: float = 0.0
+	var b_sum: float = 0.0
+	var count: int = 0
+	for ty: int in [vy - 1, vy]:
+		if ty < 0 or ty >= sz:
+			continue
+		for tx: int in [vx - 1, vx]:
+			if tx < 0 or tx >= sz:
+				continue
+			var c: Color = _tile_cols[ty * sz + tx]
+			r_sum += c.r
+			g_sum += c.g
+			b_sum += c.b
+			count += 1
+
+	var base_c: Color
+	if count > 0:
+		base_c = Color(r_sum / float(count), g_sum / float(count), b_sum / float(count), 1.0)
+	else:
+		base_c = Color("5ea646")
+
+	# [정점 단위 스무스 노멀 라이팅]: 타일 경계 불연속 각진 폴리곤 제거 및 완만한 지형 굴곡 연출
+	var light_factor: float = 1.0
+	if grid.vertex_heights.size() > sz:
+		var vx_l: int = maxi(0, vx - 1)
+		var vx_r: int = mini(sz, vx + 1)
+		var vy_u: int = maxi(0, vy - 1)
+		var vy_d: int = mini(sz, vy + 1)
+		var hl: float = float(grid.vertex_heights[vy][vx_l])
+		var hr: float = float(grid.vertex_heights[vy][vx_r])
+		var hu: float = float(grid.vertex_heights[vy_u][vx])
+		var hd: float = float(grid.vertex_heights[vy_d][vx])
+		var dx_step: float = float(maxi(1, vx_r - vx_l))
+		var dy_step: float = float(maxi(1, vy_d - vy_u))
+		var dh_x: float = (hr - hl) / dx_step
+		var dh_y: float = (hd - hu) / dy_step
+		var v_slope: float = (dh_x - dh_y) * 0.707
+		light_factor = clampf(1.0 + v_slope * 0.045, 0.78, 1.22)
+
+		# 고도에 따른 은은한 등고선 톤 스무딩
+		var cur_vh: float = float(grid.vertex_heights[vy][vx])
+		if cur_vh > 2.0:
+			var m_ratio: float = clampf((cur_vh - 2.0) / 3.0, 0.0, 0.35)
+			var m_shade: Color = Color("385429") if current_season != "겨울" else Color("cbd5e1")
+			base_c = base_c.lerp(m_shade, m_ratio)
+
+	var final_c: Color = base_c * light_factor
+	final_c.a = 1.0
+	return final_c
+
+## 꼭짓점 (vx, vy)의 풀밭 그림 진하기: 닿은 네 칸 가운데 풀밭 비율, 경계 꼭짓점만 무작위로 흔들어 칸 모양 계단을 감춘다
+func _vertex_grass_at(vx: int, vy: int) -> float:
+	var sz: int = grid.size
+	var n: int = 0
+	for ty: int in [vy - 1, vy]:
+		if ty < 0 or ty >= sz:
+			continue
+		for tx: int in [vx - 1, vx]:
+			if tx >= 0 and tx < sz:
+				n += _tile_grass[ty * sz + tx]
+	var w: float = float(n) * 0.25
+	if w > 0.0 and w < 1.0:
+		var h: int = (vx * 73856093) ^ (vy * 19349663)
+		w = clampf((w - 0.5) * 1.4 + 0.5 + (float(h & 255) / 255.0 - 0.5) * 0.7, 0.0, 1.0)
+	return w
+
+## 풀밭 그림(terrain/grass_<계절>.png): 파일이 있을 때만 읽고, 없으면 null(자동 생성하지 않음)
+var _grass_tex_cache: Dictionary = {}
+
+## 칸마다 그림을 좌우·상하로 뒤집어 같은 무늬가 바둑판처럼 반복되지 않게(4가지)
+var _grass_uv_variants: Array[PackedVector2Array] = [
+	PackedVector2Array([Vector2(0.5, 0.0), Vector2(1.0, 0.5), Vector2(0.5, 1.0), Vector2(0.0, 0.5)]),
+	PackedVector2Array([Vector2(0.5, 0.0), Vector2(0.0, 0.5), Vector2(0.5, 1.0), Vector2(1.0, 0.5)]),
+	PackedVector2Array([Vector2(0.5, 1.0), Vector2(1.0, 0.5), Vector2(0.5, 0.0), Vector2(0.0, 0.5)]),
+	PackedVector2Array([Vector2(0.5, 1.0), Vector2(0.0, 0.5), Vector2(0.5, 0.0), Vector2(1.0, 0.5)]),
+]
+var _cur_vcols: PackedColorArray = PackedColorArray([Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE])
+var _cur_vgrass: PackedFloat32Array = PackedFloat32Array([1.0, 1.0, 1.0, 1.0])
+var _cur_is_grass: bool = true
+
+## 풀밭 그림이 '그대로' 보이는 기준 색 = 평지 풀 정점 색(_get_tile_base_ground_color와 같은 값). [성 안, 성 밖]
+func _grass_ref_colors() -> Array[Color]:
+	match current_season:
+		"여름": return [Color("4d9e38"), Color("877d5d")]
+		"가을": return [Color("91994e"), Color("968b64")]
+		"겨울": return [Color("e4edf2"), Color("dce5eb")]
+	return [Color("63aa4c"), Color("8f8564")]
+
+## 정점 색 → 풀밭 그림에 곱할 색: 밝기(비탈 명암)만 따르고 빛깔은 그림대로.
+## 기준 풀색에서 멀어질수록(물가 모래·흙길 쪽) 투명하게 해 밑바탕 색으로 서서히 넘어간다.
+func _grass_mod(vc: Color, alpha: float) -> Color:
+	var refs: Array[Color] = _grass_ref_colors()
+	var best: Color = refs[0]
+	var best_d: float = 9.0
+	for r: Color in refs:
+		var d: float = absf(vc.r - r.r) + absf(vc.g - r.g) + absf(vc.b - r.b)
+		if d < best_d:
+			best_d = d
+			best = r
+	var lum: float = clampf(vc.get_luminance() / maxf(0.05, best.get_luminance()), 0.8, 1.2)
+	var a: float = clampf(1.0 - (best_d - 0.06) / 0.30, 0.0, 1.0) * alpha
+	if current_season == "겨울":
+		a *= 0.55  # 눈 무늬는 대비가 커서 반복이 잘 보이므로 밑바탕 눈빛에 반쯤 섞는다
+	return Color(lum, lum, lum, a)
+
+func _grass_texture() -> Texture2D:
+	var season_key: String = "spring"
+	match current_season:
+		"여름": season_key = "summer"
+		"가을": season_key = "autumn"
+		"겨울": season_key = "winter"
+	if not _grass_tex_cache.has(season_key):
+		var path: String = "res://assets/sprites/terrain/grass_%s.png" % season_key
+		var tex: Texture2D = null
+		if ResourceLoader.exists(path):
+			tex = load(path) as Texture2D
+		elif FileAccess.file_exists(path):  # 편집기에서 아직 가져오기 전인 새 PNG도 바로 읽는다
+			var img: Image = Image.load_from_file(ProjectSettings.globalize_path(path))
+			if img != null and not img.is_empty():
+				tex = ImageTexture.create_from_image(img)
+		_grass_tex_cache[season_key] = tex
+	return _grass_tex_cache[season_key] as Texture2D
 
 ## 풀이 난 곳 (사계절 초원 렌더러)
 func _draw_grass_meadow(c: Vector2, p_n: Vector2, p_e: Vector2, p_s: Vector2, p_w: Vector2, seed_val: int) -> void:
+	var grass_tex: Texture2D = _grass_texture()
+	if grass_tex != null:  # 그린 풀밭 PNG가 있으면 그것으로 칠하고 코드 풀포기는 생략
+		# 비탈에서도 칸 모양에 딱 맞게 네 꼭짓점에 그림을 붙이고,
+		# 정점 색(비탈 명암·성 밖 흙빛·물가)은 기준 풀색 대비 비율로 입혀 이웃 칸과 이어지게
+		var mods := PackedColorArray()
+		for i: int in range(4):  # 풀밭 칸이면 경계 꼭짓점에서 옅어지고, 이웃 흙 칸은 같은 꼭짓점 값으로 이어받는다
+			mods.append(_grass_mod(_cur_vcols[i], _cur_vgrass[i] if _cur_is_grass else 1.0))
+		draw_primitive(PackedVector2Array([p_n, p_e, p_s, p_w]), mods, _grass_uv_variants[(seed_val >> 7) & 3], grass_tex)
+		return
 	var mode: int = (seed_val & 0xFF) % 10
 
 	match current_season:
@@ -1391,8 +1539,13 @@ func _draw_rocky_ground(c: Vector2, p_n: Vector2, p_e: Vector2, p_s: Vector2, p_
 
 ## ---------------------------------------------------- 4종 조선 수종 렌더러
 
-## 1. 조선 소나무 (늘푸른 적송 - 구불구불한 붉은 줄기, 솔잎 덩어리, 겨울 설송)
+## 1. 조선 소나무 (늘푸른 적송 - 정교한 2.5D 아이소메트릭 PNG 픽셀아트)
 func _draw_tree_pine(p: Vector2, season: String) -> void:
+	var tex: Texture2D = SpriteCacheManager.get_or_create_tree_texture("pine", season)
+	if tex != null:
+		draw_texture(tex, Vector2(p.x - 16.0, p.y - 41.0))
+		return
+
 	FastDraw.circle(self, p + Vector2(1, 1), 3.5, Color(0.0, 0.0, 0.0, 0.25))
 	draw_line(p, p + Vector2(-1, -7), Color("5e3019"), 2.6)
 	draw_line(p + Vector2(-1, -7), p + Vector2(1, -15), Color("5e3019"), 2.0)
@@ -1423,8 +1576,13 @@ func _draw_tree_pine(p: Vector2, season: String) -> void:
 		FastDraw.circle(self, p + Vector2(4, -12.5), 2.2, Color("ffffff"))
 		FastDraw.circle(self, p + Vector2(-5, -10.5), 2.0, Color("ffffff"))
 
-## 2. 느티나무 / 참나무 (웅장한 활엽수 - 둥글고 풍성한 수관, 가을 갈색 단풍, 겨울 앙상한 가지+눈꽃)
+## 2. 느티나무 / 참나무 (웅장한 활엽수 - 정교한 2.5D 아이소메트릭 PNG 픽셀아트)
 func _draw_tree_zelkova(p: Vector2, season: String) -> void:
+	var tex: Texture2D = SpriteCacheManager.get_or_create_tree_texture("zelkova", season)
+	if tex != null:
+		draw_texture(tex, Vector2(p.x - 16.0, p.y - 41.0))
+		return
+
 	FastDraw.circle(self, p + Vector2(1, 1), 4.0, Color(0.0, 0.0, 0.0, 0.25))
 	draw_line(p, p + Vector2(0, -11), Color("422f22"), 2.6)
 
@@ -1450,8 +1608,13 @@ func _draw_tree_zelkova(p: Vector2, season: String) -> void:
 	FastDraw.circle(self, p + Vector2(3, -13), 4.5, fol_col)
 	FastDraw.circle(self, p + Vector2(0, -17), 5.5, fol_col.lightened(0.15))
 
-## 3. 능수버들 (수양버들 - 아래로 길게 늘어뜨려진 아름다운 버들가지)
+## 3. 능수버들 (수양버들 - 정교한 2.5D 아이소메트릭 PNG 픽셀아트)
 func _draw_tree_willow(p: Vector2, season: String) -> void:
+	var tex: Texture2D = SpriteCacheManager.get_or_create_tree_texture("willow", season)
+	if tex != null:
+		draw_texture(tex, Vector2(p.x - 16.0, p.y - 41.0))
+		return
+
 	FastDraw.circle(self, p + Vector2(1, 1), 3.5, Color(0.0, 0.0, 0.0, 0.22))
 	draw_line(p, p + Vector2(-2, -9), Color("453426"), 2.2)
 	draw_line(p + Vector2(-2, -9), p + Vector2(0, -15), Color("453426"), 1.8)
@@ -1475,8 +1638,14 @@ func _draw_tree_willow(p: Vector2, season: String) -> void:
 	for ox: float in [-5.0, -2.0, 2.0, 5.0]:
 		draw_line(p + Vector2(ox * 0.4, -14), p + Vector2(ox, -5), w_col, 1.4)
 
-## 4. 계절목 (봄 화사한 벚꽃/살구꽃, 가을 붉은 홍단풍나무)
+## 4. 계절목 (봄 화사한 벚꽃/살구꽃, 가을 붉은 홍단풍나무 - 정교한 2.5D 아이소메트릭 PNG 픽셀아트)
 func _draw_tree_seasonal(p: Vector2, season: String, is_cherry: bool) -> void:
+	var kind: String = "cherry" if is_cherry else "maple"
+	var tex: Texture2D = SpriteCacheManager.get_or_create_tree_texture(kind, season)
+	if tex != null:
+		draw_texture(tex, Vector2(p.x - 16.0, p.y - 41.0))
+		return
+
 	FastDraw.circle(self, p + Vector2(1, 1), 3.5, Color(0.0, 0.0, 0.0, 0.24))
 	draw_line(p, p + Vector2(0, -10), Color("3d2c20"), 2.2)
 
@@ -1524,10 +1693,16 @@ func _draw_forest_cluster(c: Vector2, _p_n: Vector2, _p_e: Vector2, _p_s: Vector
 		var is_cherry: bool = (seed_val % 2 == 0)
 		_draw_tree_seasonal(t2, current_season, is_cherry)
 
-## [벚꽃나무 전용 2.5D 도트 렌더러]:
-## 봄: 고목 가지에 활짝 만개한 3중 레이어 연분홍 벚꽃구름과 흩날리는 꽃비 픽셀
-## 여름: 싱그러운 청록빛 녹음, 가을: 타오르는 붉은 단풍, 겨울: 눈꽃 덮인 설목
+## [벚꽃나무 전용 2.5D 도트 렌더러 - 정교한 2.5D 아이소메트릭 PNG 픽셀아트]
 func _draw_cherry_blossom_tree(p: Vector2, season: String, scale_factor: float = 1.0, seed_val: int = 0) -> void:
+	var tex: Texture2D = SpriteCacheManager.get_or_create_tree_texture("cherry", season)
+	if tex != null:
+		var tw: float = 32.0 * scale_factor
+		var th: float = 44.0 * scale_factor
+		var dest := Rect2(p.x - tw * 0.5, p.y - th + 3.0 * scale_factor, tw, th)
+		draw_texture_rect(tex, dest, false)
+		return
+
 	var s: float = scale_factor
 	# 바닥 그림자
 	FastDraw.circle(self, p + Vector2(1.0, 1.0) * s, 4.5 * s, Color(0.0, 0.0, 0.0, 0.22))
@@ -1662,6 +1837,59 @@ func _draw_ground_surface(t: Dictionary, c: Vector2, p_n: Vector2, p_e: Vector2,
 		_:
 			_draw_grass_meadow(c, p_n, p_e, p_s, p_w, seed_val)
 
+	if surf in ["dirt", "field", "rocky"]:
+		_draw_grass_border(x, y, c, p_n, p_e, p_s, p_w, seed_val)
+
+## 풀밭 칸인지(경계 번짐 계산용): 물·논·둔전·흙·밭·돌·벚꽃·숲이 아닌 바닥(_draw_ground_surface가 풀밭으로 칠하는 칸)
+func _is_grass_tile(tx: int, ty: int) -> bool:
+	if not grid.in_bounds(tx, ty):
+		return false
+	var t: Dictionary = grid.grid[ty][tx]
+	if t.get("terrain", "plain") == "water" or t.get("zone", "") == "agr" or String(t.get("building", "")) in ["agr_1", "agr_2"]:
+		return false
+	return not (String(t.get("surface", "grass")) in ["dirt", "field", "rocky", "cherry", "cherry_blossom", "forest"])  # 풀밭 그림으로 칠하는 바닥 전부
+
+## 풀밭과 맞닿은 흙·밭·돌 칸: 풀 그림을 꼭짓점 투명도로 번지게 겹치고(방법 1), 맞닿은 변을 따라 풀포기·자갈을 흩뿌린다(방법 4)
+func _draw_grass_border(x: int, y: int, c: Vector2, p_n: Vector2, p_e: Vector2, p_s: Vector2, p_w: Vector2, seed_val: int) -> void:
+	# 변 순서: N-E(위 칸), E-S(오른 칸), S-W(아래 칸), W-N(왼 칸)
+	var sides: Array[bool] = [_is_grass_tile(x, y - 1), _is_grass_tile(x + 1, y), _is_grass_tile(x, y + 1), _is_grass_tile(x - 1, y)]
+	var w: PackedFloat32Array = _cur_vgrass
+	if not (sides[0] or sides[1] or sides[2] or sides[3]) and w[0] + w[1] + w[2] + w[3] <= 0.0:
+		return
+
+	var grass_tex: Texture2D = _grass_texture()
+	if grass_tex != null:
+		var mods := PackedColorArray()
+		for i: int in range(4):
+			mods.append(_grass_mod(_cur_vcols[i], _cur_vgrass[i]))
+		draw_primitive(PackedVector2Array([p_n, p_e, p_s, p_w]), mods, _grass_uv_variants[(seed_val >> 7) & 3], grass_tex)
+
+	var tuft_a: Color
+	var tuft_b: Color
+	match current_season:
+		"여름": tuft_a = Color("2f6b22"); tuft_b = Color("4a8a33")
+		"가을": tuft_a = Color("7a7238"); tuft_b = Color("9a8a48")
+		"겨울": tuft_a = Color("8e977f"); tuft_b = Color("b4bba6")
+		_: tuft_a = Color("3f7d2b"); tuft_b = Color("589c3d")
+	var pebble: Color = Color("6e6658", 0.8) if current_season != "겨울" else Color("9c9a94", 0.8)
+	var corners: Array[Vector2] = [p_n, p_e, p_s, p_w]
+	for si: int in range(4):
+		if not sides[si]:
+			continue
+		var a: Vector2 = corners[si]
+		var b2: Vector2 = corners[(si + 1) % 4]
+		var h: int = seed_val ^ (si * 2654435)
+		for k: int in range(3):  # 변을 따라 고르지 않게, 안쪽으로 조금씩 들어와 들쭉날쭉한 풀 가장자리
+			var along: float = 0.18 + 0.32 * float(k) + float((h >> (k * 3)) & 7) / 7.0 * 0.12
+			var inward: float = 0.06 + float((h >> (k * 3 + 9)) & 7) / 7.0 * 0.22
+			var gp: Vector2 = a.lerp(b2, along).lerp(c, inward)
+			var lean: float = float((h >> (k * 2 + 5)) & 3) - 1.5
+			draw_line(gp, gp + Vector2(lean * 0.6, -3.0), tuft_a, 1.0)
+			draw_line(gp + Vector2(1.0, 0.0), gp + Vector2(1.0 + lean * 0.4, -2.2), tuft_b, 1.0)
+		if (h >> 20) & 1 == 0:
+			var pp: Vector2 = a.lerp(b2, 0.3 + float((h >> 14) & 7) / 7.0 * 0.4).lerp(c, 0.35)
+			FastDraw.circle(self, pp, 1.0, pebble)
+
 ## 성곽 예정 라인 (성 안팎 경계 완만한 구릉 둔덕 및 축성 마커 렌더러)
 func _draw_boundary_ridge(c: Vector2, _p_n: Vector2, _p_e: Vector2, _p_s: Vector2, _p_w: Vector2) -> void:
 	var ridge_col: Color
@@ -1701,6 +1929,9 @@ func collect_occluders() -> Array:
 	var out: Array = []
 	if grid == null:
 		return out
+	# PORT-TRACE [렉: 계절 바뀌는 달 멈칫]: 시설 앞 그림(성벽·포루·공심돈·방화수류정)은 계절 중 겨울 눈만 다르게 그린다 —
+	# 표식에 계절 이름을 넣으면 계절마다 백 개 남짓을 다시 구워 멈칫했으니, 겨울인지만 넣는다(봄·여름·가을끼리는 그대로 씀)
+	var snow_sig := "겨울" if current_season == "겨울" else ""
 	for y in range(grid.size):
 		for x in range(grid.size):
 			var t: Dictionary = grid.grid[y][x]
@@ -1726,17 +1957,17 @@ func collect_occluders() -> Array:
 					else:
 						tid = grid.get_house_asset_id(x0, y0)
 					var bc: Vector2 = cell_center(float(x0) + float(gw) * 0.5, float(y0) + float(gh) * 0.5, 1.0)
-					out.append({"x0": x0, "y0": y0, "x1": x, "y1": y, "rect": _group_rect(bc, gw, gh), "bd": {"type_id": tid, "is_modernized": mod}})
+					out.append({"x0": x0, "y0": y0, "x1": x, "y1": y, "rect": _group_rect(bc, gw, gh), "bd": {"type_id": tid, "is_modernized": mod, "modern_id": String(t.get("modern_id", ""))}})
 				else:
 					var tid2: String = grid.get_workshop_asset_id(x, y) if b.begins_with("ind") else grid.get_house_asset_id(x, y)
 					var c := _tile_c(x, y)
-					out.append({"x0": x, "y0": y, "x1": x, "y1": y, "rect": Rect2(c.x - 32.0, c.y + 16.0 - 72.0, 64.0, 72.0), "bd": {"type_id": tid2, "is_modernized": mod}})
+					out.append({"x0": x, "y0": y, "x1": x, "y1": y, "rect": Rect2(c.x - 32.0, c.y + 16.0 - 72.0, 64.0, 72.0), "bd": {"type_id": tid2, "is_modernized": mod, "modern_id": String(t.get("modern_id", ""))}})
 			elif b == "gate":
 				# PORT-TRACE [문 통과 2중 그림]: 성문은 코드 그림이라 시민 레이어가 따로 구운 "앞 그림"(홍예 구멍 뚫음)으로 덮는다
 				var gi := gate_overlay_info(x, y)
 				out.append({"x0": x, "y0": y, "x1": x, "y1": y, "rect": gi["rect"], "gate": gi})
 			elif b == "wall" or b == "banghwasuryu":
-				var sig_w := "%s|%.2f|%s" % [b, grid.wall_build_fraction(t), current_season]
+				var sig_w := "%s|%.2f|%s" % [b, grid.wall_build_fraction(t), snow_sig]
 				out.append({"x0": x, "y0": y, "x1": x, "y1": y, "rect": _struct_rect([Vector2i(x, y)], WALL_HEIGHT + (44.0 if b == "banghwasuryu" else (60.0 if _near_gate(x, y) else 8.0))), "paint": Vector2i(x, y), "psig": sig_w})
 			elif (t.has("pr2") and b in ["poru", "poru_site"]) or (t.has("gs3") and b in ["gongsimdon", "gongsimdon_wall", "gongsimdon_site"]):
 				var sa: Vector2i = t.get("site_anchor", Vector2i(x, y))
@@ -1754,22 +1985,20 @@ func collect_occluders() -> Array:
 					bx1 = maxi(bx1, q5.x)
 					by1 = maxi(by1, q5.y)
 				var info_s: Dictionary = t["pr2"] if t.has("pr2") else t["gs3"]
-				var sig_s := "%s|%.2f|%s|%s|%s" % [b, grid.wall_build_fraction(t), current_season, str(info_s.get("len", "")), str(info_s.get("c2", ""))]
+				var sig_s := "%s|%.2f|%s|%s|%s" % [b, grid.wall_build_fraction(t), snow_sig, str(info_s.get("len", "")), str(info_s.get("c2", ""))]
 				out.append({"x0": bx0, "y0": by0, "x1": bx1, "y1": by1, "rect": _struct_rect(stl, 118.0 if t.has("gs3") else 104.0, 26.0), "paint": Vector2i(x, y), "psig": sig_s})
 			elif b == "com_1" or b == "com_2":
 				var c2 := _tile_c(x, y)
-				out.append({"x0": x, "y0": y, "x1": x, "y1": y, "rect": Rect2(c2.x - 32.0, c2.y + 16.0 - 72.0, 64.0, 72.0), "bd": {"type_id": grid.get_shop_asset_id(x, y), "is_modernized": mod}})
+				out.append({"x0": x, "y0": y, "x1": x, "y1": y, "rect": Rect2(c2.x - 32.0, c2.y + 16.0 - 72.0, 64.0, 72.0), "bd": {"type_id": grid.get_shop_asset_id(x, y), "is_modernized": mod, "modern_id": String(t.get("modern_id", ""))}})
 			else:
-				var key := ""
-				for k: String in LANDMARK_PNG.keys():
-					if b == k or b == k + "_site":
-						key = k
+				var key := _landmark_key(b)
 				if key == "":
 					continue
 				if not _landmark_png_state.has(key):
 					var lp := "res://assets/sprites/buildings/lm_%s.png" % key
-					_landmark_png_state[key] = ResourceLoader.exists(lp) or FileAccess.file_exists(ProjectSettings.globalize_path(lp))
-				if not bool(_landmark_png_state[key]):
+					_landmark_png_state[key] = ResourceLoader.exists(lp) or FileAccess.file_exists(AssetPaths.disk_path(lp))
+				var mid_o := String(t.get("lm_modern", ""))
+				if mid_o == "" and not bool(_landmark_png_state[key]):
 					continue
 				var a: Vector2i = t.get("site_anchor", Vector2i(x, y))
 				var st: Variant = grid.grid[a.y][a.x].get("site_tiles", null) if grid.in_bounds(a.x, a.y) else null
@@ -1791,9 +2020,12 @@ func collect_occluders() -> Array:
 				var h := float(y1 - y0 + 1)
 				var bc2 := cell_center(float(x0) + w * 0.5, float(y0) + h * 0.5, 1.0)
 				var o_lm := {"x0": x0, "y0": y0, "x1": x1, "y1": y1, "rect": Rect2(bc2.x - float(size.x) * 0.5, bc2.y + (w + h) * 8.0 - float(size.y), float(size.x), float(size.y)), "lm": key, "size": size}
-				var ltex: Texture2D = SpriteCacheManager.get_or_create_texture("buildings", "lm_" + key, size)
+				var lfit := ("m_" + mid_o) if mid_o != "" else ("lm_" + key)
+				if mid_o != "":
+					o_lm["mid"] = mid_o
+				var ltex: Texture2D = SpriteCacheManager.get_or_create_texture("buildings_modern", mid_o, size) if mid_o != "" else SpriteCacheManager.get_or_create_texture("buildings", "lm_" + key, size)
 				if ltex != null:
-					var xf: Variant = fit_xf("lm_" + key, ltex, cell_center(float(x0), float(y1 + 1), 1.0), cell_center(float(x1 + 1), float(y0), 1.0), cell_center(float(x1 + 1), float(y1 + 1), 1.0))
+					var xf: Variant = fit_xf(lfit, ltex, cell_center(float(x0), float(y1 + 1), 1.0), cell_center(float(x1 + 1), float(y0), 1.0), cell_center(float(x1 + 1), float(y1 + 1), 1.0))
 					if xf != null:
 						o_lm["xf"] = xf
 						var bb := Rect2((xf as Transform2D) * Vector2.ZERO, Vector2.ZERO)
@@ -1807,11 +2039,14 @@ func collect_occluders() -> Array:
 func occluder_texture(o: Dictionary) -> Texture2D:
 	var sfx: String = SeasonColorFilter.get_current_season_suffix(current_season)
 	if o.has("lm"):
+		if o.has("mid"):
+			return SpriteCacheManager.get_or_create_texture("buildings_modern", String(o["mid"]), o["size"])
 		return SpriteCacheManager.get_seasonal_or_base_texture("buildings", "lm_" + String(o["lm"]), sfx, o["size"])
 	var bd: Dictionary = o["bd"]
 	var r: Rect2 = o["rect"]
 	var category: String = "buildings_modern" if bool(bd.get("is_modernized", false)) else "buildings"
-	return SpriteCacheManager.get_seasonal_or_base_texture(category, String(bd["type_id"]), sfx, Vector2i(int(r.size.x), int(r.size.y)),
+	var occ_id: String = String(bd.get("modern_id", "")) if category == "buildings_modern" and String(bd.get("modern_id", "")) != "" else String(bd["type_id"])
+	return SpriteCacheManager.get_seasonal_or_base_texture(category, occ_id, sfx, Vector2i(int(r.size.x), int(r.size.y)),
 		Callable(self, "_bake_procedural_building_to_image").bind(bd))
 
 ## 성문 칸 하나의 그림 기준: 중심 c, 성벽 방향 반벡터 a, 바깥 반벡터 f, 확대 배율 gs, 바깥 모서리 번호 o
@@ -1997,10 +2232,21 @@ func gate_overlay_info(x: int, y: int) -> Dictionary:
 	return {"rect": rect, "holes": world_holes, "gs": gs, "out": GATE_EDGE_DIRS[int(gf["o"])], "cam_out": cam_out,
 		"front_v": (V + rv) if cam_out else -V, "reach": int(ceil(gs * (1.0 + rv))) + 1}
 
+## 건물 그림(특히 근대·사용자가 손본 그림)은 칸 자리(64x72 등)와 비율이 달라도 찌그러뜨리지 않는다: 비율 그대로 자리에 맞춰 줄이고 바닥(아래 꼭짓점)에 붙인다.
+## (고층 건물 그림은 2x2 캔버스 128x112라 1칸 64x72에 늘려 넣으면 지붕 각도가 땅과 어긋났다)
+static func modern_fit_rect(tex: Texture2D, r: Rect2) -> Rect2:
+	var tw := float(tex.get_width())
+	var th := float(tex.get_height())
+	if tw <= 0.0 or th <= 0.0:
+		return r
+	var s := minf(r.size.x / tw, r.size.y / th)
+	var sz := Vector2(tw, th) * s
+	return Rect2(Vector2(r.position.x + (r.size.x - sz.x) * 0.5, r.end.y - sz.y), sz)
+
 ## [Step 3 최적화] 캐싱된 Texture2D 단일 드로우콜 렌더링 (계절별 텍스처/틴트 & 드롭 섀도우)
 func _draw_building_cell(building_data: Dictionary, dest_rect: Rect2) -> void:
 	var category: String = "buildings_modern" if building_data.get("is_modernized", false) else "buildings"
-	var asset_id: String = building_data.get("type_id", "thatch_house")
+	var asset_id: String = String(building_data.get("modern_id", "")) if category == "buildings_modern" and String(building_data.get("modern_id", "")) != "" else String(building_data.get("type_id", "thatch_house")) # 근대화 시대: UrbanEvolutionManager가 칸에 적어 둔 근대 그림
 	var season_sfx: String = SeasonColorFilter.get_current_season_suffix(current_season)
 	var tex: Texture2D = SpriteCacheManager.get_seasonal_or_base_texture(
 		category,
@@ -2009,6 +2255,8 @@ func _draw_building_cell(building_data: Dictionary, dest_rect: Rect2) -> void:
 		Vector2i(int(dest_rect.size.x), int(dest_rect.size.y)),
 		Callable(self, "_bake_procedural_building_to_image").bind(building_data)
 	)
+	if tex != null:
+		dest_rect = modern_fit_rect(tex, dest_rect) # 크기가 자리와 같으면 그대로, 다르면 비율 유지
 	if tex != null:
 		# 1. 알파 채널 기반 드롭 섀도우 패스 (우하단 3, 4px 오프셋)
 		var shadow_col: Color = SeasonColorFilter.get_current_shadow_color(current_season)
@@ -2129,7 +2377,7 @@ func _draw_building_seasonal_overlay(b_data: Dictionary, r: Rect2, season: Strin
 
 func _bake_procedural_building_to_image(size: Vector2i, building_data: Dictionary) -> Image:
 	var category: String = "buildings_modern" if building_data.get("is_modernized", false) else "buildings"
-	var asset_id: String = building_data.get("type_id", "thatch_house")
+	var asset_id: String = String(building_data.get("modern_id", "")) if category == "buildings_modern" and String(building_data.get("modern_id", "")) != "" else String(building_data.get("type_id", "thatch_house")) # 근대화 시대: UrbanEvolutionManager가 칸에 적어 둔 근대 그림
 	return SpriteCacheManager._create_standard_art_image(category, asset_id, size)
 
 func _draw_farm_paddy_texture(c: Vector2, is_advanced: bool) -> void:
@@ -2184,16 +2432,17 @@ func _draw_tile(x: int, y: int) -> void:
 	var p_s := cell_center(x + 1, y + 1, ce[2])
 	var p_w := cell_center(x, y + 1, ce[3])
 
-	# 인접 4개 타일의 지표면·고도 정점 컬러 캐시 읽기 (Gouraud 셰이딩 무경계 그라데이션)
-	var slope: float = (ce[0] + ce[3]) - (ce[1] + ce[2])
-	var light: float = clampf(1.0 + slope * 0.03, 0.72, 1.28)
-
-	var col_n: Color = (_vertex_colors[y][x] as Color) * light
-	var col_e: Color = (_vertex_colors[y][x + 1] as Color) * light
-	var col_s: Color = (_vertex_colors[y + 1][x + 1] as Color) * light
-	var col_w: Color = (_vertex_colors[y + 1][x] as Color) * light
+	# 인접 4개 정점의 완만한 구로(Gouraud) 셰이딩 무경계 그라데이션 (타일 경계선 완전 제거)
+	var col_n: Color = _vertex_colors[y][x] as Color
+	var col_e: Color = _vertex_colors[y][x + 1] as Color
+	var col_s: Color = _vertex_colors[y + 1][x + 1] as Color
+	var col_w: Color = _vertex_colors[y + 1][x] as Color
 
 	FastDraw.poly_colors(self, PackedVector2Array([p_n, p_e, p_s, p_w]), PackedColorArray([col_n, col_e, col_s, col_w]))
+	_cur_vcols = PackedColorArray([col_n, col_e, col_s, col_w])
+	if _vertex_grass.size() > y + 1:
+		_cur_vgrass = PackedFloat32Array([_vertex_grass[y][x], _vertex_grass[y][x + 1], _vertex_grass[y + 1][x + 1], _vertex_grass[y + 1][x]])
+	_cur_is_grass = _is_grass_tile(x, y)
 
 	var c := (p_n + p_e + p_s + p_w) * 0.25
 	var zone: String = t["zone"]
@@ -2211,15 +2460,20 @@ func _draw_tile(x: int, y: int) -> void:
 	if zone != "" and b == "" and t.has("plaza"):
 		_draw_plaza_tile(x, y, t, c, p_n, p_e, p_s, p_w)
 	elif zone != "" and b == "":
-		var zone_cols := {
-			"res": Color(0.25, 0.55, 0.95, 0.4), "com": Color(0.95, 0.75, 0.2, 0.4),
-			"agr": Color(0.4, 0.85, 0.3, 0.4), "ind": Color(0.78, 0.42, 0.22, 0.42), # 공방: 가마 흙빛
-		}
-		var zc: Color = zone_cols.get(zone, Color(0.4, 0.85, 0.3, 0.4))
-		FastDraw.poly(self, _diamond(c, 0.96), zc)
-		FastDraw.polyline(self, PackedVector2Array(_diamond(c, 0.96) + PackedVector2Array([c + Vector2(0, -HH * 0.96)])), zc.lightened(0.3), 1.5)
-		if zone == "agr" and t.get("irrigated", false):
-			_draw_paddy_water(p_n, p_e, p_s, p_w)
+		if zone == "agr":
+			# 대유둔전(농지)은 2.5D 논 픽셀아트 텍스처가 주 비주얼로 드러나도록 은은한 경계선만 표시
+			var zc := Color(0.35, 0.70, 0.25, 0.50)
+			FastDraw.polyline(self, PackedVector2Array(_diamond(c, 0.96) + PackedVector2Array([c + Vector2(0, -HH * 0.96)])), zc, 1.0)
+			if t.get("irrigated", false):
+				_draw_paddy_water(p_n, p_e, p_s, p_w)
+		else:
+			var zone_cols := {
+				"res": Color(0.25, 0.55, 0.95, 0.35), "com": Color(0.95, 0.75, 0.2, 0.35),
+				"ind": Color(0.78, 0.42, 0.22, 0.38), # 공방: 가마 흙빛
+			}
+			var zc: Color = zone_cols.get(zone, Color(0.4, 0.85, 0.3, 0.35))
+			FastDraw.poly(self, _diamond(c, 0.96), zc)
+			FastDraw.polyline(self, PackedVector2Array(_diamond(c, 0.96) + PackedVector2Array([c + Vector2(0, -HH * 0.96)])), zc.lightened(0.3), 1.2)
 
 	# PORT-TRACE [매향교]: 다리목 천변 매화나무(빈 땅일 때만)
 	if b == "" and zone == "" and t.get("plum", false):
@@ -2274,7 +2528,7 @@ func _draw_tile(x: int, y: int) -> void:
 				var b_data: Dictionary = {
 					"type_id": ws_id,
 					"building": b,
-					"is_modernized": bool(t.get("is_modernized", false)),
+					"is_modernized": bool(t.get("is_modernized", false)), "modern_id": String(t.get("modern_id", "")),
 					"is_ruined": bool(t.get("is_ruined", false))
 				}
 				_draw_building_cell(b_data, rect)
@@ -2283,7 +2537,7 @@ func _draw_tile(x: int, y: int) -> void:
 			var b_data: Dictionary = {
 				"type_id": ws_id,
 				"building": b,
-				"is_modernized": bool(t.get("is_modernized", false)),
+				"is_modernized": bool(t.get("is_modernized", false)), "modern_id": String(t.get("modern_id", "")),
 				"is_ruined": bool(t.get("is_ruined", false))
 			}
 			_draw_building_cell(b_data, Rect2(c.x - 32.0, c.y + 16.0 - 72.0, 64.0, 72.0))
@@ -2292,7 +2546,7 @@ func _draw_tile(x: int, y: int) -> void:
 		var b_data: Dictionary = {
 			"type_id": s_id,
 			"building": b,
-			"is_modernized": bool(t.get("is_modernized", false)),
+			"is_modernized": bool(t.get("is_modernized", false)), "modern_id": String(t.get("modern_id", "")),
 			"is_ruined": bool(t.get("is_ruined", false)),
 			"trade": _trade_of(x, y, t)
 		}
@@ -2321,7 +2575,7 @@ func _draw_tile(x: int, y: int) -> void:
 				var b_data: Dictionary = {
 					"type_id": h_id,
 					"building": b,
-					"is_modernized": bool(t.get("is_modernized", false)),
+					"is_modernized": bool(t.get("is_modernized", false)), "modern_id": String(t.get("modern_id", "")),
 					"is_ruined": bool(t.get("is_ruined", false))
 				}
 				_draw_building_cell(b_data, rect)
@@ -2330,7 +2584,7 @@ func _draw_tile(x: int, y: int) -> void:
 			var b_data: Dictionary = {
 				"type_id": h_id,
 				"building": b,
-				"is_modernized": bool(t.get("is_modernized", false)),
+				"is_modernized": bool(t.get("is_modernized", false)), "modern_id": String(t.get("modern_id", "")),
 				"is_ruined": bool(t.get("is_ruined", false))
 			}
 			_draw_building_cell(b_data, Rect2(c.x - 32.0, c.y + 16.0 - 72.0, 64.0, 72.0))
@@ -2343,7 +2597,7 @@ func _draw_tile(x: int, y: int) -> void:
 		var b_data: Dictionary = {
 			"type_id": "well",
 			"building": b,
-			"is_modernized": bool(t.get("is_modernized", false))
+			"is_modernized": bool(t.get("is_modernized", false)), "modern_id": String(t.get("modern_id", "")) # 집수정(근대화)
 		}
 		_draw_building_cell(b_data, Rect2(c.x - 32.0, c.y + 16.0 - 72.0, 64.0, 72.0))
 	elif b == "wall":
@@ -2418,7 +2672,8 @@ func _draw_tile(x: int, y: int) -> void:
 		if not t.has("ym5"):
 			t["ym5"] = {"center": t.get("site_anchor", Vector2i(x, y)), "wall_dir": Vector2i(0, -1)}
 		if Vector2i(x, y) == _group_front_tile(t.get("site_anchor", Vector2i(x, y))):
-			_draw_yeonmudae5(t["ym5"])
+			if not _draw_military_base(t):
+				_draw_yeonmudae5(t["ym5"])
 	elif b == "hyanggyo" or b == "hyanggyo_site":
 		# PORT-TRACE [수원향교 4x4]: 칸마다 마당, 전각들은 부지의 가장 앞 칸에서 한 번에
 		var hk_a: Vector2i = t.get("site_anchor", Vector2i(x, y)) if b == "hyanggyo_site" else Vector2i(x, y)
@@ -2475,6 +2730,10 @@ func _draw_tile(x: int, y: int) -> void:
 		var jh_anchor: Vector2i = t.get("site_anchor", Vector2i(x, y))
 		if not _landmark_png("jinhulso", x, y, jh_anchor, p_n, p_e, p_s, p_w):
 			_draw_jinhulso_part(Vector2i(x, y) - jh_anchor, c, p_n, p_e, p_s, p_w)
+	elif b == "sewage" or b == "sewage_site":
+		# 근대화 시대 하수처리시설 2x2 (그림: buildings/lm_sewage.png)
+		var sw_anchor: Vector2i = t.get("site_anchor", Vector2i(x, y)) if b == "sewage_site" else Vector2i(x, y)
+		_landmark_png("sewage", x, y, sw_anchor, p_n, p_e, p_s, p_w)
 	elif b == "jongnu" or b == "jongnu_site":
 		var jn_anchor: Vector2i = t.get("site_anchor", Vector2i(x, y)) if b == "jongnu_site" else Vector2i(x, y)
 		if not _landmark_png("jongnu", x, y, jn_anchor, p_n, p_e, p_s, p_w):
@@ -2489,7 +2748,10 @@ func _draw_tile(x: int, y: int) -> void:
 	elif b == "patrol" or b == "firefighter":
 		# PORT-TRACE [순라청·멸화군 새 그림]: assets/sprites/buildings/patrol_station.png·firefighter_station.png가 있으면 그것으로
 		var sid := "patrol_station" if b == "patrol" else "firefighter_station"
-		if _bld_png_exists(sid):
+		var mid_c := String(t.get("lm_modern", ""))
+		if mid_c != "": # 근대화 시대 경찰서·소방서
+			_draw_building_cell({"type_id": sid, "building": b, "is_modernized": true, "modern_id": mid_c}, Rect2(c.x - 32.0, c.y + 16.0 - 72.0, 64.0, 72.0))
+		elif _bld_png_exists(sid):
 			_draw_building_cell({"type_id": sid, "building": b}, Rect2(c.x - 32.0, c.y + 16.0 - 72.0, 64.0, 72.0))
 		else:
 			var pf := _front_frame(x, y, c, p_n, p_e, p_s, p_w)
@@ -2500,6 +2762,9 @@ func _draw_tile(x: int, y: int) -> void:
 		_draw_farm_paddy_texture(c, b == "agr_2")
 	elif b == "reservoir":
 		_draw_reservoir_pond(x, y, c, p_n, p_e, p_s, p_w)
+		var wp_tex: Texture2D = UrbanEvolutionManager.instance.water_plant_texture() if UrbanEvolutionManager.instance else null
+		if wp_tex != null: # 근대화: 생활용수 공급시설
+			draw_texture_rect(wp_tex, Rect2(c.x - 32.0, c.y + 16.0 - 72.0, 64.0, 72.0), false)
 	elif BUILDING_SLOTS.has(b):
 		_draw_building_slot(c, BUILDING_SLOTS[b])
 
@@ -3378,7 +3643,7 @@ static var _bld_png_state := {}
 func _bld_png_exists(id: String) -> bool:
 	if not _bld_png_state.has(id):
 		var pth := "res://assets/sprites/buildings/%s.png" % id
-		_bld_png_state[id] = ResourceLoader.exists(pth) or FileAccess.file_exists(ProjectSettings.globalize_path(pth))
+		_bld_png_state[id] = ResourceLoader.exists(pth) or FileAccess.file_exists(AssetPaths.disk_path(pth))
 	return bool(_bld_png_state[id])
 
 func _draw_plaza_tile(x: int, y: int, t: Dictionary, c: Vector2, p_n: Vector2, p_e: Vector2, p_s: Vector2, p_w: Vector2) -> void:
@@ -3409,10 +3674,11 @@ func _draw_plaza_tile(x: int, y: int, t: Dictionary, c: Vector2, p_n: Vector2, p
 		if rx == n - 1 and ry == n - 1:
 			var bc := cell_center(float(pl["x0"]) + float(n) * 0.5, float(pl["y0"]) + float(n) * 0.5, 1.0)
 			var s_kind: String = str(pl["kind"])
+			var lm_s := String(t.get("lm_modern", "")) # 대학교 개편 뒤 초등학교·중등학교
 			if s_kind == "seodang":
-				_draw_building_cell({"type_id": "seodang", "building": "seodang"}, Rect2(bc.x - 64.0, bc.y + 32.0 - 112.0, 128.0, 112.0))
+				_draw_building_cell({"type_id": "seodang", "building": "seodang", "is_modernized": lm_s != "", "modern_id": lm_s}, Rect2(bc.x - 64.0, bc.y + 32.0 - 112.0, 128.0, 112.0))
 			else:
-				_draw_building_cell({"type_id": "maegok_seowon", "building": "maegok_seowon"}, Rect2(bc.x - 96.0, bc.y + 48.0 - 160.0, 192.0, 160.0))
+				_draw_building_cell({"type_id": "maegok_seowon", "building": "maegok_seowon", "is_modernized": lm_s != "", "modern_id": lm_s}, Rect2(bc.x - 96.0, bc.y + 48.0 - 160.0, 192.0, 160.0))
 		return
 	if str(pl.get("kind", "market")) in ["kids", "play"]:
 		FastDraw.poly(self, PackedVector2Array([p_n, p_e, p_s, p_w]), Color("cdb98e"))
@@ -4833,10 +5099,54 @@ func _hg_name_tag(text: String, p: Vector2) -> void:
 ## ─────────────────────────────────────────────── 만석거(萬石渠) 6x6 전용 2.5D 대호수 렌더러
 ## 레퍼런스 고증: 시원하고 깊은 코발트 블루 대호수, 2단 입체 자연석/화강암 석축 제방,
 ## 둑길 돌계단, 2.5D 대각선 뷰 사각 기와 영화정(迎華亭) 누각, 한가로이 떠 있는 나룻배 1척
+## 호수공원으로 조성한 저수지면 근대 그림 이름(기준 칸의 lm_modern), 아니면 ""
+func _lake_park_id(anchor: Vector2i) -> String:
+	if anchor.x < 0 or not grid.in_bounds(anchor.x, anchor.y):
+		return ""
+	return String(grid.grid[anchor.y][anchor.x].get("lm_modern", ""))
+
+## 연무대 신식 군사기지: 5x5 훈련장 가운데 3x3에 기지 그림(그림은 2x2 크기라 부지 전체로 늘리면 뭉개진다). 개편 전이면 false
+func _draw_military_base(t: Dictionary) -> bool:
+	var mid := String(t.get("lm_modern", ""))
+	if mid == "":
+		return false
+	var tex: Texture2D = SpriteCacheManager.get_or_create_texture("buildings_modern", mid, Vector2i(128, 112))
+	if tex == null:
+		return false
+	var a: Vector2i = t.get("site_anchor", Vector2i(-1, -1))
+	var cx := 0
+	var cy := 0
+	var st: Variant = grid.grid[a.y][a.x].get("site_tiles", null) if grid.in_bounds(a.x, a.y) else null
+	if st is Array and not (st as Array).is_empty():
+		var x0 := 1 << 20
+		var y0 := 1 << 20
+		var x1 := -1
+		var y1 := -1
+		for q: Vector2i in st:
+			x0 = mini(x0, q.x)
+			y0 = mini(y0, q.y)
+			x1 = maxi(x1, q.x)
+			y1 = maxi(y1, q.y)
+		cx = (x0 + x1) / 2
+		cy = (y0 + y1) / 2
+	else:
+		var ce: Vector2i = (t["ym5"] as Dictionary).get("center", a)
+		cx = ce.x
+		cy = ce.y
+	var tint: Color = SeasonColorFilter.get_current_tile_tint(band_master.current_season if band_master else current_season)
+	var l := cell_center(float(cx - 1), float(cy + 2), 1.0)
+	var r := cell_center(float(cx + 2), float(cy - 1), 1.0)
+	var bt := cell_center(float(cx + 2), float(cy + 2), 1.0)
+	if not _draw_fitted(tex, "m_" + mid, l, r, bt, tint):
+		var bc := cell_center(float(cx) + 0.5, float(cy) + 0.5, 1.0)
+		draw_texture_rect(tex, Rect2(bc.x - 96.0, bc.y + 48.0 - 168.0, 192.0, 168.0), false, tint)
+	return true
+
 func _draw_manseokgeo_part(rel: Vector2i, c: Vector2, p_n: Vector2, p_e: Vector2, p_s: Vector2, p_w: Vector2, tile := Vector2i(-1, -1), anchor := Vector2i(-1, -1)) -> void:
 	# [고품질 PNG 전면 전환] 6x6 단일 고화질 PNG 텍스처 단일 드로우콜 렌더링
 	var season_sfx: String = SeasonColorFilter.get_current_season_suffix(current_season)
-	var lake_tex: Texture2D = SpriteCacheManager.get_seasonal_or_base_texture(
+	var park_id := _lake_park_id(anchor) # 근대화 시대 만석거 호수공원
+	var lake_tex: Texture2D = SpriteCacheManager.get_or_create_texture("buildings_modern", park_id, Vector2i(448, 320)) if park_id != "" else SpriteCacheManager.get_seasonal_or_base_texture(
 		"buildings", "manseokgeo", season_sfx, Vector2i(448, 320)
 	)
 	if lake_tex != null:
@@ -4852,7 +5162,7 @@ func _draw_manseokgeo_part(rel: Vector2i, c: Vector2, p_n: Vector2, p_e: Vector2
 			var body_tint: Color = SeasonColorFilter.get_current_tile_tint(current_season)
 			var ft: Vector2i = tile if tile.x >= 0 else Vector2i(-1, -1)
 			var sink := Vector2(0, 0.0) # 석축 옆면은 그림에서 지웠다(tools/flatten_base.py)
-			if ft.x >= 0 and _draw_fitted(lake_tex, "manseokgeo", cell_center(float(ft.x - 5), float(ft.y + 1), 1.0) + sink, cell_center(float(ft.x + 1), float(ft.y - 5), 1.0) + sink, cell_center(float(ft.x + 1), float(ft.y + 1), 1.0) + sink, body_tint, shadow_col):
+			if ft.x >= 0 and _draw_fitted(lake_tex, ("m_" + park_id) if park_id != "" else "manseokgeo", cell_center(float(ft.x - 5), float(ft.y + 1), 1.0) + sink, cell_center(float(ft.x + 1), float(ft.y - 5), 1.0) + sink, cell_center(float(ft.x + 1), float(ft.y + 1), 1.0) + sink, body_tint, shadow_col):
 				return
 			var rect := Rect2(c.x - 192.0, c.y + 16.0 - 222.6, 384.0, 222.6)
 			draw_texture_rect(lake_tex, Rect2(rect.position + Vector2(3.0, 4.0), rect.size), false, shadow_col)
@@ -5337,7 +5647,8 @@ func _draw_manseokgeo_sluice(c: Vector2, _p_n: Vector2, _p_e: Vector2, _p_s: Vec
 func _draw_chukmanje_part(rel: Vector2i, c: Vector2, p_n: Vector2, p_e: Vector2, p_s: Vector2, p_w: Vector2, tile := Vector2i(-1, -1), anchor := Vector2i(-1, -1)) -> void:
 	# [고품질 PNG 전면 전환] 6x6 단일 고화질 PNG 텍스처 단일 드로우콜 렌더링
 	var season_sfx: String = SeasonColorFilter.get_current_season_suffix(current_season)
-	var lake_tex: Texture2D = SpriteCacheManager.get_seasonal_or_base_texture(
+	var park_id := _lake_park_id(anchor) # 근대화 시대 축만제 호수공원
+	var lake_tex: Texture2D = SpriteCacheManager.get_or_create_texture("buildings_modern", park_id, Vector2i(448, 320)) if park_id != "" else SpriteCacheManager.get_seasonal_or_base_texture(
 		"buildings", "chukmanje", season_sfx, Vector2i(448, 320)
 	)
 	if lake_tex != null:
@@ -5353,7 +5664,7 @@ func _draw_chukmanje_part(rel: Vector2i, c: Vector2, p_n: Vector2, p_e: Vector2,
 			var body_tint: Color = SeasonColorFilter.get_current_tile_tint(current_season)
 			var ft: Vector2i = tile if tile.x >= 0 else Vector2i(-1, -1)
 			var sink := Vector2(0, 0.0) # 만석거: 두꺼운 석축 아랫단이 땅에 묻혀 떠 보이지 않게
-			if ft.x >= 0 and _draw_fitted(lake_tex, "chukmanje", cell_center(float(ft.x - 5), float(ft.y + 1), 1.0) + sink, cell_center(float(ft.x + 1), float(ft.y - 5), 1.0) + sink, cell_center(float(ft.x + 1), float(ft.y + 1), 1.0) + sink, body_tint, shadow_col):
+			if ft.x >= 0 and _draw_fitted(lake_tex, ("m_" + park_id) if park_id != "" else "chukmanje", cell_center(float(ft.x - 5), float(ft.y + 1), 1.0) + sink, cell_center(float(ft.x + 1), float(ft.y - 5), 1.0) + sink, cell_center(float(ft.x + 1), float(ft.y + 1), 1.0) + sink, body_tint, shadow_col):
 				return
 			var rect := Rect2(c.x - 192.0, c.y + 16.0 - 222.6, 384.0, 222.6)
 			draw_texture_rect(lake_tex, Rect2(rect.position + Vector2(3.0, 4.0), rect.size), false, shadow_col)
@@ -7479,7 +7790,7 @@ func _draw_cattle_yard_tile(x: int, y: int, rx: int, ry: int, c: Vector2, p_n: V
 	var season_now: String = band_master.current_season if band_master else current_season
 	var snow: bool = season_now == "겨울"
 	if _cattle_png_state == 0:
-		_cattle_png_state = 1 if (ResourceLoader.exists(CATTLE_PNG) or FileAccess.file_exists(ProjectSettings.globalize_path(CATTLE_PNG))) else 2
+		_cattle_png_state = 1 if (ResourceLoader.exists(CATTLE_PNG) or FileAccess.file_exists(AssetPaths.disk_path(CATTLE_PNG))) else 2
 	if _cattle_png_state == 1:
 		FastDraw.poly(self, PackedVector2Array([p_n, p_e, p_s, p_w]), Color("edf2f7") if snow else Color("9a8462"))
 		if rx == 2 and ry == 2:
@@ -7955,14 +8266,26 @@ const LANDMARK_PNG := {
 	"gwana": [2, 2, 0, Vector2i(128, 112)],
 	"jongnu": [2, 2, 0, Vector2i(128, 112)],
 	"jinhulso": [2, 2, 0, Vector2i(128, 112)],
+	"sewage": [2, 2, 0, Vector2i(128, 112)],
 }
 static var _landmark_png_state := {} # 이름 → true(그림 있음)/false
+static var _landmark_of := {} # 건물 이름(과 _site) → LANDMARK_PNG 이름
+
+## PORT-TRACE [렉: 턴 정산 멈칫]: 가림막을 모을 때 건물 칸마다 LANDMARK_PNG를 훑던 것을 표 한 번 찾기로
+static func _landmark_key(b: String) -> String:
+	if _landmark_of.is_empty():
+		for k: String in LANDMARK_PNG.keys():
+			_landmark_of[k] = k
+			_landmark_of[k + "_site"] = k
+	return _landmark_of.get(b, "")
 
 func _landmark_png(key: String, x: int, y: int, anchor: Vector2i, p_n: Vector2, p_e: Vector2, p_s: Vector2, p_w: Vector2) -> bool:
+	# 근대화 시대 개편 건물: 칸에 적힌 근대 그림(buildings_modern/<lm_modern>.png)으로 그린다
+	var mid: String = String(grid.grid[anchor.y][anchor.x].get("lm_modern", "")) if grid.in_bounds(anchor.x, anchor.y) else ""
 	if not _landmark_png_state.has(key):
 		var lp := "res://assets/sprites/buildings/lm_%s.png" % key
-		_landmark_png_state[key] = ResourceLoader.exists(lp) or FileAccess.file_exists(ProjectSettings.globalize_path(lp)) # 편집기에서 가져오기 전이어도
-	if not bool(_landmark_png_state[key]):
+		_landmark_png_state[key] = ResourceLoader.exists(lp) or FileAccess.file_exists(AssetPaths.disk_path(lp)) # 편집기에서 가져오기 전이어도
+	if mid == "" and not bool(_landmark_png_state[key]):
 		return false
 	var spec: Array = LANDMARK_PNG[key]
 	var season_now: String = band_master.current_season if band_master else current_season
@@ -7988,13 +8311,19 @@ func _landmark_png(key: String, x: int, y: int, anchor: Vector2i, p_n: Vector2, 
 	if x != x1 or y != y1:
 		return true # 가장 앞 칸이 아니면 바닥만
 	var size: Vector2i = spec[3]
-	var tex: Texture2D = SpriteCacheManager.get_seasonal_or_base_texture("buildings", "lm_" + key, SeasonColorFilter.get_current_season_suffix(season_now), size)
+	var fit_key := "lm_" + key
+	var tex: Texture2D
+	if mid != "":
+		fit_key = "m_" + mid
+		tex = SpriteCacheManager.get_or_create_texture("buildings_modern", mid, size)
+	else:
+		tex = SpriteCacheManager.get_seasonal_or_base_texture("buildings", "lm_" + key, SeasonColorFilter.get_current_season_suffix(season_now), size)
 	if tex == null:
 		return true
 	var w := float(x1 - x0 + 1)
 	var h := float(y1 - y0 + 1)
 	var bc := cell_center(float(x0) + w * 0.5, float(y0) + h * 0.5, 1.0)
-	if _draw_fitted(tex, "lm_" + key, cell_center(float(x0), float(y1 + 1), 1.0), cell_center(float(x1 + 1), float(y0), 1.0), cell_center(float(x1 + 1), float(y1 + 1), 1.0), SeasonColorFilter.get_current_tile_tint(season_now)):
+	if _draw_fitted(tex, fit_key, cell_center(float(x0), float(y1 + 1), 1.0), cell_center(float(x1 + 1), float(y0), 1.0), cell_center(float(x1 + 1), float(y1 + 1), 1.0), SeasonColorFilter.get_current_tile_tint(season_now)):
 		return true
 	var r := Rect2(bc.x - float(size.x) * 0.5, bc.y + (w + h) * 8.0 - float(size.y), float(size.x), float(size.y))
 	draw_texture_rect(tex, r, false, SeasonColorFilter.get_current_tile_tint(season_now))

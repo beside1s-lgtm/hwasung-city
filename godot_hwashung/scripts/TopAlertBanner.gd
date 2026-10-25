@@ -19,6 +19,9 @@ var _cooldown_timer: float = 0.0
 
 var message_label: Label
 var view_button: Button
+var _sb_alert: StyleBoxFlat
+var _sb_resolved: StyleBoxFlat
+var _current_tag: String = ""
 var close_button: Button
 var remaining_badge: Label
 
@@ -44,6 +47,10 @@ func _build_ui() -> void:
 	sb.content_margin_top = 4
 	sb.content_margin_bottom = 4
 	add_theme_stylebox_override("panel", sb)
+	_sb_alert = sb
+	_sb_resolved = sb.duplicate() as StyleBoxFlat
+	_sb_resolved.bg_color = Color(0.10, 0.33, 0.18, 0.98) # 해결 알림: 초록
+	_sb_resolved.border_color = Color(0.55, 0.85, 0.45, 1.0)
 
 	var hbox := HBoxContainer.new()
 	hbox.name = "HBoxContainer"
@@ -141,7 +148,8 @@ func push_alert(msg: String, target_world_pos: Vector2 = Vector2.ZERO) -> void:
 
 	_alert_queue.append({
 		"msg": msg,
-		"pos": target_world_pos
+		"pos": target_world_pos,
+		"tag": tag_of(msg)
 	})
 	if not _is_showing and _cooldown_timer <= 0.0:
 		_show_next_alert()
@@ -172,6 +180,9 @@ func _show_next_alert() -> void:
 	_current_msg = str(item.get("msg", ""))
 	var _raw_pos = item.get("pos", Vector2.ZERO)
 	_current_pos = _raw_pos if _raw_pos is Vector2 else Vector2.ZERO
+	_current_tag = str(item.get("tag", ""))
+	if _sb_alert != null:
+		add_theme_stylebox_override("panel", _sb_resolved if bool(item.get("resolved", false)) else _sb_alert)
 	_update_display_text()
 
 	if view_button != null:
@@ -183,6 +194,7 @@ func _show_next_alert() -> void:
 
 func _close_current_alert() -> void:
 	_is_showing = false
+	_current_tag = ""
 	_current_msg = ""
 	_current_pos = Vector2.ZERO
 	if view_button != null:
@@ -211,6 +223,32 @@ func _on_close_pressed() -> void:
 		_show_next_alert()
 	else:
 		_close_current_alert()
+
+## 계속되는 사건의 종류(해결되면 함께 지울 묶음). "" = 한 번 알리고 끝나는 소식
+static func tag_of(msg: String) -> String:
+	if "화마" in msg or "화재" in msg:
+		return "fire"
+	if "변란" in msg or "교전" in msg or "반란군" in msg:
+		return "raid"
+	return ""
+
+## 사건이 해결·종료되면: 그 사건의 경고를 대기열과 화면에서 지우고, 해결 알림(초록)을 바로 띄워 10초 뒤 저절로 닫는다
+func resolve(tag: String, resolved_msg: String = "", target_world_pos: Vector2 = Vector2.ZERO) -> void:
+	if view_button == null:
+		_build_ui()
+	_alert_queue = _alert_queue.filter(func(q: Dictionary) -> bool: return str(q.get("tag", "")) != tag)
+	var was_showing_it := _is_showing and _current_tag == tag
+	if resolved_msg.strip_edges() != "" and GameSettings.is_disaster_popup_enabled():
+		_alert_queue.push_front({"msg": resolved_msg, "pos": target_world_pos, "tag": "", "resolved": true})
+		_show_next_alert() # 지금 떠 있던 다른 알림은 잠시 밀린다(해결 소식이 먼저)
+	elif was_showing_it:
+		if _alert_queue.is_empty():
+			_close_current_alert()
+			_cooldown_timer = 0.0
+		else:
+			_show_next_alert()
+	else:
+		_update_display_text()
 
 func clear_alerts() -> void:
 	_alert_queue.clear()

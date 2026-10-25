@@ -206,15 +206,8 @@ static func upgrade_procedural_pngs_v4_iso() -> void:
 	# 5. 방·리 특수 공동체 공간 5종
 	bake_direct_iso_image("buildings", "seodang", Vector2i(128, 112), Callable(ProceduralIsoArtist, "paint_special_facility").bind("seodang"), true)
 	bake_direct_iso_image("buildings", "maegok_seowon", Vector2i(192, 160), Callable(ProceduralIsoArtist, "paint_special_facility").bind("maegok_seowon"), true)
-	bake_direct_iso_image("buildings", "women_play_yard", Vector2i(128, 112), Callable(ProceduralIsoArtist, "paint_special_facility").bind("women_play_yard"), true)
-	bake_direct_iso_image("buildings", "children_play_yard", Vector2i(128, 112), Callable(ProceduralIsoArtist, "paint_special_facility").bind("children_play_yard"), true)
 	bake_direct_iso_image("buildings", "well", Vector2i(64, 72), Callable(ProceduralIsoArtist, "paint_special_facility").bind("well"), true)
 
-	# 6. 핵심 랜드마크 4종
-	bake_direct_iso_image("buildings", "haenggung", Vector2i(448, 320), Callable(ProceduralIsoArtist, "paint_landmark").bind("haenggung"), true)
-	bake_direct_iso_image("buildings", "seojangdae", Vector2i(128, 112), Callable(ProceduralIsoArtist, "paint_landmark").bind("seojangdae"), true)
-	bake_direct_iso_image("buildings", "yeonmudae", Vector2i(128, 112), Callable(ProceduralIsoArtist, "paint_landmark").bind("yeonmudae"), true)
-	bake_direct_iso_image("buildings", "yusubu", Vector2i(128, 112), Callable(ProceduralIsoArtist, "paint_landmark").bind("yusubu"), true)
 
 	# 7. 기본 호환 에셋 업데이트 (thatch_house, tile_house, market_shop, workshop)
 	bake_direct_iso_image("buildings", "thatch_house", Vector2i(64, 72), Callable(ProceduralIsoArtist, "paint_thatch_house").bind(0), true)
@@ -452,9 +445,7 @@ static func upgrade_procedural_pngs_v8_purge_flat_houses() -> void:
 		"buildings/yusubu.png",
 		"buildings/seodang.png",
 		"buildings/maegok_seowon.png",
-		"buildings/well.png",
-		"buildings/women_play_yard.png",
-		"buildings/children_play_yard.png"
+		"buildings/well.png"
 	]
 	for idx: int in range(10):
 		purge_targets.append("buildings/thatch_house_%02d.png" % (idx + 1))
@@ -533,15 +524,8 @@ static func upgrade_procedural_pngs_v8_purge_flat_houses() -> void:
 	# 6. 특수 공동체 시설 5종 2.5D 재베이킹
 	bake_direct_iso_image("buildings", "seodang", Vector2i(128, 112), Callable(ProceduralIsoArtist, "paint_special_facility").bind("seodang"), true)
 	bake_direct_iso_image("buildings", "maegok_seowon", Vector2i(192, 160), Callable(ProceduralIsoArtist, "paint_special_facility").bind("maegok_seowon"), true)
-	bake_direct_iso_image("buildings", "women_play_yard", Vector2i(128, 112), Callable(ProceduralIsoArtist, "paint_special_facility").bind("women_play_yard"), true)
-	bake_direct_iso_image("buildings", "children_play_yard", Vector2i(128, 112), Callable(ProceduralIsoArtist, "paint_special_facility").bind("children_play_yard"), true)
 	bake_direct_iso_image("buildings", "well", Vector2i(64, 72), Callable(ProceduralIsoArtist, "paint_special_facility").bind("well"), true)
 
-	# 7. 핵심 랜드마크 4종 2.5D 재베이킹
-	bake_direct_iso_image("buildings", "haenggung", Vector2i(448, 320), Callable(ProceduralIsoArtist, "paint_landmark").bind("haenggung"), true)
-	bake_direct_iso_image("buildings", "seojangdae", Vector2i(128, 112), Callable(ProceduralIsoArtist, "paint_landmark").bind("seojangdae"), true)
-	bake_direct_iso_image("buildings", "yeonmudae", Vector2i(128, 112), Callable(ProceduralIsoArtist, "paint_landmark").bind("yeonmudae"), true)
-	bake_direct_iso_image("buildings", "yusubu", Vector2i(128, 112), Callable(ProceduralIsoArtist, "paint_landmark").bind("yusubu"), true)
 
 	var fa := FileAccess.open(global_marker, FileAccess.WRITE)
 	if fa:
@@ -684,8 +668,6 @@ static func upgrade_procedural_pngs_v9_pure_png_lakes_and_shops() -> void:
 	_bake_iso_if_missing("buildings", "workshop", Vector2i(64, 72), Callable(ProceduralIsoArtist, "paint_workshop").bind("ws_1x1_carpenter"), true)
 
 	# 4. 놀이마당 2종 (바닥 없는 100% 투명 배경 소품 에셋)
-	_bake_iso_if_missing("buildings", "women_play_yard", Vector2i(128, 112), Callable(ProceduralIsoArtist, "paint_special_facility").bind("women_play_yard"), true)
-	_bake_iso_if_missing("buildings", "children_play_yard", Vector2i(128, 112), Callable(ProceduralIsoArtist, "paint_special_facility").bind("children_play_yard"), true)
 
 ## [직접 생성된 Image를 PNG 파일로 저장하고 캐싱하는 헬퍼]
 static func save_direct_image(category: String, asset_id: String, img: Image) -> Texture2D:
@@ -1089,7 +1071,7 @@ static func _paint_iso_fallback_image(img: Image, _category: String, asset_id: S
 		ProceduralIsoArtist.paint_workshop(img, sz, asset_id)
 	elif asset_id == "well":
 		ProceduralIsoArtist.paint_well(img, sz)
-	elif asset_id in ["seodang", "maegok_seowon", "women_play_yard", "children_play_yard"]:
+	elif asset_id in ["seodang", "maegok_seowon"]:
 		ProceduralIsoArtist.paint_special_facility(img, sz, asset_id)
 	elif asset_id in ["haenggung", "seojangdae", "yeonmudae", "yusubu"]:
 		ProceduralIsoArtist.paint_landmark(img, sz, asset_id)
@@ -1129,7 +1111,9 @@ static func get_or_create_texture(
 	if ResourceLoader.exists(file_path):
 		var loaded_tex: Texture2D = load(file_path) as Texture2D
 		if loaded_tex != null:
-			if size.x > 0 and size.y > 0 and (loaded_tex.get_width() != size.x or loaded_tex.get_height() != size.y):
+			# 건물 그림은 크기가 기본 템플릿과 달라도 그대로 쓴다(그리는 쪽이 비율대로 맞춤). 예전엔 크기가 다르면
+			# 기본 그림으로 PNG를 덮어써서, 사용자가 손본 그림(잘린 곳을 고쳐 캔버스가 커진 서당 등)이 지워졌다.
+			if not (category in ["buildings", "buildings_modern"]) and size.x > 0 and size.y > 0 and (loaded_tex.get_width() != size.x or loaded_tex.get_height() != size.y):
 				_force_dump_texture(category, asset_id, size)
 				return _texture_cache[cache_key]
 			_texture_cache[cache_key] = loaded_tex
@@ -1138,7 +1122,7 @@ static func get_or_create_texture(
 		var target_path: String = global_path if FileAccess.file_exists(global_path) else file_path
 		var img: Image = Image.load_from_file(target_path)
 		if img != null and not img.is_empty():
-			if size.x > 0 and size.y > 0 and (img.get_width() != size.x or img.get_height() != size.y):
+			if not (category in ["buildings", "buildings_modern"]) and size.x > 0 and size.y > 0 and (img.get_width() != size.x or img.get_height() != size.y):
 				_force_dump_texture(category, asset_id, size)
 				return _texture_cache[cache_key]
 			var file_tex: ImageTexture = ImageTexture.create_from_image(img)
@@ -1202,10 +1186,6 @@ static func preload_and_dump_all_standards() -> void:
 		"market_shop": Vector2i(64, 72),
 		"workshop": Vector2i(64, 72),
 		"well": Vector2i(64, 72),
-		"seojangdae": Vector2i(128, 112),
-		"yeonmudae": Vector2i(128, 112),
-		"yusubu": Vector2i(128, 112),
-		"haenggung": Vector2i(448, 320),
 		"manseokgeo": Vector2i(448, 320),
 		"chukmanje": Vector2i(448, 320)
 	}
@@ -1404,7 +1384,22 @@ static func _paint_modern_building(img: Image, _id: String, w: int, h: int) -> v
 
 	_apply_outline(img, w, h, Color("1b2631"))
 
+## [나무/식생 픽셀아트 PNG 텍스처 조회/생성 SSOT]
+static func get_or_create_tree_texture(kind: String, season_name: String) -> Texture2D:
+	var s_key := "spring"
+	match season_name:
+		"봄": s_key = "spring"
+		"여름": s_key = "summer"
+		"가을": s_key = "autumn"
+		"겨울": s_key = "winter"
+		_: s_key = "spring"
+	var asset_id := "tree_" + kind + "_" + s_key
+	return get_or_create_texture("terrain", asset_id, Vector2i(32, 44))
+
 static func _paint_terrain_tile(img: Image, id: String, w: int, h: int) -> void:
+	if id.begins_with("tree_"):
+		_paint_tree_sprite(img, id, w, h)
+		return
 	var mid_x: float = float(w) * 0.5
 	var mid_y: float = float(h) * 0.5
 
@@ -1535,6 +1530,309 @@ static func _paint_terrain_tile(img: Image, id: String, w: int, h: int) -> void:
 						img.set_pixel(x, y, final_col)
 
 	_apply_outline(img, w, h, Color(0.12, 0.12, 0.12, 0.85))
+
+## [조선 고유 5대 수종 사계절 2.5D 픽셀아트 PNG 래스터라이저]
+static func _paint_tree_sprite(img: Image, id: String, w: int, h: int) -> void:
+	var parts: PackedStringArray = id.split("_")
+	if parts.size() < 3:
+		return
+	var kind: String = parts[1]
+	var season: String = parts[2]
+
+	var mid_x: float = float(w) * 0.5
+	var base_y: float = float(h) - 3.0
+
+	# 1. 지면 타원 그림자 (발밑 안착)
+	var shadow_col := Color(0.08, 0.08, 0.08, 0.35)
+	for py: int in range(maxi(0, int(base_y - 3.0)), mini(h, int(base_y + 3.0))):
+		for px: int in range(maxi(0, int(mid_x - 10.0)), mini(w, int(mid_x + 10.0))):
+			var edx: float = (float(px) - mid_x) / 9.0
+			var edy: float = (float(py) - base_y) / 2.5
+			if edx * edx + edy * edy <= 1.0:
+				var alpha: float = 0.35 * (1.0 - (edx * edx + edy * edy) * 0.4)
+				img.set_pixel(px, py, Color(shadow_col.r, shadow_col.g, shadow_col.b, alpha))
+
+	# 2. 수종별 픽셀아트 렌더링
+	match kind:
+		"pine":
+			_paint_pine_tree(img, mid_x, base_y, season)
+		"zelkova":
+			_paint_zelkova_tree(img, mid_x, base_y, season)
+		"willow":
+			_paint_willow_tree(img, mid_x, base_y, season)
+		"cherry":
+			_paint_cherry_tree(img, mid_x, base_y, season)
+		"maple":
+			_paint_maple_tree(img, mid_x, base_y, season)
+		_:
+			_paint_zelkova_tree(img, mid_x, base_y, season)
+
+	# 3. 1px 다크 먹색 외곽선 엣지 보강
+	_apply_outline(img, w, h, Color("1e1b18"))
+
+## 타원형 잎새/꽃송이 덩어리 픽셀아트 헬퍼 (3단계 명암 + 겨울 눈 얹힘)
+static func _paint_foliage_blob(img: Image, cx: float, cy: float, rx: float, ry: float, c_dark: Color, c_mid: Color, c_light: Color, is_winter: bool = false) -> void:
+	var w: int = img.get_width()
+	var h: int = img.get_height()
+	var min_y: int = maxi(0, int(cy - ry))
+	var max_y: int = mini(h, int(cy + ry + 1.0))
+	var min_x: int = maxi(0, int(cx - rx))
+	var max_x: int = mini(w, int(cx + rx + 1.0))
+
+	for py: int in range(min_y, max_y):
+		for px: int in range(min_x, max_x):
+			var dx: float = (float(px) - cx) / rx
+			var dy: float = (float(py) - cy) / ry
+			var dist_sq: float = dx * dx + dy * dy
+			if dist_sq <= 1.0:
+				var shade_val: float = (dy * 0.7 - dx * 0.5)
+				var pix_col: Color
+				if shade_val < -0.35:
+					pix_col = c_light
+				elif shade_val < 0.25:
+					pix_col = c_mid
+				else:
+					pix_col = c_dark
+
+				if dist_sq > 0.85 and ((px + py) % 2 == 0):
+					pix_col = pix_col.darkened(0.18)
+
+				if is_winter and dy < -0.30:
+					pix_col = Color("ffffff") if dy < -0.55 else Color("cbd5e1")
+
+				img.set_pixel(px, py, pix_col)
+
+## 1. 소나무 (한국 적송: 굽이치는 줄기와 3단 솔잎 구름)
+static func _paint_pine_tree(img: Image, mid_x: float, base_y: float, season: String) -> void:
+	var c_dark: Color
+	var c_mid: Color
+	var c_light: Color
+	match season:
+		"spring":
+			c_dark = Color("1e4e26")
+			c_mid = Color("2b6e37")
+			c_light = Color("58ab66")
+		"summer":
+			c_dark = Color("133618")
+			c_mid = Color("1e5226")
+			c_light = Color("2f7539")
+		"autumn":
+			c_dark = Color("17381b")
+			c_mid = Color("25542b")
+			c_light = Color("3d7544")
+		"winter", _:
+			c_dark = Color("18381c")
+			c_mid = Color("235229")
+			c_light = Color("386b3e")
+
+	var col_bark_dark := Color("451e10")
+	var col_bark_mid := Color("783516")
+	var col_bark_light := Color("9a451c")
+
+	for py: int in range(int(base_y - 23.0), int(base_y + 1.0)):
+		var t_ratio: float = float(py - int(base_y - 23.0)) / 24.0
+		var stem_offset_x: float = sin((1.0 - t_ratio) * 3.14159) * 2.2 - 0.5
+		var stem_center_x: float = mid_x + stem_offset_x
+		var thick: float = 2.0 + t_ratio * 1.5
+
+		var sx0: int = int(stem_center_x - thick * 0.5)
+		var sx1: int = int(stem_center_x + thick * 0.5)
+		for px: int in range(sx0, sx1 + 1):
+			if px >= 0 and px < img.get_width() and py >= 0 and py < img.get_height():
+				var b_col: Color = col_bark_mid
+				if px == sx0:
+					b_col = col_bark_dark
+				elif px == sx1:
+					b_col = col_bark_light
+				img.set_pixel(px, py, b_col)
+
+	var is_winter: bool = (season == "winter")
+	_paint_foliage_blob(img, mid_x - 5.5, base_y - 14.0, 6.5, 4.5, c_dark, c_mid, c_light, is_winter)
+	_paint_foliage_blob(img, mid_x + 5.5, base_y - 18.0, 7.0, 5.0, c_dark, c_mid, c_light, is_winter)
+	_paint_foliage_blob(img, mid_x - 0.5, base_y - 25.0, 8.5, 6.5, c_dark, c_mid, c_light, is_winter)
+
+## 2. 느티나무 (웅장한 둥근 돔형 활엽수)
+static func _paint_zelkova_tree(img: Image, mid_x: float, base_y: float, season: String) -> void:
+	var col_trunk_dark := Color("33241b")
+	var col_trunk_mid := Color("543b2c")
+	var col_trunk_light := Color("73533e")
+
+	for py: int in range(int(base_y - 16.0), int(base_y + 1.0)):
+		var t_ratio: float = float(py - int(base_y - 16.0)) / 17.0
+		var thick: float = 2.5 + t_ratio * 2.0
+		var sx0: int = int(mid_x - thick * 0.5)
+		var sx1: int = int(mid_x + thick * 0.5)
+		for px: int in range(sx0, sx1 + 1):
+			if px >= 0 and px < img.get_width() and py >= 0 and py < img.get_height():
+				var tcol: Color = col_trunk_mid
+				if px == sx0:
+					tcol = col_trunk_dark
+				elif px == sx1:
+					tcol = col_trunk_light
+				img.set_pixel(px, py, tcol)
+
+	if season == "winter":
+		for px in range(int(mid_x - 8.0), int(mid_x + 9.0)):
+			var dx: float = float(px) - mid_x
+			var by: int = int(base_y - 18.0 - absf(dx) * 0.8)
+			if px >= 0 and px < img.get_width() and by >= 0 and by < img.get_height():
+				img.set_pixel(px, by, col_trunk_dark)
+				if by - 1 >= 0:
+					img.set_pixel(px, by - 1, Color("ffffff"))
+		return
+
+	var c_dark: Color
+	var c_mid: Color
+	var c_light: Color
+	match season:
+		"spring":
+			c_dark = Color("2e6b1f")
+			c_mid = Color("4b9632")
+			c_light = Color("83cf5b")
+		"summer":
+			c_dark = Color("184517")
+			c_mid = Color("286626")
+			c_light = Color("429e3e")
+		"autumn", _:
+			c_dark = Color("572e0f")
+			c_mid = Color("9c571c")
+			c_light = Color("e08c2d")
+
+	_paint_foliage_blob(img, mid_x - 6.5, base_y - 18.0, 7.5, 6.0, c_dark, c_mid, c_light, false)
+	_paint_foliage_blob(img, mid_x + 6.5, base_y - 17.0, 7.5, 6.0, c_dark, c_mid, c_light, false)
+	_paint_foliage_blob(img, mid_x, base_y - 25.0, 9.5, 7.5, c_dark, c_mid, c_light, false)
+
+## 3. 능수버들 (물가·숲자락의 우아하게 늘어지는 수양버들)
+static func _paint_willow_tree(img: Image, mid_x: float, base_y: float, season: String) -> void:
+	var col_trunk := Color("3d2e24")
+	for py: int in range(int(base_y - 18.0), int(base_y + 1.0)):
+		var curve: float = sin(float(py) * 0.25) * 1.5
+		var px: int = int(mid_x + curve)
+		if px >= 0 and px < img.get_width() and py >= 0 and py < img.get_height():
+			img.set_pixel(px, py, col_trunk)
+			if px + 1 < img.get_width():
+				img.set_pixel(px + 1, py, col_trunk.lightened(0.2))
+
+	var c_dark: Color
+	var c_mid: Color
+	var c_light: Color
+	match season:
+		"spring":
+			c_dark = Color("2f5e22")
+			c_mid = Color("488737")
+			c_light = Color("76c45e")
+		"summer":
+			c_dark = Color("16421c")
+			c_mid = Color("25662d")
+			c_light = Color("3f9949")
+		"autumn":
+			c_dark = Color("54471c")
+			c_mid = Color("806d2b")
+			c_light = Color("b59e44")
+		"winter", _:
+			c_dark = Color("5e6870")
+			c_mid = Color("85929c")
+			c_light = Color("ffffff")
+
+	var is_winter: bool = (season == "winter")
+	_paint_foliage_blob(img, mid_x, base_y - 23.0, 7.5, 5.5, c_dark, c_mid, c_light, is_winter)
+
+	for strand_idx: int in range(-3, 4):
+		var ox: float = float(strand_idx) * 3.2
+		var sx: int = int(mid_x + ox)
+		var strand_len: int = 12 + absi(strand_idx) * 2
+		for sy: int in range(int(base_y - 21.0), int(base_y - 21.0 + float(strand_len))):
+			if sx >= 0 and sx < img.get_width() and sy >= 0 and sy < img.get_height():
+				var wave_x: int = sx + int(sin(float(sy) * 0.4) * 1.2)
+				if wave_x >= 0 and wave_x < img.get_width():
+					var scol: Color = c_mid if (sy % 2 == 0) else c_light
+					if is_winter and (sy % 3 == 0):
+						scol = Color("ffffff")
+					img.set_pixel(wave_x, sy, scol)
+
+## 4. 벚꽃나무 / 꽃나무 (봄 연분홍 겹벚꽃 꽃구름)
+static func _paint_cherry_tree(img: Image, mid_x: float, base_y: float, season: String) -> void:
+	var col_trunk := Color("3b291e")
+	for py: int in range(int(base_y - 17.0), int(base_y + 1.0)):
+		var px: int = int(mid_x - 0.5 + sin(float(py) * 0.3) * 1.2)
+		if px >= 0 and px < img.get_width() and py >= 0 and py < img.get_height():
+			img.set_pixel(px, py, col_trunk)
+			if px + 1 < img.get_width():
+				img.set_pixel(px + 1, py, col_trunk.lightened(0.2))
+
+	var c_dark: Color
+	var c_mid: Color
+	var c_light: Color
+	match season:
+		"spring":
+			c_dark = Color("8c2e4f")
+			c_mid = Color("bf4d74")
+			c_light = Color("fcc2d4")
+		"summer":
+			c_dark = Color("1e5424")
+			c_mid = Color("2e7a36")
+			c_light = Color("4ca356")
+		"autumn":
+			c_dark = Color("6b1b1b")
+			c_mid = Color("9c2a2a")
+			c_light = Color("d44c4c")
+		"winter", _:
+			c_dark = Color("3d3128")
+			c_mid = Color("635245")
+			c_light = Color("ffffff")
+
+	var is_winter: bool = (season == "winter")
+	_paint_foliage_blob(img, mid_x - 5.5, base_y - 17.0, 7.0, 5.5, c_dark, c_mid, c_light, is_winter)
+	_paint_foliage_blob(img, mid_x + 5.5, base_y - 16.0, 7.0, 5.5, c_dark, c_mid, c_light, is_winter)
+	_paint_foliage_blob(img, mid_x, base_y - 24.0, 8.5, 6.5, c_dark, c_mid, c_light, is_winter)
+
+	if season == "spring":
+		var petal_cols: Array[Color] = [Color("fcc2d4"), Color("ffffff"), Color("f783ac")]
+		var petal_coords: Array[Vector2i] = [
+			Vector2i(-9, -21), Vector2i(8, -20), Vector2i(-8, -12),
+			Vector2i(9, -11), Vector2i(-4, -6), Vector2i(6, -7)
+		]
+		for p_coord: Vector2i in petal_coords:
+			var px: int = int(mid_x) + p_coord.x
+			var py: int = int(base_y) + p_coord.y
+			if px >= 0 and px < img.get_width() and py >= 0 and py < img.get_height():
+				img.set_pixel(px, py, petal_cols[(px + py) % petal_cols.size()])
+
+## 5. 단풍나무 (타오르는 진홍빛 단풍)
+static func _paint_maple_tree(img: Image, mid_x: float, base_y: float, season: String) -> void:
+	var col_trunk := Color("38291f")
+	for py: int in range(int(base_y - 16.0), int(base_y + 1.0)):
+		var px: int = int(mid_x)
+		if px >= 0 and px < img.get_width() and py >= 0 and py < img.get_height():
+			img.set_pixel(px, py, col_trunk)
+			if px + 1 < img.get_width():
+				img.set_pixel(px + 1, py, col_trunk.lightened(0.25))
+
+	var c_dark: Color
+	var c_mid: Color
+	var c_light: Color
+	match season:
+		"autumn":
+			c_dark = Color("570f0f")
+			c_mid = Color("8f1d1d")
+			c_light = Color("e03828")
+		"spring":
+			c_dark = Color("385923")
+			c_mid = Color("588a38")
+			c_light = Color("8ec265")
+		"summer":
+			c_dark = Color("1e471d")
+			c_mid = Color("2d692c")
+			c_light = Color("469145")
+		"winter", _:
+			c_dark = Color("362c24")
+			c_mid = Color("57463a")
+			c_light = Color("ffffff")
+
+	var is_winter: bool = (season == "winter")
+	_paint_foliage_blob(img, mid_x - 5.5, base_y - 17.0, 7.0, 5.5, c_dark, c_mid, c_light, is_winter)
+	_paint_foliage_blob(img, mid_x + 5.5, base_y - 16.0, 7.0, 5.5, c_dark, c_mid, c_light, is_winter)
+	_paint_foliage_blob(img, mid_x, base_y - 24.0, 8.5, 6.5, c_dark, c_mid, c_light, is_winter)
 
 static func _paint_npc_sprite(img: Image, id: String, w: int, h: int) -> void:
 	if id.ends_with("_sheet"):

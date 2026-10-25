@@ -74,6 +74,7 @@ var _terrain_popup: PanelContainer # PORT-TRACE [지형 편집]: 평지/산/물 
 var _policy_popup: PanelContainer  # PORT-TRACE [조정·정무]: 비변사/조세/인재/포호/도적/왕실의례 서브 도크
 var _dock_policy_btn: Button
 var _policy_bandit_btn: Button
+var _policy_btns: Dictionary = {} # action_id -> Button (근대화 시대 이름 교체용)
 var _policy_tiger_btn: Button
 var _active_tool_id: String = "inspect"
 var _dock_buttons: Dictionary = {} # tool_id -> Button
@@ -432,7 +433,14 @@ func _show_public_category(cat_id: String) -> void:
 	var cat_data: Dictionary = PUBLIC_CATEGORIES[cat_id]
 	var items: Array = cat_data["items"]
 	for pt in items:
-		var btn := _create_dock_card_btn(_public_items_hb, str(pt[0]), str(pt[1]), str(pt[2]), false)
+		var lbl_txt := str(pt[1])
+		var um_w: UrbanEvolutionManager = UrbanEvolutionManager.instance
+		if um_w != null and UrbanEvolutionManager.is_active(): # 근대 수도체제 이름
+			if str(pt[2]) == "well" and um_w.wells_upgraded:
+				lbl_txt = "집수정"
+			elif str(pt[2]) == "reservoir" and um_w.reservoirs_upgraded:
+				lbl_txt = "생활용수\n공급시설"
+		var btn := _create_dock_card_btn(_public_items_hb, str(pt[0]), lbl_txt, str(pt[2]), false)
 		_dock_buttons[str(pt[2])] = btn
 		var is_act: bool = (_active_tool_id == str(pt[2]))
 		_apply_card_btn_styles(btn, is_act)
@@ -572,12 +580,62 @@ func _build_policy_popup() -> void:
 		var btn := _create_action_card_btn(hb, icon_txt, lbl_txt, func():
 			if _policy_popup:
 				_policy_popup.visible = false
-			open_action_modal(action_id)
+			open_action_modal(_policy_action(action_id))
 		, Color(0.18, 0.12, 0.08), false)
+		_policy_btns[action_id] = btn
 		if action_id == "bandit":
 			_policy_bandit_btn = btn
 		elif action_id == "tiger":
 			_policy_tiger_btn = btn
+
+## 근대화 시대에는 [실학 연구] 자리가 [서학 진흥], [삼남 교역] 자리가 [외교]가 된다.
+const PRESIDENT_BLOCKED := ["tax", "research", "west_promo", "trade", "diplomacy", "tiger", "bandit", "crown_prince", "hyoryungwon", "eulmyo", "wall_repair", "water_works"]
+
+## PORT-TRACE [1800년 뒤 세자 추천]: 세자서연이 닫혔는가(1800년 엔딩으로 순조 즉위 뒤, 현대 정치체제 전환 뒤)
+func _prince_closed() -> bool:
+	var yr: int = time_manager.current_year if time_manager != null else (sim.current_year if sim != null else 1789)
+	return CrownPrinceEducationManager.prince_affairs_closed(yr)
+
+## 정무 메뉴의 [세자서연] 버튼: 세자서연이 닫혔으면 숨긴다(정무 메뉴를 열 때마다 다시 본다 — 1800년은 메뉴를 연 채로도 넘어오므로)
+func _refresh_prince_btn() -> void:
+	var prince_btn: Button = _policy_btns.get("crown_prince")
+	if prince_btn != null:
+		prince_btn.visible = not _prince_closed()
+
+func _policy_action(action_id: String) -> String:
+	if ModernPoliticsManager.is_presidential() and action_id in ["research", "trade"]:
+		return "proposals"
+	if ModernizationManager.is_active():
+		if action_id == "research":
+			return "west_promo"
+		if action_id == "trade":
+			return "diplomacy"
+	return action_id
+
+func refresh_modern_labels() -> void:
+	var modern := ModernizationManager.is_active()
+	var table := {
+		"research": ["🔬", "서학 진흥"] if modern else ["📖", "실학 연구"],
+		"trade": ["🌐", "외교"] if modern else ["🤝", "삼남 교역"],
+	}
+	if ModernPoliticsManager.is_presidential():
+		table["research"] = ["📜", "국정 건의"]
+		table["trade"] = ["🏛️", "대통령 집무"]
+	# 1800년 엔딩(순조 즉위) 뒤나 현대 정치체제로 바뀌면 세자 관련 정무(세자서연)를 없앤다
+	# 하단 메뉴바: 홍예성문 → 하수처리시설(근대화 시대)
+	var gate_btn: Button = _dock_buttons.get("gate")
+	if gate_btn != null and gate_btn.get_child_count() > 0:
+		var gvb := gate_btn.get_child(0)
+		(gvb.get_child(0) as Label).text = "🚰" if modern else "⛩️"
+		(gvb.get_child(1) as Label).text = "하수처리" if modern else "홍예성문"
+	_refresh_prince_btn()
+	for id in table:
+		var b: Button = _policy_btns.get(id)
+		if b == null or b.get_child_count() == 0:
+			continue
+		var vb := b.get_child(0)
+		(vb.get_child(0) as Label).text = table[id][0]
+		(vb.get_child(1) as Label).text = table[id][1]
 
 # ------------------------------------------------------------ 하단 도크 바 (최하단 메인 메뉴바 - 붉은색 지정 영역: 2pt 확대)
 func _build_dock_bar() -> void:
@@ -643,6 +701,7 @@ func _build_dock_bar() -> void:
 
 	# 10. 📜 조정·정무 서브 도크 버튼 (비변사/조세/인재/포호/도적/왕실의례 통합)
 	_dock_policy_btn = _create_action_card_btn(hb, "📜", "조정·정무", func():
+		_refresh_prince_btn()
 		_toggle_popup(_policy_popup)
 	, Color(0.18, 0.12, 0.08), true)
 
@@ -652,6 +711,8 @@ func _build_dock_bar() -> void:
 	, Color(0.20, 0.14, 0.10), true)
 
 func select_tool(tool_id: String) -> void:
+	if tool_id == "gate" and ModernizationManager.is_active():
+		tool_id = "sewage" # 근대화 시대: 홍예성문 자리 = 하수처리시설
 	_active_tool_id = tool_id
 	emit_signal("tool_selected", tool_id)
 	if hud:
@@ -818,10 +879,19 @@ func _apply_card_btn_styles(b: Button, is_active: bool) -> void:
 
 # ------------------------------------------------------------ 퀵 액션 모달 오픈 라우터
 func open_action_modal(action_id: String) -> void:
+	if action_id == "crown_prince" and _prince_closed():
+		return # 1800년 엔딩(순조 즉위) 뒤·현대 정치체제 전환 뒤에는 세자서연 없음
+	# 대통령제: 정무는 직접 못 하고 국회·행정 각부의 건의를 승인/반려한다
+	if ModernPoliticsManager.is_presidential() and action_id in PRESIDENT_BLOCKED:
+		action_id = "proposals"
 	match action_id:
+		"proposals": _open("국정 건의 (국회·행정 각부)", _build_proposals)
+		"water_works": _open("근대 수도체제", _build_water_works)
 		"newspaper": _open("비변사 시보", _build_newspaper)
 		"mega_projects": _open("국책 대역사 청원", _build_projects)
-		"tax": _open("호조(戶曹) 탕평 조세 조율", _build_tax)
+		"tax":
+			_open("근대 통합 세제" if ModernizationManager.is_active() else "호조(戶曹) 탕평 조세 조율", _build_tax)
+			_modal_no_refresh = true
 		"tiger": _open("포호(捕虎) 대책", _build_tiger)
 		"crown_prince": _open("시강원 세자서연", _build_prince)
 		"hyoryungwon": _open("화산 현륭원 친림", _build_hyoryungwon)
@@ -832,13 +902,15 @@ func open_action_modal(action_id: String) -> void:
 			_close_modal()
 			open_uigwe_popup()
 		"research": _open("실학 연구", _build_research)
+		"west_promo": _open("서학 진흥 (근대 과학 연구)", _build_west_promo)
+		"diplomacy": _open("국제외교 회담", _build_diplomacy)
 		"bandit": _open("화적(도적) 소탕 및 소굴 토벌", _build_bandit)
 		"trial":
 			_close_modal()
 			if trial_manager:
 				trial_manager.open_trial_ui()
 		"gwana": _open("화성유수부 동헌 관아", _build_gwana_hub)
-		"wall_repair": _open("성곽 보수 및 사대문 방호 체제", _build_wall_repair)
+		"wall_repair": _open("문화재 보수 및 성곽 방호" if ModernizationManager.is_active() else "성곽 보수 및 사대문 방호 체제", _build_wall_repair)
 		"seojangdae_drill": _open("서장대 연례 야간 군사 훈련 (야조)", _build_seojangdae_drill)
 		"yeonmudae_drill": _open("연무대 장용영 군사 훈련 (무예 사열)", _build_yeonmudae_drill)
 		"stat_gold": _open("국고(금) — 재정 작업", _build_stat_hub.bind("gold"))
@@ -945,8 +1017,19 @@ func _stat_hub_info(kind: String) -> Dictionary:
 					{"label": "🙏 현륭원 친림", "kind": "modal", "target": "hyoryungwon", "desc": "해마다 참배하면 왕권이 오릅니다."},
 					{"label": "🎉 을묘년 화성 원행", "kind": "modal", "target": "eulmyo", "desc": "1795년 대행사로 왕권과 민심을 크게 올립니다."},
 					{"label": "👑 세자서연", "kind": "modal", "target": "crown_prince", "desc": "세자를 가르쳐 후계를 튼튼히 합니다."},
-				]}
+				].filter(func(act: Dictionary) -> bool: return not (act["target"] == "crown_prince" and _prince_closed()))}
 		"flood":
+			if ModernizationManager.is_active() and UrbanEvolutionManager.instance:
+				var wum: UrbanEvolutionManager = UrbanEvolutionManager.instance
+				return {"icon": "🚰 치수·상하수도", "value": "방재율 %d%% · 상하수도 보급률 %d%%" % [sim.flood_defense, wum.water_supply_rate()],
+					"why": "근대 수도체제: 집수정·생활용수 공급시설·하수처리시설의 영향권 안에 든 가옥·상점 비율이 상하수도 보급률입니다. 영향권 밖에는 물방울이 뜨고, 물방울이 없으면 100%%입니다. 수도 연결 대공사를 마치면 영향권이 1.5배로 넓어집니다.\n보급률 50%% 이상이면 매달 민심 +1(100%%면 +2), 1945년 결산의 도시화 점수에도 들어갑니다. 홍수에 대비하는 치수 방재율(제방)은 그대로입니다.",
+					"actions": [
+						{"label": "🏗️ 수도 연결 대공사", "kind": "modal", "target": "water_works", "desc": "수원 시내 전체에 수도관을 묻는 큰 공사입니다." + ("(완공)" if wum.water_project_done() else "")},
+						{"label": "🪣 우물 → 집수정", "kind": "modal", "target": "water_works", "desc": "마을 우물을 깨끗한 물을 모으는 집수정으로 바꿉니다." + ("(완료)" if wum.wells_upgraded else "")},
+						{"label": "💧 저수지 → 생활용수 공급시설", "kind": "modal", "target": "water_works", "desc": "저수지 물을 걸러 집집마다 보내는 시설로 바꿉니다." + ("(완료)" if wum.reservoirs_upgraded else "")},
+						{"label": "🚰 하수처리시설", "kind": "tool", "target": "sewage", "desc": "더러운 물을 걸러 수원천을 깨끗하게 지킵니다. (2x2, 매달 10,000냥 x 3달)"},
+						{"label": "🧱 제방 쌓기", "kind": "tool", "target": "levee", "desc": "수원천 둑을 한 칸씩 직접 쌓습니다(홍수 대비)."},
+					]}
 			return {"icon": "🌊 치수 방재율", "value": "%d%%" % sim.flood_defense,
 				"why": "수원천이 불어나는 장마철에 논밭과 민가를 지키는 힘입니다.\n석축 제방을 쌓고 수문(화홍문·남수문)과 저수지(만석거)를 지을수록 올라갑니다.",
 				"actions": [
@@ -981,6 +1064,8 @@ func open_tech_tree_popup() -> void:
 		tech_tree_popup.open_popup()
 
 func open_crown_prince_popup() -> void:
+	if _prince_closed():
+		return # 1800년 엔딩(순조 즉위) 뒤에는 세자 집무실도 없음
 	if crown_prince_popup == null:
 		var scene: PackedScene = load("res://scenes/CrownPrincePopup.tscn")
 		if scene != null:
@@ -1030,7 +1115,7 @@ func _modal_busy_with_pointer() -> bool:
 	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		return true
 	var hov := get_viewport().gui_get_hovered_control()
-	return hov != null and hov is BaseButton and _modal.is_ancestor_of(hov)
+	return hov != null and (hov is BaseButton or hov is Range) and _modal.is_ancestor_of(hov)
 
 func _process(_delta: float) -> void:
 	if _restore_scroll_v >= 0:
@@ -1503,13 +1588,23 @@ func _build_retainers() -> void:
 		p_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		p_icon.texture = SpriteCacheManager.get_named_character_texture(cid, true)
 		hb.add_child(p_icon)
-		var lbl := Label.new()
+		var rtl := RichTextLabel.new()
+		rtl.bbcode_enabled = true
+		rtl.fit_content = true
+		rtl.scroll_active = false
+		rtl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		rtl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		rtl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		if ThemeManager.get_base_font():
+			rtl.add_theme_font_override("normal_font", ThemeManager.get_base_font())
+		if ThemeManager.get_title_font():
+			rtl.add_theme_font_override("bold_font", ThemeManager.get_title_font())
+		rtl.add_theme_font_size_override("normal_font_size", 14)
+		rtl.add_theme_font_size_override("bold_font_size", 16)
+		rtl.add_theme_color_override("default_color", Color("1c1917"))
 		var s_salary: int = court.get_scholar_salary(cid) if court != null else CourtSystem.calculate_scholar_salary(int(info["salary"]))
-		lbl.text = "%s — 녹봉 매달 %d냥 (%d개월 뒤 떠남)\n  김판관: \"%s\"" % [info["name"], s_salary, int(c["turns"]), c["praise"]]
-		lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		lbl.add_theme_color_override("font_color", Color("1c1917"))
-		hb.add_child(lbl)
+		rtl.text = "[b][color=#1d4ed8]%s[/color][/b] — 녹봉 매달 %d냥 (%d개월 뒤 떠남)\n  김판관: \"%s\"" % [info["name"], s_salary, int(c["turns"]), c["praise"]]
+		hb.add_child(rtl)
 		var btn := Button.new()
 		btn.text = "등용"
 		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -1538,13 +1633,23 @@ func _build_retainers() -> void:
 		p_icon2.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		p_icon2.texture = SpriteCacheManager.get_named_character_texture(sid, true)
 		hb2.add_child(p_icon2)
-		var lbl2 := Label.new()
+		var rtl2 := RichTextLabel.new()
+		rtl2.bbcode_enabled = true
+		rtl2.fit_content = true
+		rtl2.scroll_active = false
+		rtl2.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		rtl2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		rtl2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		if ThemeManager.get_base_font():
+			rtl2.add_theme_font_override("normal_font", ThemeManager.get_base_font())
+		if ThemeManager.get_title_font():
+			rtl2.add_theme_font_override("bold_font", ThemeManager.get_title_font())
+		rtl2.add_theme_font_size_override("normal_font_size", 14)
+		rtl2.add_theme_font_size_override("bold_font_size", 16)
+		rtl2.add_theme_color_override("default_color", Color("1c1917"))
 		var s_salary2: int = court.get_scholar_salary(sid) if court != null else CourtSystem.calculate_scholar_salary(int(s_info["salary"]))
-		lbl2.text = "[%s급] %s — %s (녹봉 매달 %d냥)" % [s_info["grade"], s_info["name"], s_info["desc"], s_salary2]
-		lbl2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		lbl2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		lbl2.add_theme_color_override("font_color", Color("1c1917"))
-		hb2.add_child(lbl2)
+		rtl2.text = "[%s급] [b][color=#1d4ed8]%s[/color][/b] — %s (녹봉 매달 %d냥)" % [s_info["grade"], s_info["name"], s_info["desc"], s_salary2]
+		hb2.add_child(rtl2)
 		var b2 := Button.new()
 		b2.text = "해임"
 		b2.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -2178,7 +2283,13 @@ func _build_eulmyo() -> void:
 	_body.add_child(btn)
 
 func _build_tax() -> void:
+	_modal_no_refresh = true
 	_clear_body()
+	# PORT-TRACE [불러오면 세율 7%]: 임시 세율을 게임 시작 때 한 번만 복사해 두어, 저장을 불러온 뒤 이 창을 열면
+	# 7% 막대가 나오고 [적용]이 불러온 세율(예: 1%)을 7%로 덮어썼다 — 창을 열 때마다 실제 세율에서 다시 가져온다.
+	_temp_tax_land = sim.tax_rate_land
+	_temp_tax_market = sim.tax_rate_market
+	_temp_tax_military = sim.tax_rate_military
 	var desc := Label.new()
 	desc.text = "호조 탕평 조세 조율 (1~20%). 세율이 낮으면 백성 유입과 수요가 급증합니다."
 	desc.add_theme_color_override("font_color", Color("1c1917"))
@@ -2220,7 +2331,7 @@ func _build_tax() -> void:
 		var threshold: float = TaxManager.get_tax_threshold_for_population(pop)
 		var is_resisting: bool = TaxManager.is_tax_resistance_active(pop, float(sum_tax))
 
-		total_tax_lbl.text = "📊 3대 조세 총합: %d%%  |  현재 인구: %s명 (저항 한계선: %s)" % [
+		total_tax_lbl.text = ("📊 근대 통합세: %d%%  |  현재 인구: %s명 (저항 한계선: %s)" if ModernizationManager.is_active() else "📊 3대 조세 총합: %d%%  |  현재 인구: %s명 (저항 한계선: %s)") % [
 			sum_tax,
 			str(pop),
 			("%d%%" % int(threshold)) if threshold <= 20.0 else "없음 (10만 미만)"
@@ -2250,18 +2361,48 @@ func _build_tax() -> void:
 				warning_lbl.add_theme_color_override("font_color", Color("c2410c"))
 			total_tax_lbl.add_theme_color_override("font_color", Color("1c1917"))
 
-	_add_tax_slider("결작세(토지/농업): %d%%", _temp_tax_land, func(v):
-		_temp_tax_land = v
-		update_tax_ui.call()
-	)
-	_add_tax_slider("시전세(상업/점포): %d%%", _temp_tax_market, func(v):
-		_temp_tax_market = v
-		update_tax_ui.call()
-	)
-	_add_tax_slider("군포세(호포/국방): %d%%", _temp_tax_military, func(v):
-		_temp_tax_military = v
-		update_tax_ui.call()
-	)
+	if ModernizationManager.is_active():
+		# 근대화 시대: 3대 조세를 '근대 통합세' 하나로. 통합 세율 = 세 세목의 합(3~60%)이며
+		# 안에서는 세 세목에 똑같이 나눠 넣으므로 세수·수요·조세 저항선 계산은 본편과 같다.
+		desc.text = "근대 통합 세제: 토지세·영업세·군포세를 하나로 통합했습니다 (3~60%). 세율이 낮으면 인구 유입과 수요가 늘어납니다."
+		var unified: int = clampi(int(round(float(_temp_tax_land + _temp_tax_market + _temp_tax_military) / 3.0)) * 3, 3, 60)
+		_temp_tax_land = unified / 3
+		_temp_tax_market = unified / 3
+		_temp_tax_military = unified / 3
+		var hb := HBoxContainer.new()
+		_body.add_child(hb)
+		var lbl := Label.new()
+		lbl.text = "근대 통합세: %d%%" % unified
+		lbl.custom_minimum_size = Vector2(180, 0)
+		lbl.add_theme_color_override("font_color", Color("1c1917"))
+		hb.add_child(lbl)
+		var sld := HSlider.new()
+		sld.min_value = 3
+		sld.max_value = 60
+		sld.step = 3
+		sld.value = unified
+		sld.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		sld.value_changed.connect(func(v: float):
+			lbl.text = "근대 통합세: %d%%" % int(v)
+			_temp_tax_land = int(v) / 3
+			_temp_tax_market = int(v) / 3
+			_temp_tax_military = int(v) / 3
+			update_tax_ui.call()
+		)
+		hb.add_child(sld)
+	else:
+		_add_tax_slider("결작세(토지/농업): %d%%", _temp_tax_land, func(v):
+			_temp_tax_land = v
+			update_tax_ui.call()
+		)
+		_add_tax_slider("시전세(상업/점포): %d%%", _temp_tax_market, func(v):
+			_temp_tax_market = v
+			update_tax_ui.call()
+		)
+		_add_tax_slider("군포세(호포/국방): %d%%", _temp_tax_military, func(v):
+			_temp_tax_military = v
+			update_tax_ui.call()
+		)
 
 	update_tax_ui.call()
 
@@ -2316,6 +2457,203 @@ func _build_newspaper() -> void:
 	content.add_theme_color_override("font_color", Color("1c1917"))
 	_body.add_child(content)
 
+# ------------------------------------------------------------ 근대화 시대: 서학 진흥 / 외교
+func _modern_label(text: String, col: Color = Color("1c1917")) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	l.add_theme_color_override("font_color", col)
+	_body.add_child(l)
+	return l
+
+func _modern_button(text: String, enabled: bool, cb: Callable) -> Button:
+	var b := Button.new()
+	b.text = text
+	b.disabled = not enabled
+	b.custom_minimum_size = Vector2(0, 30)
+	b.pressed.connect(func():
+		cb.call()
+		if _title.text.begins_with("서학"):
+			_build_west_promo()
+		else:
+			_build_diplomacy()
+	)
+	_body.add_child(b)
+	return b
+
+func _build_west_promo() -> void:
+	_clear_body()
+	var mm: ModernizationManager = ModernizationManager.instance
+	if mm == null or not mm.active:
+		return
+	_modern_label("🔬 서학 진척도: %d / 100     ⚡ 연구 속도: %.1f배 (최대 %d배)" % [mm.western_progress(), mm.speed_mult(), int(ModernizationManager.MAX_SPEED_MULT)], Color("0369a1"))
+	var cost_txt := "💰 연구 재정: 매달 -%d냥" % ModernizationManager.RESEARCH_TURN_COST if mm.current_field != "" else "💰 연구 재정: 매달 0냥 (미진행)"
+	if mm.research_paused:
+		cost_txt = "💰 연구 재정: 국고 부족으로 일시 정지"
+	_modern_label(cost_txt, Color("b91c1c") if mm.current_field != "" else Color("4b5563"))
+	_modern_label("서학 진척도는 아래 다섯 분야 게이지의 평균입니다. 연구를 착수한 분야만 매달 찹니다.
+서양 서적과 해외 유학은 진척도를 직접 올리지 않고 연구 속도를 높입니다.", Color("57534e"))
+
+	_modern_label("
+【근대 과학 연구】", Color("7c2d12"))
+	for f: Dictionary in ModernizationManager.FIELDS:
+		var fid: String = f["id"]
+		var pv: float = float(mm.field_progress.get(fid, 0.0))
+		var state := "[완료] " if mm.field_done(fid) else ("[연구 중] " if mm.current_field == fid else "")
+		_modern_label("%s%s — %s  (완료 효과: %s)" % [state, f["name"], f["desc"], f["effect"]], Color("15803d") if mm.field_done(fid) else Color("1c1917"))
+		var bar := ProgressBar.new()
+		bar.max_value = 100.0
+		bar.value = pv
+		bar.custom_minimum_size = Vector2(0, 14)
+		_body.add_child(bar)
+		if not mm.field_done(fid) and mm.current_field != fid:
+			_modern_button("착수 (매달 %d냥)" % ModernizationManager.RESEARCH_TURN_COST, true, func(): mm.start_field(fid))
+
+	_modern_label("
+【서양 서적 구입】 %d / %d권 — 권당 연구 속도 +%.1f배" % [mm.books_bought, ModernizationManager.MAX_BOOKS, ModernizationManager.BOOK_BONUS], Color("7c2d12"))
+	_modern_button("서적 구입 (%d냥)" % ModernizationManager.BOOK_COST, mm.books_bought < ModernizationManager.MAX_BOOKS and sim.gold >= ModernizationManager.BOOK_COST, mm.buy_books)
+
+	_modern_label("
+【해외 유학】 %d / %d명 — %d개월 뒤 돌아오면 학문 능력×%.1f배만큼 연구 속도가 빨라집니다." % [mm.students.size(), ModernizationManager.MAX_STUDENTS, ModernizationManager.STUDY_TURNS, ModernizationManager.STUDY_ABILITY_FACTOR], Color("7c2d12"))
+	for k in mm.students:
+		var st: Dictionary = mm.students[k]
+		if mm.is_studying(k):
+			_modern_label("  ✈ %s — 유학 중 (%d개월 남음)" % [st.get("name", k), int(st["return_turn"]) - sim.turn])
+		else:
+			_modern_label("  🎓 %s — 귀국 (속도 +%.1f배)" % [st.get("name", k), float(st["acad"]) * ModernizationManager.STUDY_ABILITY_FACTOR], Color("15803d"))
+	if mm.students.size() < ModernizationManager.MAX_STUDENTS:
+		for c: Dictionary in mm.study_candidates():
+			if mm.students.has(c["key"]):
+				continue
+			var ck: String = c["key"]
+			var cn: String = c["name"]
+			var ca: int = c["acad"]
+			_modern_button("%s 유학 보내기 (학문 %d → +%.1f배, %d냥)" % [cn, ca, ca * ModernizationManager.STUDY_ABILITY_FACTOR, ModernizationManager.STUDY_COST], sim.gold >= ModernizationManager.STUDY_COST, func(): mm.send_abroad(ck, cn, ca))
+
+## 근대 수도체제: 수도 연결 대공사·집수정·생활용수 공급시설 (석조 전환 뒤)
+func _build_water_works() -> void:
+	_clear_body()
+	var um: UrbanEvolutionManager = UrbanEvolutionManager.instance
+	if um == null or not ModernizationManager.is_active():
+		return
+	_modern_label("🚰 상하수도 보급률: %d%%  — 집수정·생활용수 공급시설·하수처리시설의 영향권 밖 가옥·상점에 물방울이 뜹니다. 물방울이 없으면 100%%." % um.water_supply_rate(), Color("0369a1"))
+	if not um.upgrades_unlocked():
+		_modern_label("🔒 석조 전환이 끝나야 근대 수도 공사를 할 수 있습니다. (진행 %d%%)" % int(um.stone_ratio * 100.0), Color("7c2d12"))
+		return
+	_modern_label("\n【수도 연결 대공사】 매달 %d냥씩 %d달. 끝나면 모든 수도 시설의 영향권이 1.5배로 넓어집니다. 국고가 모자란 달은 공사가 멈춥니다." % [UrbanEvolutionManager.WATER_PROJECT_COST_PER_TURN, UrbanEvolutionManager.WATER_PROJECT_TURNS], Color("7c2d12"))
+	if um.water_project_done():
+		_modern_label("✓ 완공", Color("15803d"))
+	elif um.water_project_started:
+		var bar := ProgressBar.new()
+		bar.max_value = UrbanEvolutionManager.WATER_PROJECT_TURNS
+		bar.value = um.water_project_done_turns
+		bar.custom_minimum_size = Vector2(0, 14)
+		_body.add_child(bar)
+	else:
+		_modern_water_btn("🏗️ 착공", true, func(): um.start_water_project())
+	_modern_label("\n【우물 → 집수정】 도시의 우물을 모두 집수정으로 바꿉니다. (%d냥)" % UrbanEvolutionManager.WELL_UPGRADE_COST, Color("7c2d12"))
+	if um.wells_upgraded:
+		_modern_label("✓ 완료", Color("15803d"))
+	else:
+		_modern_water_btn("🪣 개편", grid.count_completed("well") > 0 and sim.gold >= UrbanEvolutionManager.WELL_UPGRADE_COST, func(): um.upgrade_wells())
+	_modern_label("\n【저수지 → 생활용수 공급시설】 저수지 물을 걸러 집집마다 보냅니다. (%d냥)" % UrbanEvolutionManager.RESERVOIR_UPGRADE_COST, Color("7c2d12"))
+	if um.reservoirs_upgraded:
+		_modern_label("✓ 완료", Color("15803d"))
+	else:
+		_modern_water_btn("💧 개편", grid.count_completed("reservoir") > 0 and sim.gold >= UrbanEvolutionManager.RESERVOIR_UPGRADE_COST, func(): um.upgrade_reservoirs())
+	_modern_label("\n【하수처리시설】 하단 메뉴바의 [🚰 하수처리](옛 홍예성문 자리)로 2x2 부지에 짓습니다. 반경 %d칸이 영향권입니다. (지은 곳 %d)" % [int(UrbanEvolutionManager.SEWAGE_RADIUS), grid.count_completed("sewage")], Color("57534e"))
+
+func _modern_water_btn(text: String, enabled: bool, cb: Callable) -> void:
+	var b := Button.new()
+	b.text = text
+	b.disabled = not enabled
+	b.custom_minimum_size = Vector2(0, 30)
+	b.pressed.connect(func():
+		cb.call()
+		_build_water_works()
+	)
+	_body.add_child(b)
+
+## 대통령제: 국회·행정 각부 건의 승인/반려 + 계엄령
+func _build_proposals() -> void:
+	_clear_body()
+	var pol: ModernPoliticsManager = ModernPoliticsManager.instance
+	if pol == null:
+		return
+	_modern_label("⚖️ %s     📋 건의 수준: %s (등용한 인재의 학문 능력이 높을수록 비용이 싸고 부실 건의가 줄어듭니다)" % [pol.system_label(), pol.quality_label()], Color("1d4ed8"))
+	_modern_label("대통령은 정무를 직접 하지 않고, 석 달마다 올라오는 건의를 승인하거나 반려합니다. 건의는 여섯 달이 지나면 폐기됩니다.\n국회 건의를 반려하면 국회와 갈등이 생깁니다. 길·구역 건설과 인재 등용은 그대로 직접 합니다.", Color("57534e"))
+	if pol.last_result != "":
+		_modern_label(pol.last_result, Color("15803d"))
+	if pol.pending.is_empty():
+		_modern_label("\n지금 올라온 건의가 없습니다.", Color("4b5563"))
+	for p: Dictionary in pol.pending.duplicate():
+		var pid := int(p["id"])
+		var cost_txt := ("비용 %d냥" % int(p["cost"])) if int(p["cost"]) > 0 else "비용 없음"
+		var warn := "   ⚠ 검토 의견: 준비가 덜 된 졸속 건의로 보입니다." if bool(p["flag"]) else ""
+		_modern_label("\n[%s] %s — %s%s" % [p["source"], p["title"], cost_txt, warn], Color("b45309") if bool(p["flag"]) else Color("1c1917"))
+		var hb := HBoxContainer.new()
+		hb.add_theme_constant_override("separation", 8)
+		_body.add_child(hb)
+		var ba := Button.new()
+		ba.text = "승인"
+		ba.custom_minimum_size = Vector2(90, 28)
+		ba.disabled = sim.gold < int(p["cost"])
+		ba.pressed.connect(func():
+			pol.approve(pid)
+			_build_proposals()
+		)
+		hb.add_child(ba)
+		var br := Button.new()
+		br.text = "반려"
+		br.custom_minimum_size = Vector2(90, 28)
+		br.pressed.connect(func():
+			pol.reject(pid)
+			_build_proposals()
+		)
+		hb.add_child(br)
+	_modern_label("\n【계엄령】 국회를 해산하고 다시 직접 통치합니다. 민심 -20, 그리고 1년 뒤 정치적 파멸을 맞습니다.", Color("7f1d1d"))
+	var bm := Button.new()
+	bm.text = "🪖 계엄령 선포"
+	bm.pressed.connect(func():
+		pol.declare_martial_law()
+		_close_modal()
+	)
+	_body.add_child(bm)
+
+func _build_diplomacy() -> void:
+	_clear_body()
+	var mm: ModernizationManager = ModernizationManager.instance
+	if mm == null or not mm.active:
+		return
+	if not mm.diplomacy_unlocked:
+		_modern_label("🔒 국제외교는 열강의 첫 침공을 격퇴하면 열립니다.
+성곽 방호, 장용영·신식군대, 순라청으로 국방력을 키워 침공에 대비하십시오.", Color("7c2d12"))
+		return
+	var allies_txt := ", ".join(mm.allies.map(func(a): return ModernDiplomacyData.nation_name(a))) if not mm.allies.is_empty() else "없음"
+	_modern_label("🕊️ 외교 신뢰도: %d / %d     ⚔️ 올해 침공 확률: %d%%     🤝 동맹국(%d/%d): %s" % [mm.trust, ModernizationManager.MAX_TRUST, int(round(mm.invasion_chance() * 100.0)), mm.allies.size(), ModernizationManager.MAX_ALLIES, allies_txt], Color("7c2d12"))
+	_modern_label("\n【국제외교 회담】 열강 10개국 가운데 한 나라의 사절을 사대문에서 맞이합니다. (3달에 1회, 성공하면 신뢰도 +1)")
+	_modern_label("🤝 성공률 %d%%  (서학 진척도 %d, 학문력 %d)" % [int(round(mm.diplomacy_success_rate() * 100.0)), mm.western_progress(), CityStats.get_academic_power()], Color("1d4ed8"))
+	_modern_label("보상: 차관 20,000냥 / 신식 무기(국방 +50) / 근대화 가속(연구 속도 +1배) 중 하나", Color("57534e"))
+	if mm.last_result != "":
+		_modern_label(mm.last_result, Color("15803d"))
+	var left := mm.diplomacy_turns_left()
+	_modern_button("회담 개최" if left == 0 else "다음 회담까지 %d개월" % left, left == 0, func():
+		var r := mm.hold_summit()
+		if not r.is_empty():
+			mm.last_result = ("🤝 회담 성공! " if r["ok"] else "✖ ") + String(r["msg"])
+	)
+
+	_modern_label("\n【동맹 협상】 신뢰도 10이면 나라를 골라 협상합니다. 상대의 요구에 모두 알맞게 답해야 맺어집니다.\n최대 %d개국, 연합국과 추축국은 함께 맺을 수 없습니다. 동맹국은 침략받을 때 원군 %d을 보내 주고, 동맹국이 침략받으면 파병을 요청합니다." % [ModernizationManager.MAX_ALLIES, ModernizationManager.ALLY_REINFORCEMENT], Color("57534e"))
+	for bloc in ["allies", "axis"]:
+		_modern_label("— %s —" % ModernDiplomacyData.BLOC_NAMES[bloc], Color("1d4ed8"))
+		for nid in ModernDiplomacyData.NATIONS:
+			if ModernDiplomacyData.bloc_of(nid) != bloc:
+				continue
+			var n_id: String = nid
+			var chk: Dictionary = mm.can_negotiate_alliance(n_id)
+			var label := "%s — %s" % [ModernDiplomacyData.nation_name(n_id), "✓ 동맹 중" if n_id in mm.allies else ("동맹 협상" if chk["ok"] else String(chk["why"]))]
+			_modern_button(label, bool(chk["ok"]), func(): mm.negotiate_alliance(n_id, func(): _build_diplomacy()))
+
 func _build_trade() -> void:
 	_clear_body()
 	var desc := Label.new()
@@ -2343,7 +2681,7 @@ func _build_trade() -> void:
 
 	# 곡식(식량) 구매 및 환곡 상업 기능
 	var market_title := Label.new()
-	market_title.text = "🌾 삼남 상업 및 환곡(還穀) 곡식 매입"
+	market_title.text = "🌾 삼남 상업 및 환곡(還穀) 곡식 매입·판매"
 	market_title.add_theme_color_override("font_color", Color("991b1b"))
 	market_title.add_theme_font_size_override("font_size", 14)
 	_body.add_child(market_title)
@@ -2373,6 +2711,29 @@ func _build_trade() -> void:
 				_builder.call()
 			)
 			hb_buy.add_child(btn)
+
+		# 곡식이 넘치고 금이 모자랄 때: 곳간 곡식을 내다 팔아 금으로 바꾼다(사는 값의 80%)
+		var sell_price: int = sim.get_rice_sell_price_per_100()
+		var sell_lbl := Label.new()
+		sell_lbl.text = "곡식 팔기 — 100석당 금 %d냥 (보유 곡식 %d석)" % [sell_price, sim.rice]
+		sell_lbl.add_theme_color_override("font_color", Color("1c1917"))
+		_body.add_child(sell_lbl)
+		var hb_sell := HBoxContainer.new()
+		hb_sell.add_theme_constant_override("separation", 10)
+		_body.add_child(hb_sell)
+		for s_amt: int in [10000, 100000, 1000000]:
+			var s_income: int = int(floor(float(s_amt) / 100.0 * float(sell_price)))
+			var s_btn := Button.new()
+			s_btn.text = "곡식 %d석 팔기 (금 %d냥)" % [s_amt, s_income]
+			s_btn.disabled = sim.rice < s_amt
+			s_btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+			s_btn.pressed.connect(func():
+				var res: Dictionary = sim.sell_rice(s_amt)
+				if hud:
+					hud._show_toast(res.get("msg", ""), "🪙" if res.get("success", false) else "⚠️")
+				_builder.call()
+			)
+			hb_sell.add_child(s_btn)
 
 func _build_outside() -> void:
 	_clear_body()
@@ -2579,8 +2940,8 @@ func _on_turn_report(rep: Dictionary) -> void:
 		var maint_str: String = ""
 		if maint_g > 0 or maint_r > 0:
 			maint_str = " | 운영비: -%d냥, -%d석" % [maint_g, maint_r]
-		var msg: String = "정조 %d년 %s 결산: 세입 +%d냥, 쌀 +%d석%s (인구 %d명)" % [
-			int(rep.get("ended_year", rep.get("year", 1776))) - 1776 + 1, rep.get("ended_season", "봄"),
+		var msg: String = "%s %s 결산: 세입 +%d냥, 쌀 +%d석%s (인구 %d명)" % [
+			TimeManager.era_name(int(rep.get("ended_year", rep.get("year", 1776)))), rep.get("ended_season", "봄"), # 1800년 엔딩 뒤는 순조 이후 연호
 			int(sum.get("tax_income", 0)), int(sum.get("harvest", 0)),
 			maint_str, rep.get("population", 0)
 		]
@@ -3188,6 +3549,25 @@ func _build_wall_repair() -> void:
 	_clear_body()
 	if not grid or not sim:
 		return
+	# 근대화 시대: 문화재 보수(문화재 보존도)
+	var um: UrbanEvolutionManager = UrbanEvolutionManager.instance
+	if ModernizationManager.is_active() and um != null:
+		var hc := int(round(um.heritage_condition))
+		_modern_label("🏯 화성 문화재 보존도: %d%%  — 성곽·사대문·수문·군사시설·행궁은 해마다 조금씩 낡고(-%.1f), 침공·반란·전쟁 때 크게 부서집니다.\n보존도는 1945년 결산 점수의 30%%를 차지합니다." % [hc, UrbanEvolutionManager.HERITAGE_DECAY_PER_YEAR], Color("7c2d12"))
+		var bar := ProgressBar.new()
+		bar.max_value = 100.0
+		bar.value = um.heritage_condition
+		bar.custom_minimum_size = Vector2(0, 14)
+		_body.add_child(bar)
+		var rb := Button.new()
+		rb.text = "🧱 문화재 보수 (금 %d냥, 보존도 +%d)" % [UrbanEvolutionManager.HERITAGE_RESTORE_COST, int(UrbanEvolutionManager.HERITAGE_RESTORE_STEP)]
+		rb.disabled = hc >= 100 or sim.gold < UrbanEvolutionManager.HERITAGE_RESTORE_COST
+		rb.pressed.connect(func():
+			if um.restore_heritage():
+				hud._show_toast("석수와 목수들이 성곽과 문루를 보수했습니다. (문화재 보존도 +%d)" % int(UrbanEvolutionManager.HERITAGE_RESTORE_STEP), "🧱")
+			_build_wall_repair()
+		)
+		_body.add_child(rb)
 
 	var sg: SiegeSystem = citizens.siege if citizens else null
 	var cur_def: int = sg.defense_power() if sg else 1000

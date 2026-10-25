@@ -23,10 +23,16 @@ const BOARDS := [
 		"unlock_rule": "살피기로 해당 모습을 처음 살펴보면 조각이 맞춰집니다.",
 	},
 	{
-		"id": "endings", "title": "결말 모음", "icon": "🎬", "cols": 5, "rows": 3, "bg": "jangan", "bonus": true,
-		"free_cells": [0, 14], # 13개 엔딩 조각 + 장식 칸 2개(판을 다 맞춰야 드러난다)
+		"id": "endings", "title": "결말 모음", "icon": "🎬", "cols": 6, "rows": 4, "bg": "jangan", "bonus": true,
+		"free_cells": [0, 5, 18, 23], # 1800 결말 14개 + 근대화 결말 6개 = 20조각 + 장식 칸 4개(판을 다 맞춰야 드러난다)
 		"bg_title": "장안문 전경",
-		"unlock_rule": "결말을 한 번 보면 조각이 맞춰집니다. 맞춘 조각을 누르면 그 결말 영상을 다시 볼 수 있습니다. (13개)",
+		"unlock_rule": "결말을 한 번 보면 조각이 맞춰집니다. 맞춘 조각을 누르면 그 결말 영상을 다시 볼 수 있습니다. (1800년 결말 14개 + 근대화 결말 6개)",
+	},
+	{
+		"id": "modern", "title": "근대 외교와 결말", "icon": "🌐", "cols": 6, "rows": 5, "bg": "fortress", "bonus": true,
+		"free_cells": [0, 5, 14, 24, 29], # 외교 문답 22조각 + 패망 결말 3조각(식민지화·일제 침탈·임오군란) + 장식 칸 5개
+		"bg_title": "수원 화성 성곽 전경",
+		"unlock_rule": "근대화 시대에 외교 문답(1876 강화도 회담·동맹 협상·임오군란·갑신정변)을 풀면 맞든 틀리든 조각이 열려 해설을 다시 볼 수 있습니다. 근대화 시대 결말을 보면 결말 조각이 열립니다.",
 	},
 ]
 
@@ -410,6 +416,34 @@ static func board(board_id: String) -> Dictionary:
 	return BOARDS[i] if i >= 0 else {}
 
 static var _ending_pieces: Array = []
+static var _modern_pieces: Array = []
+const MODERN_ENDING_MIN_NUM := 15
+## 근대화 결말 중 [결말 모음] 판에 들어가는 6개(1945 결산 3 + 정치 결말 3). 나머지 근대화 결말은 [근대 외교와 결말] 판
+const MAIN_BOARD_MODERN_ENDINGS := ["GLOBAL_ADVANCED", "MIDDLE_TRAP", "UNDERDEVELOPED", "YIELD_TO_PEOPLE", "POLITICAL_RUIN", "JOSEON_REVOLUTION"]
+
+## 엔딩이 들어가는 퍼즐 판 id
+static func ending_board(ending_key: String, num: int) -> String:
+	return "modern" if num >= MODERN_ENDING_MIN_NUM and not ending_key in MAIN_BOARD_MODERN_ENDINGS else "endings"
+
+## [근대 외교와 결말] 판: 외교 문답 조각 + 근대화 시대 결말(15번~)
+static func modern_pieces() -> Array:
+	if not _modern_pieces.is_empty():
+		return _modern_pieces
+	_modern_pieces = ModernDiplomacyData.encyclopedia_pieces()
+	var list: Array = []
+	for k in EndingManager.ENDING_DATA:
+		if ending_board(k, int(EndingManager.ENDING_DATA[k]["num"])) == "modern":
+			list.append(EndingManager.ENDING_DATA[k])
+	list.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a["num"]) < int(b["num"]))
+	for e: Dictionary in list:
+		var n := int(e["num"])
+		_modern_pieces.append({
+			"id": "ending_%d" % n, "name": String(e["title"]), "hanja": "제%d결말" % n, "seal": str(n),
+			"hint": "제%d결말 — 근대화 시대의 아직 보지 못한 결말입니다." % n,
+			"story": String(e["desc"]).split("
+"), "ending_type": String(e["type"]), "ending_key": String(e["id"]),
+		})
+	return _modern_pieces
 
 ## 엔딩 판의 조각은 EndingManager의 엔딩 데이터(번호순)에서 만든다
 static func ending_pieces() -> Array:
@@ -417,7 +451,8 @@ static func ending_pieces() -> Array:
 		return _ending_pieces
 	var list: Array = []
 	for k in EndingManager.ENDING_DATA:
-		list.append(EndingManager.ENDING_DATA[k])
+		if ending_board(k, int(EndingManager.ENDING_DATA[k]["num"])) == "endings":
+			list.append(EndingManager.ENDING_DATA[k])
 	list.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a["num"]) < int(b["num"]))
 	for e: Dictionary in list:
 		var n := int(e["num"])
@@ -431,6 +466,8 @@ static func ending_pieces() -> Array:
 static func pieces_of(board_id: String) -> Array:
 	if board_id == "endings":
 		return ending_pieces()
+	if board_id == "modern":
+		return modern_pieces()
 	return PIECES.get(board_id, [])
 
 static func piece_key(board_id: String, piece_id: String) -> String:

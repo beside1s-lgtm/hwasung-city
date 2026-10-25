@@ -12,12 +12,13 @@ static var is_loading: bool = false
 
 static func get_slot_title_prefix(slot_id: int) -> String:
 	match slot_id:
-		0: return "실록 제0권 (자동 저장)"
+		0: return "자동 저장 실록"
 		_: return "실록 제%d권" % slot_id
 
+## 자동 저장은 내부 번호가 0이지만 "제0권"이라 부르면 헷갈리므로 이름으로 부른다
 static func get_slot_display_name(slot_id: int) -> String:
 	match slot_id:
-		0: return "제0권 (자동 저장)"
+		0: return "자동 저장"
 		_: return "제%d권" % slot_id
 
 static func get_formatted_title(slot_id: int, save_info: Dictionary) -> String:
@@ -26,12 +27,13 @@ static func get_formatted_title(slot_id: int, save_info: Dictionary) -> String:
 		return "%s: 【비어 있는 기록 칸】" % prefix
 	var raw_title := str(save_info.get("title", ""))
 	if raw_title != "":
-		if slot_id == 0 and raw_title.begins_with("실록 제0권:") and not raw_title.contains("자동 저장"):
-			return raw_title.replace("실록 제0권:", "실록 제0권 (자동 저장):")
+		if slot_id == 0 and raw_title.begins_with("실록 제0권"):
+			# 예전 저장 파일 제목("실록 제0권 (자동 저장): …")도 새 이름으로 보여 준다
+			return "자동 저장 실록" + raw_title.substr(raw_title.find(":"))
 		return raw_title
 	var y: int = int(save_info.get("year", 1789))
 	var s_name: String = str(save_info.get("season", "봄"))
-	return "%s: %d년 %s - 정조 %d년" % [prefix, y, s_name, y - 1775]
+	return "%s: %d년 %s - %s" % [prefix, y, s_name, TimeManager.era_name(y)] # 1800년 엔딩 뒤는 순조 이후 연호
 
 static func _ensure_dir() -> void:
 	if not DirAccess.dir_exists_absolute(SAVE_DIR):
@@ -282,9 +284,25 @@ static func _prince_score(sim: SimulationCore) -> float:
 	return v
 
 ## 현재 치세 상태를 슬롯에 저장
+static var _path_override: String = ""
+
+## 슬롯이 아닌 지정 경로로 저장 (1800년 클리어 보관본 등)
+static func save_game_to_path(path: String, sim: SimulationCore, _grid: GameGrid = null) -> bool:
+	_path_override = path
+	var ok := save_game(0, sim, _grid)
+	_path_override = ""
+	return ok
+
+## 지정 경로 저장본 불러오기 (근대화 세이브 테스트 등)
+static func load_game_from_path(path: String, sim: SimulationCore, _grid: GameGrid = null, time_mgr: TimeManager = null, _quest_sys: Node = null) -> bool:
+	_path_override = path
+	var ok := load_game(0, sim, _grid, time_mgr, _quest_sys)
+	_path_override = ""
+	return ok
+
 static func save_game(slot_id: int, sim: SimulationCore, _grid: GameGrid = null, _quest_sys: Node = null) -> bool:
 	_ensure_dir()
-	var path := get_slot_path(slot_id)
+	var path := _path_override if _path_override != "" else get_slot_path(slot_id)
 
 	var s_names: Array[String] = ["봄", "여름", "가을", "겨울"]
 	var s_name: String = s_names[sim.season_now()] if sim else "봄"
@@ -319,7 +337,7 @@ static func save_game(slot_id: int, sim: SimulationCore, _grid: GameGrid = null,
 
 	var data := {
 		"slot": slot_id,
-		"title": "%s: %d년 %s - 정조 %d년" % [get_slot_title_prefix(slot_id), y, s_name, y - 1775],
+		"title": "%s: %d년 %s - %s" % [get_slot_title_prefix(slot_id), y, s_name, TimeManager.era_name(y)],
 		"year": y,
 		"season": s_name,
 		"turn": sim.turn if sim else 1,
@@ -381,6 +399,9 @@ static func save_game(slot_id: int, sim: SimulationCore, _grid: GameGrid = null,
 		"bandit_data": sim.bandit_manager.serialize() if (sim and "bandit_manager" in sim and sim.bandit_manager) else {},
 		"uigwe_data": sim.uigwe_manager.serialize() if (sim and "uigwe_manager" in sim and sim.uigwe_manager) else {},
 		"academy_quiz_data": AcademyQuizManager.get_instance().serialize(),
+		"modernization_data": ModernizationManager.instance.serialize() if ModernizationManager.instance else {},
+		"urban_data": UrbanEvolutionManager.instance.serialize() if UrbanEvolutionManager.instance else {},
+		"politics_data": ModernPoliticsManager.instance.serialize() if ModernPoliticsManager.instance else {},
 		"difficulty_level": int(DifficultyManager.get_difficulty()),
 
 		"conspiracy_stage": sim.conspiracy_stage if sim else 0,
@@ -407,7 +428,7 @@ static func save_game(slot_id: int, sim: SimulationCore, _grid: GameGrid = null,
 static func load_game(slot_id: int, sim: SimulationCore, _grid: GameGrid = null, time_mgr: TimeManager = null, _quest_sys: Node = null) -> bool:
 	is_loading = true
 	_ensure_dir()
-	var path := get_slot_path(slot_id)
+	var path := _path_override if _path_override != "" else get_slot_path(slot_id)
 	if not FileAccess.file_exists(path):
 		is_loading = false
 		return false
@@ -434,6 +455,10 @@ static func load_game(slot_id: int, sim: SimulationCore, _grid: GameGrid = null,
 		_restore_obj(sim, snap.get("sim", {}), "sim")
 		_restore_obj(sim.pop_manager, snap.get("pop", {}), "pop")
 	if sim:
+		# 지난 달 국고 변화는 불러온 뒤 첫 달부터 새로 잰다(이전 게임 값이 섞이지 않게)
+		sim.gold_at_last_budget = -1
+		sim.last_month_gold_delta = 0
+		sim.recent_gold_deltas.clear()
 		sim.turn = int(data.get("turn", 1))
 		sim.current_year = int(data.get("year", 1789))
 		sim.population = int(data.get("pop", 120))
@@ -530,6 +555,15 @@ static func load_game(slot_id: int, sim: SimulationCore, _grid: GameGrid = null,
 					if sim.uigwe_manager.is_completed(uigwe_key):
 						court_ref_ss.uigwe[uigwe_key] = true
 
+		if ModernizationManager.instance:
+			var md: Variant = data.get("modernization_data", {})
+			ModernizationManager.instance.deserialize(md if md is Dictionary else {})
+		if UrbanEvolutionManager.instance:
+			var ud: Variant = data.get("urban_data", {})
+			UrbanEvolutionManager.instance.deserialize(ud if ud is Dictionary else {})
+		if ModernPoliticsManager.instance:
+			var pd: Variant = data.get("politics_data", {})
+			ModernPoliticsManager.instance.deserialize(pd if pd is Dictionary else {})
 		if data.has("academy_quiz_data") and data["academy_quiz_data"] is Dictionary:
 			AcademyQuizManager.get_instance().deserialize(data["academy_quiz_data"])
 
@@ -610,7 +644,7 @@ static func load_game(slot_id: int, sim: SimulationCore, _grid: GameGrid = null,
 		WaterStructureManager.auto_heal_structures(_grid)
 		_grid.update_reservoir_positions()
 		IrrigationManager.recalculate_irrigation(_grid, sim)
-		# [고립 가옥 및 부적격 둔전 정리 마이그레이션]: 도로 없는 맹지 방치 가옥 및 저수지 없는 허공 둔전 타일 자연 정리
+		# [맹지 가옥 정리 마이그레이션]: 도로 없는 맹지 방치 가옥 자연 정리 (둔전은 천수답으로 온전히 보존)
 		DistrictSpawner.clean_isolated_outskirts(_grid, sim)
 		_grid.recompute_infrastructure()
 		_grid.recount_zone_counts()

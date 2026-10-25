@@ -57,9 +57,12 @@ var festivals: FestivalSystem
 var bake_bands: Array[CityLayer] = [] # PORT-TRACE [렉 해결: 띠 굽기]: 깊이 띠별로 따로 그리는 CityLayer들
 var _tile_hashes: PackedInt64Array = PackedInt64Array()
 var _baked_season: String = ""
-var _season_rebake_frames: int = 0
-var _pending_bands := {} # 다시 그려야 할 띠 번호(프레임당 BANDS_PER_FRAME개씩 처리)
-const BUILT_TILES_PER_FRAME := 40 # 한 프레임에 다시 그릴 건물 칸 상한 (40칸/프레임 타임 슬라이싱 60 FPS 방어)
+var _pending_bands := {} # 다시 그려야 할 띠 번호(프레임당 BAND_COST_PER_FRAME만큼씩 처리)
+## 한 프레임에 다시 그릴 띠 분량: 바닥 칸 1, 건물 칸 3으로 센다(바닥 칸 그리기 ≈ 0.04ms, 건물 칸 ≈ 0.12ms → 프레임당 약 8ms)
+const BAND_COST_PER_FRAME := 200
+var _season_swap := false # 계절 전환 중: 띠를 나눠 그리는 동안 화면 조각은 이전 계절 그림 그대로 둔다
+var _swap_vp_queue: Array = [] # 계절 전환 뒤 화면 밖 조각(프레임마다 몇 개씩 다시 렌더링)
+const SWAP_VP_PER_FRAME := 2
 var world_sprite: Sprite2D
 var citizen_layer: CitizenLayer
 const WORLD_BAKE_PAD := 220.0
@@ -75,6 +78,8 @@ var _world_bounds_dirty: bool = true
 const CHUNK_DEPTH := 4
 var _chunks: Array = [] # [{vp: SubViewport, sprite: Sprite2D, b0: int, b1: int, rect: Rect2}]
 var _rebake_requested: bool = false
+var _rebake_retry := false # 다시 굽기가 이번 프레임 차례(GameGrid.frame_claim)를 못 받아 다음 프레임에 다시 할 것
+var _season_apply_pending := "" # 지형을 바꿔 줄 새 계절(차례를 받으면 _apply_seasonal_terrain_globally)
 
 func _ready() -> void:
 	GameSettings.ensure_loaded()
@@ -123,7 +128,9 @@ func _ready() -> void:
 		if season_color_filter:
 			season_color_filter.transition_to_season(s, 1.0)
 		# [계절 전환 지형 동기화] 맵 전체 지형 및 밴드 0ms 동시 전환 (패치워크 영구 방지)
-		_apply_seasonal_terrain_globally(s)
+		# PORT-TRACE [렉: 계절 바뀌는 달 멈칫]: 지형 계절 색 다시 계산(30ms 남짓)이 그 달 턴 정산 첫 프레임과 겹쳐 멈칫했다 →
+		# 턴 계산이 끝난 뒤 무거운 일 차례(GameGrid.frame_claim)를 받아 _process에서 바꾼다(그동안 계절 색 필터가 먼저 바뀐다)
+		_season_apply_pending = s
 		# 계절 운영 유지비 및 인재 녹봉 정산
 		var res: Dictionary = simulation_core.process_seasonal_maintenance(grid)
 		if res.get("total", 0) > 0 and not res.get("deficit", false):
@@ -578,7 +585,7 @@ func _setup_port_modules() -> void:
 	haenggung_popup.inspect_requested.connect(func():
 		var h_pos := BuildingManager.get_building_pos("haenggung", grid)
 		if h_pos.x >= 0 and h_pos.y >= 0:
-			city._show_inspect(h_pos)
+			city._show_inspect(h_pos, true)
 	)
 
 	# 서장대 야조 미니게임 모달 (최상위 CanvasLayer)
@@ -717,6 +724,19 @@ func _setup_port_modules() -> void:
 	ending_manager.name = "EndingManager"
 	add_child(ending_manager)
 	ending_manager.setup(simulation_core, grid, time_manager, court, hud)
+
+	# 1820 근대화 시대 (11·12번 엔딩 이후 포스트 엔드게임)
+	var modernization := ModernizationManager.new()
+	add_child(modernization)
+	modernization.setup(simulation_core, grid, time_manager, court)
+	modernization.notice.connect(func(m: String, icon: String): hud._show_toast(m, icon))
+	var urban := UrbanEvolutionManager.new()
+	add_child(urban)
+	urban.setup(simulation_core, grid, time_manager)
+	var politics := ModernPoliticsManager.new()
+	add_child(politics)
+	politics.setup(simulation_core, time_manager, court)
+	add_child(ModernHUD.new())
 
 	# 화성행궁 종심 방어 및 전술 길목 차단 전투 체계 매니저
 	siege_defense = SiegeDefenseManager.new()
@@ -949,7 +969,9 @@ func _check_jongnu() -> void:
 	if not grid.detect_namsu().is_empty():
 		hud._show_toast("수원천 남쪽에서 동·서 성곽이 이어졌습니다! 아홉 칸 홍예 남수문(南水門)을 축조합니다.", "🌊")
 
-## [계절 전환 지형 동기화] 맵 전체 지형 및 밴드 0ms 동시 전환 (패치워크 영구 방지)
+## [계절 전환 지형 동기화] PORT-TRACE [렉: 계절 전환 0.5초 멈춤]: 지도 전체 띠를 한 프레임에 다시 그리던 것을
+## 프레임마다 나눠 그리고(그동안 화면 조각은 이전 계절 그림 그대로), 다 그리면 화면에 보이는 조각을 한 프레임에
+## 함께 바꾼다(계절이 섞인 조각보가 보이지 않음). 화면 밖 조각은 그 뒤 몇 프레임에 나눠 다시 렌더링한다.
 func _apply_seasonal_terrain_globally(s: String) -> void:
 	if baker:
 		baker.current_season = s
@@ -957,22 +979,31 @@ func _apply_seasonal_terrain_globally(s: String) -> void:
 		baker._depth_order_dirty = true
 		baker.prepare_bands()
 	_baked_season = s
-	_pending_bands.clear()
-	_tile_hashes.clear() # 모든 타일 해시 무효화하여 완전 동기화 보장
-
+	_swap_vp_queue.clear()
+	# 띠의 계절은 _flush_bands가 그릴 차례에 바꾼다(여기서 바꾸면 계절 setter가 모든 띠를 이번 프레임에 다시 그려 멈칫)
 	for bi in range(bake_bands.size()):
-		var band: CityLayer = bake_bands[bi]
-		if band != null:
-			band.current_season = s
-			band._vertex_colors_dirty = true
-			band.queue_redraw()
+		if bake_bands[bi] != null:
+			_pending_bands[bi] = true
+	_season_swap = not _pending_bands.is_empty() and not _chunks.is_empty()
+	_flush_bands()
 
-	# 4프레임 동안 전체 청크 SubViewport를 UPDATE_ALWAYS로 강제 가동하여 100% 동기화 보장
-	_season_rebake_frames = 4
+## 계절 전환 마무리: 화면에 보이는 조각은 지금 한꺼번에, 나머지는 _swap_vp_queue로 나눠 다시 렌더링
+func _swap_chunks() -> void:
+	_swap_vp_queue.clear()
 	for ch in _chunks:
 		var vp: SubViewport = ch.get("vp") as SubViewport
-		if vp != null:
-			vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		if vp == null:
+			continue
+		if _chunk_on_screen(ch):
+			vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+		else:
+			_swap_vp_queue.append(ch)
+
+func _chunk_on_screen(ch: Dictionary) -> bool:
+	var spr: Sprite2D = ch.get("sprite") as Sprite2D
+	if spr == null or not spr.is_inside_tree():
+		return true
+	return (spr.get_global_transform_with_canvas() * spr.get_rect()).intersects(get_viewport().get_visible_rect())
 
 func _rebake_world() -> void:
 	if _rebake_requested:
@@ -990,6 +1021,13 @@ func _do_rebake_world() -> void:
 		if not turns.turn_report.is_connected(_on_turn_completed_rebake):
 			turns.turn_report.connect(_on_turn_completed_rebake, CONNECT_ONE_SHOT)
 		return
+	# PORT-TRACE [렉: 턴 정산 멈칫]: 바뀐 칸 찾기(지도 전체 해시)와 띠 다시 그리기도 시민 길 정보·가림막 다시 만들기와
+	# 한 프레임에 겹치지 않게 차례를 받는다. 이번 프레임이 이미 쓰였으면 다음 프레임 _process에서 다시.
+	# 계절 지형 전환이 기다리는 중이면 그것부터(여기서 먼저 그리면 계절이 띠마다 따로 바뀌어 얼룩진다)
+	if _season_apply_pending != "" or not GameGrid.frame_claim():
+		_rebake_retry = true
+		return
+	_rebake_retry = false
 	_rebake_requested = false
 	baker.current_season = city.current_season
 	if citizen_layer:
@@ -1010,7 +1048,6 @@ func _do_rebake_world() -> void:
 			_layout_chunks()
 			relaid = true
 
-	baker.prepare_bands()
 	# 특수 건물이 새로 서거나 헐리면 현판도 다시
 	if _special_marker_sig() != _marker_sig:
 		sync_all_world_markers()
@@ -1019,6 +1056,7 @@ func _do_rebake_world() -> void:
 	var full := (_tile_hashes.size() != grid.size * grid.size) or season_changed or relaid
 	_baked_season = city.current_season
 	var dirty := {}
+	var changed: Array[Vector2i] = []
 	var site_stage := {}
 	for site in grid.active_sites:
 		var st := GameGrid.build_stage(grid.site_fraction(site))
@@ -1035,6 +1073,7 @@ func _do_rebake_world() -> void:
 			var i := y * grid.size + x
 			if h != _tile_hashes[i]:
 				_tile_hashes[i] = h
+				changed.append(Vector2i(x, y))
 				if not full:
 					# PORT-TRACE [성능: 다시 그릴 범위]: 띠·토막은 각자 따로 구운 그림이고 겹치는 순서는 노드 순서로 고정이라,
 					# 앞쪽 띠까지 다시 그릴 필요가 없다. 바뀐 칸과 그 칸을 보고 모양이 바뀌는 이웃 8칸(길·성벽 이음, 앞면 방향)이
@@ -1042,23 +1081,40 @@ func _do_rebake_world() -> void:
 					for ny in range(maxi(0, y - 1), mini(grid.size, y + 2)):
 						for nx in range(maxi(0, x - 1), mini(grid.size, x + 2)):
 							dirty[baker.band_of(nx, ny) * CityLayer.BAND_SEGS + CityLayer.seg_of(nx, grid.size)] = true
+	# PORT-TRACE [렉: 건설 멈칫]: 칸 몇 개만 바뀌었으면 그 둘레 꼭짓점 색만 다시 센다(전체 다시 그리기 때는 prepare_bands가 전부)
+	if not full and baker._vertex_colors_dirty:
+		if changed.is_empty():
+			baker._vertex_colors_dirty = false # 바뀐 칸이 없으면 꼭짓점 색도 그대로
+		elif changed.size() <= grid.size * grid.size / 8: # 많이 바뀌었으면(불러오기 등) 전체 계산이 더 빠르다
+			baker.update_vertex_colors_around(changed)
+	baker.prepare_bands()
 	for bi in range(bake_bands.size()):
 		if full or dirty.has(bi):
 			_pending_bands[bi] = true
 	_flush_bands()
 
-## PORT-TRACE [렉 해결: 나눠 굽기]: 계절이 바뀌어 지도 전체(띠 30여 개)를 다시 그려야 할 때도 한 프레임에
-## 몰지 않고 프레임마다 건물 40칸 분량씩 나눠 그린다(몇 프레임, 0.1~0.2초 안). 한 번에 그리면 멈칫했다.
+## PORT-TRACE [렉 해결: 나눠 굽기]: 계절이 바뀌어 지도 전체(띠 수백 개)를 다시 그려야 할 때도 한 프레임에
+## 몰지 않고 프레임마다 BAND_COST_PER_FRAME 분량씩 나눠 그린다. 한 번에 그리면 멈칫했다.
 func _process(_delta: float) -> void:
-	if _season_rebake_frames > 0:
-		_season_rebake_frames -= 1
-		if _season_rebake_frames <= 0:
-			for ch in _chunks:
+	if _season_apply_pending != "" and GameGrid.frame_claim():
+		var ns := _season_apply_pending
+		_season_apply_pending = ""
+		_apply_seasonal_terrain_globally(ns) # 띠 첫 묶음도 그 안에서 그린다
+	elif _rebake_retry:
+		_rebake_retry = false
+		_do_rebake_world() # 바뀐 띠 첫 묶음도 그 안에서 그린다
+	elif not _pending_bands.is_empty():
+		_flush_bands()
+	if not _swap_vp_queue.is_empty():
+		# 계절 전환 뒤 화면 밖 조각: 화면에 들어온 조각은 바로, 나머지는 프레임마다 몇 개씩
+		var n := 0
+		for ch in _swap_vp_queue.duplicate():
+			if n < SWAP_VP_PER_FRAME or _chunk_on_screen(ch):
+				_swap_vp_queue.erase(ch)
 				var vp: SubViewport = ch.get("vp") as SubViewport
 				if vp != null:
-					vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
-	if not _pending_bands.is_empty():
-		_flush_bands()
+					vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+				n += 1
 
 func _flush_bands() -> void:
 	if _pending_bands.is_empty() or _chunks.is_empty():
@@ -1068,20 +1124,27 @@ func _flush_bands() -> void:
 	var weight := 0
 	var touched := {}
 	for bi in keys:
-		if weight >= BUILT_TILES_PER_FRAME:
+		if weight >= BAND_COST_PER_FRAME:
 			break
 		_pending_bands.erase(bi)
 		if bi >= 0 and bi < bake_bands.size() and bake_bands[bi] != null:
 			var node: CityLayer = bake_bands[bi]
-			node.current_season = city.current_season
+			node.current_season = _baked_season if _baked_season != "" else city.current_season
 			node.queue_redraw()
 			var band_i: int = node.band_index
 			touched[int(float(band_i) / float(maxi(1, int(float(CHUNK_DEPTH) / CityLayer.BAND_DEPTH))))] = true
 			if band_i < baker._band_tiles.size():
 				for pt in baker._band_tiles[band_i]:
-					if CityLayer.seg_of(pt.x, grid.size) == node.band_seg and grid.grid[pt.y][pt.x]["building"] != "":
-						weight += 1
+					if CityLayer.seg_of(pt.x, grid.size) == node.band_seg:
+						weight += 3 if grid.grid[pt.y][pt.x]["building"] != "" else 1
 			weight += 1
+	if _season_swap:
+		# 계절 전환 중에는 다 그릴 때까지 화면 조각을 이전 계절 그대로 두었다가 한꺼번에 바꾼다
+		if _pending_bands.is_empty():
+			_season_swap = false
+			_swap_chunks()
+			_update_chimneys()
+		return
 	# 바뀐 띠가 든 조각만 다시 렌더링
 	for ci in touched.keys():
 		if ci < _chunks.size():
@@ -1366,17 +1429,21 @@ func _special_marker_list() -> Array:
 				cen += city.cell_center(float(q.x) + 0.5, float(q.y) + 0.5, float(grid.grid[q.y][q.x].get("elevation", 1.0)))
 			cen /= float(tiles.size())
 			var spec: Array = SPECIAL_MARKERS[b]
-			out.append({"id": "sp_%s_%d_%d" % [b, x, y], "name": spec[0], "pos": cen - Vector2(0, float(spec[1]))})
+			out.append({"id": "sp_%s_%d_%d" % [b, x, y], "name": _marker_name(String(spec[0])), "pos": cen - Vector2(0, float(spec[1]))})
 	for kind: String in ["seowon", "seodang"]:
 		for pl: Dictionary in grid.list_plazas(kind):
 			var n := float(pl["n"])
 			var c2 := city.cell_center(float(pl["x0"]) + n * 0.5, float(pl["y0"]) + n * 0.5, 1.0)
-			out.append({"id": "sp_%s_%d_%d" % [kind, int(pl["x0"]), int(pl["y0"])], "name": "매곡서원" if kind == "seowon" else "서당", "pos": c2 - Vector2(0, 92.0 if kind == "seowon" else 66.0)})
+			out.append({"id": "sp_%s_%d_%d" % [kind, int(pl["x0"]), int(pl["y0"])], "name": _marker_name("매곡서원" if kind == "seowon" else "서당"), "pos": c2 - Vector2(0, 92.0 if kind == "seowon" else 66.0)})
 	return out
+
+## 근대화 시대에 개편한 건물은 현판도 근대 이름(정부청사·수원 대학교·초등학교 등). 살피기 창 제목과 같은 규칙
+func _marker_name(n: String) -> String:
+	return UrbanEvolutionManager.instance.modern_title(n) if UrbanEvolutionManager.instance else n
 
 var _marker_sig := ""
 func _special_marker_sig() -> String:
 	var sig := ""
 	for sb: Dictionary in _special_marker_list():
-		sig += String(sb["id"]) + ";"
+		sig += String(sb["id"]) + "=" + String(sb["name"]) + ";" # 이름이 바뀌어도(개편) 현판을 다시 단다
 	return sig

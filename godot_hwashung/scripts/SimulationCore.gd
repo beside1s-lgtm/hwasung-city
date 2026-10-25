@@ -718,6 +718,22 @@ func _update_rci_demands() -> void:
 	if demand_res > 20 and rice > 100 and not famine_active:
 		population += 1
 
+## 지난 한 달 동안 국고가 늘거나 준 양(세수·유지비·녹봉·공사비 모두 포함) — 김판관 재정 조언용.
+## 턴(TurnSystem)이 끝날 때마다 지난 턴 끝과 비교해 채운다(월 예산은 턴 중간에 돌아 그 사이 값으로는 정확히 잴 수 없다).
+var last_month_gold_delta: int = 0
+var gold_at_last_budget: int = -1
+## 최근 석 달의 달별 국고 변화(계절 세수 몰림을 고르게 보려고)
+var recent_gold_deltas: Array[int] = []
+
+## 최근 석 달 국고 변화 합(석 달이 다 차지 않았으면 0 — 판단 보류)
+func get_recent_season_gold_delta() -> int:
+	if recent_gold_deltas.size() < 3:
+		return 0
+	var s := 0
+	for d: int in recent_gold_deltas:
+		s += d
+	return s
+
 func _process_monthly_budget() -> void:
 	# 상업세, 전세(지대), 군포
 	var market_tax: int = int(float(population) * 0.6 * (float(tax_rate_market) / 7.0))
@@ -838,6 +854,28 @@ func buy_rice(amount: int) -> Dictionary:
 		"cost": total_cost,
 		"amount": amount,
 		"msg": "환곡 상업으로 곡식 %d석을 매입하였습니다. (금 %d냥 지출)" % [amount, total_cost]
+	}
+
+## 곡식을 저잣거리에 내다 팔아 금을 얻는다. 파는 값은 사는 값의 80%(사고팔아 금을 불리지 못하게)
+const RICE_SELL_RATIO := 0.8
+
+func get_rice_sell_price_per_100() -> int:
+	return maxi(1, int(floor(float(get_rice_market_price_per_100()) * RICE_SELL_RATIO)))
+
+func sell_rice(amount: int) -> Dictionary:
+	if amount <= 0:
+		return {"success": false, "msg": "팔 수량을 올바르게 지정하십시오."}
+	if rice < amount:
+		return {"success": false, "msg": "곳간의 곡식이 부족합니다! (팔 곡식: %d석, 보유: %d석)" % [amount, rice]}
+	var income: int = int(floor(float(amount) / 100.0 * float(get_rice_sell_price_per_100())))
+	rice -= amount
+	gold += income
+	emit_signal("state_updated", gold, rice, population, loyalty, flood_defense)
+	return {
+		"success": true,
+		"income": income,
+		"amount": amount,
+		"msg": "곳간의 곡식 %d석을 저잣거리에 내다 팔았습니다. (금 %d냥 수입)" % [amount, income]
 	}
 
 func update_fortress(grid: GameGrid) -> void:
@@ -1320,7 +1358,7 @@ func add_gov_cells(count: int) -> void:
 
 ## 세자 교육 턴 정산 처리 (CrownPrinceEducationManager 위임)
 func process_turn_crown_prince_education() -> Dictionary:
-	if crown_prince_manager == null:
+	if crown_prince_manager == null or CrownPrinceEducationManager.prince_affairs_closed(current_year): # 1800년 엔딩(순조 즉위) 뒤·현대 정치체제 전환 뒤에는 세자 교육 없음(비용도 안 나감)
 		return {}
 	return crown_prince_manager.process_turn(self, academic)
 

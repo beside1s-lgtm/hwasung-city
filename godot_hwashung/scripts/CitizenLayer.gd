@@ -52,6 +52,9 @@ var _work_spots: Array = [] # 공방·가게 앞마당 일하는 장면 자리(�
 var _chapels: Array[Vector2i] = [] # [{kind: "seodang"/"seowon"/"hyanggyo", x0, y0, n}] # [{kind: "bongdon"/"seojangdae"/"yeonghwajeong", anchor: Vector2i, info}]
 var _play_dirty := true
 var _scene_t := 0.0
+## PORT-TRACE [렉: 턴 정산 멈칫]: 지도가 바뀐 뒤 다시 만들 것 — 2: 가림막부터, 1: 놀이마당·물방울·관할 목록.
+## 각각 20ms 남짓이라 GameGrid.frame_claim 차례를 받아 프레임마다 하나씩(시민 길 정보·지도 굽기와도 겹치지 않게)
+var _grid_pending := 0
 
 # 성곽 미완성 지점 하이라이트 가이드
 var wall_guide_target: Vector2i = Vector2i(-1, -1)
@@ -100,11 +103,7 @@ func setup(g: GameGrid, c: CitizenManager, city_layer: CityLayer) -> void:
 	z_index = 1000 # 말풍선 및 최상위 UI는 항상 화면 맨 위에 노출
 	y_sort_enabled = true
 	grid.grid_changed.connect(func():
-		_occ_dirty = true
-		_drops_dirty = true
-		_cov_dirty = true
-		_play_dirty = true
-		_play_dirty_jg = true
+		_grid_pending = 2
 	)
 
 func setup_chunks(_count: int, _chunk_depth: float, _band_depth: float) -> void:
@@ -165,6 +164,17 @@ func _process(delta: float) -> void:
 		queue_redraw()
 	if not _incident_pings.is_empty():
 		_update_incident_pings(delta)
+	if _grid_pending > 0 and GameGrid.frame_claim():
+		if _grid_pending == 2:
+			_occ_dirty = true
+			_grid_pending = 1
+		else:
+			_drops_dirty = true
+			_cov_dirty = true
+			_play_dirty = true
+			_play_dirty_jg = true
+			_grid_pending = 0
+		queue_redraw()
 	_scene_t += delta * (citizens.time_scale if citizens else 1.0)
 	_redraw_acc += delta
 	if _redraw_acc >= _REDRAW_INTERVAL:
@@ -381,6 +391,8 @@ func _draw() -> void:
 	for bq: Array in _bubble_queue:
 		_draw_speech_bubble(bq[0], bq[1], bq[2], bq[3])
 	_bubble_queue.clear()
+	# 1-0-1-1. 공성전 공격/방호 막대 (사람 위에 덮이는 성문 앞 그림보다 나중에)
+	_draw_siege_bar()
 	# 1-0-2. 사건 및 화재 위치 펄스 핑 렌더링
 	_draw_incident_pings()
 	# 1-1. 물 부족 물방울 + 관할 범위 오버레이
@@ -668,7 +680,12 @@ func _occlude_agent(a: Dictionary) -> void:
 		var tex: Texture2D = city.occluder_texture(o)
 		if tex == null:
 			continue
-		painted.append([int(o["x1"]) + int(o["y1"]), it, Vector2i(int(o["x1"]), int(o["y1"]))])
+		if o.has("bd"): # 지도와 같은 자리(그림 크기가 자리와 다르면 비율 유지)
+			r = CityLayer.modern_fit_rect(tex, r)
+			it = ar.intersection(r)
+			if it.size.x <= 0.5 or it.size.y <= 0.5:
+				continue
+		painted.append([int(o["x1"]) + int(o["y1"]), it, Vector2i(int(o["x1"]), int(o["y1"])), Vector2i(int(o["x0"]), int(o["y0"]))])
 		if o.has("xf"): # 땅에 맞춰 변형해 그린 랜드마크: 같은 변환 아래 그림 좌표로 덮는다
 			var xf: Transform2D = o["xf"]
 			var inv := xf.affine_inverse()
@@ -705,6 +722,11 @@ func _occlude_agent(a: Dictionary) -> void:
 		var spr: Rect2 = so["rect"]
 		for pe: Array in painted:
 			if sd <= int(pe[0]):
+				continue
+			# 성벽이 건물보다 확실히 앞(x나 y로 건물 부지를 넘어섬)일 때만. 대각선 옆 성벽까지 덮으면
+			# 성벽 바로 안쪽의 키 큰 근대 건물 지붕 위로 성벽이 비쳐 보였다(사람이 그 앞을 지날 때)
+			var b1: Vector2i = pe[2]
+			if not (int(so["x0"]) > b1.x or int(so["y0"]) > b1.y):
 				continue
 			var sit := (pe[1] as Rect2).intersection(spr)
 			if sit.size.x > 0.5 and sit.size.y > 0.5:
@@ -819,6 +841,9 @@ func _maybe_bake_structs() -> void:
 		_rebuild_occluders()
 	for o: Dictionary in _occ:
 		if o.has("paint") and String((_struct_tex.get(o["paint"], {}) as Dictionary).get("sig", "")) != String(o["psig"]):
+			# PORT-TRACE [렉: 계절 바뀌는 달 멈칫]: 굽기 한 묶음도 무거운 일 차례를 받아서(턴 계산·가림막·지도 굽기와 겹치지 않게)
+			if not GameGrid.frame_claim():
+				return # 다음 그리기 때 다시
 			_struct_baking = true
 			call_deferred("_bake_structs")
 			return
@@ -848,8 +873,8 @@ func _bake_structs() -> void:
 		vp.add_child(painter)
 		add_child(vp)
 		jobs.append([vp, o["paint"], o["psig"]])
-		if jobs.size() >= 48:
-			break # 한 번에 너무 많이 굽지 않게(나머지는 다음 차례)
+		if jobs.size() >= 16:
+			break # 한 번에 너무 많이 굽지 않게(나머지는 다음 차례) — 48개씩이면 만들기·그리기·읽어오기가 각 30~50ms로 멈칫했다
 	for k in _struct_tex.keys():
 		if not live.has(k):
 			_struct_tex.erase(k)
@@ -1269,8 +1294,8 @@ func _draw_rider(seat: Vector2, kind: String, dir: int) -> void:
 	var back := dir >= 2
 	if back and leg.is_valid():
 		leg.call() # 뒷모습: 다리는 엉덩이 뒤로 살짝 보이게 먼저
-	# PORT-TRACE [말 탄 몸통]: 투구·수염이 큰 군졸 그림은 35줄로 자르면 허리 아래가 거의 없어 말 위에서 몸이 끊겨 보였다 — 허벅지(39줄)까지 남겨 말 등에 걸친다
-	NpcSprites.draw_upper(self, seat + Vector2(0, 6.0 * sc), kind, 0, current_season == "겨울", dir, 27, 0, "", 1.0, 39.0)
+	# PORT-TRACE [말 탄 몸통]: 투구·수염이 큰 군졸 그림은 35줄로 자르면 허리 아래가 거의 없어 말 위에서 몸이 끊겨 보였다 — 허벅지(40줄)까지 남겨 말 등에 걸친다
+	NpcSprites.draw_upper(self, seat + Vector2(0, 6.0 * sc), kind, 0, current_season == "겨울", dir, 27, 0, "", 1.0, 40.0)
 	if not back and leg.is_valid():
 		leg.call()
 
@@ -1688,9 +1713,9 @@ func _draw_ice_sled(p: Vector2, a: Dictionary) -> void:
 		draw_line(p + fw + o, p + fw * 1.25 + o - Vector2(0, 1.6), Color("4a4f55", alpha), 1.0)
 	FastDraw.poly(self, PackedVector2Array([p - fw - sd * 0.6, p + fw - sd * 0.6, p + fw + sd * 0.5, p - fw + sd * 0.5]), Color("8a6440", alpha))
 	draw_line(p - fw - sd * 0.6, p + fw - sd * 0.6, Color("b08a5e", alpha), 1.0)
-	# 앉은 아이(윗몸) + 꼬챙이 둘(번갈아 얼음을 찍음)
+	# 썰매에 무릎 꿇고 앉은 아이(무릎까지 남김: 너무 자르면 헤엄치는 것처럼 보인다) + 꼬챙이 둘(번갈아 얼음을 찍음)
 	var body := p + Vector2(-1.5 * sx, -1.0) * k
-	NpcSprites.draw_upper(self, body, "child_m", 0, true, dir, 18, 1, "", alpha)
+	NpcSprites.draw_upper(self, body, "child_m", 0, true, dir, 26, 1, "", alpha, 40.0)
 	for hi in range(2):
 		var pushk := sin(anim * 4.0 + float(hi) * PI)
 		var hand := body + Vector2((2.5 + float(hi) * 2.0) * sx, -7.0) * k
@@ -3309,13 +3334,61 @@ func _draw_infra_overlays() -> void:
 	if _drops_dirty:
 		_drops = grid.water_shortage_tiles()
 		_drops_dirty = false
-	var bob := sin(Time.get_ticks_msec() * 0.004) * 2.0
+		_build_drop_mesh()
+	if not _drop_meshes.is_empty():
+		var bob := sin(Time.get_ticks_msec() * 0.004) * 2.0
+		draw_set_transform(Vector2(0.0, -bob))
+		for m: Array in _drop_meshes:
+			RenderingServer.canvas_item_add_triangle_array(get_canvas_item(), m[1], m[0], m[2])
+		draw_set_transform(Vector2.ZERO)
+
+## 물방울 전부를 삼각형 묶음으로 미리 굽는다(물방울 칸이 바뀔 때만). 근대화 뒤에는 수도 영향권 밖 가옥·상점
+## 전부에 물방울이 떠서, 하나씩 원 조각으로 그리면 한 프레임에 그리기가 수만 번이 되어 렉이 났다.
+var _drop_meshes: Array = [] # [점, 삼각형 번호, 색] 묶음들
+const DROP_BATCH := 1500     # 묶음 하나에 넣을 물방울 수
+func _build_drop_mesh() -> void:
+	_drop_meshes.clear()
+	if _drops.is_empty():
+		return
+	# 몸통(원 + 위로 뾰족한 끝)과 하이라이트 모양 — 볼록 다각형이라 첫 점 기준 부채꼴로 나눈다
+	var circ := PackedVector2Array()
+	for i in range(12):
+		var ang := TAU * float(i) / 12.0
+		circ.append(Vector2(cos(ang), sin(ang)) * 3.6)
+	circ.append(Vector2(0, -8))
+	var body := Geometry2D.convex_hull(circ)
+	body.remove_at(body.size() - 1) # 닫는 점(첫 점과 같음) 빼기
+	var hi := PackedVector2Array()
+	for i in range(6):
+		var ang2 := TAU * float(i) / 6.0
+		hi.append(Vector2(-1.2, -0.8) + Vector2(cos(ang2), sin(ang2)) * 1.0)
+	var body_col := Color("2f8fe0")
+	var hi_col := Color(1, 1, 1, 0.8)
+	var pts := PackedVector2Array()
+	var idx := PackedInt32Array()
+	var cols := PackedColorArray()
+	var n := 0
 	for pt: Vector2i in _drops:
 		var tp := _tile_poly(pt.x, pt.y)
-		var top := (tp[0] + tp[2]) * 0.5 - Vector2(0, 34.0 + bob)
-		FastDraw.circle(self, top, 3.6, Color("2f8fe0"))
-		FastDraw.poly(self, PackedVector2Array([top + Vector2(-3.2, -1.2), top + Vector2(3.2, -1.2), top + Vector2(0, -8)]), Color("2f8fe0"))
-		FastDraw.circle(self, top + Vector2(-1.2, -0.8), 1.0, Color(1, 1, 1, 0.8))
+		var top := (tp[0] + tp[2]) * 0.5 - Vector2(0, 34.0)
+		for shape: Array in [[body, body_col], [hi, hi_col]]:
+			var poly: PackedVector2Array = shape[0]
+			var base := pts.size()
+			for v: Vector2 in poly:
+				pts.append(top + v)
+				cols.append(shape[1])
+			for k in range(1, poly.size() - 1):
+				idx.append(base)
+				idx.append(base + k)
+				idx.append(base + k + 1)
+		n += 1
+		if n % DROP_BATCH == 0:
+			_drop_meshes.append([pts, idx, cols])
+			pts = PackedVector2Array()
+			idx = PackedInt32Array()
+			cols = PackedColorArray()
+	if not pts.is_empty():
+		_drop_meshes.append([pts, idx, cols])
 
 # ============================================================ 사대문 운반꾼
 ## PORT-TRACE [사대문 물류]: 문마다 다른 짐을 진 운반꾼. 장안문 = 말 탄 관료·서책 보따리 상인·관용 수레,
@@ -3758,13 +3831,17 @@ func _draw_play_yards(cattle_only: bool = false) -> void:
 		_draw_cattle_yards()
 		return
 	_draw_sea_scenes()
+	_draw_modern_plazas()
 	_draw_kid_yards()
 	_draw_cattle_yards()
 	if _play_yards.is_empty():
 		return
 	var bounds := _get_view_bounds()
 	var t := _scene_t
+	var play_modern := _modern_plaza_tex("play") != null
 	for pl: Dictionary in _play_yards:
+		if play_modern:
+			break # 체육공원으로 바뀜(_draw_modern_plazas)
 		var x0 := float(pl["x0"])
 		var y0 := float(pl["y0"])
 		var cen := _cc(x0 + 1.0, y0 + 1.0)
@@ -3983,10 +4060,11 @@ func _draw_prisoner_escort(p: Vector2, a: Dictionary) -> void:
 
 # ============================================================ 어린이 골목 놀이터 · 수원 쇠전
 ## 아이(어른의 0.7배). boy면 더벅머리, 아니면 댕기 땋은 계집아이
-func _kid(p: Vector2, robe: Color, boy: bool, arms: float = 0.0, _s: float = 0.68) -> void:
+func _kid(p: Vector2, robe: Color, boy: bool, arms: float = 0.0, _s: float = 0.68, dir: int = 0) -> void:
 	# 아이 도트(머리 큰 아이 몸집). 사내아이는 더벅머리, 계집아이는 댕기 땋은 머리 + 붉은 치마
+	# dir: 0 앞-오른, 1 앞-왼, 2 뒤-오른, 3 뒤-왼
 	var key := NpcSprites.custom_kind("child_m" if boy else "child_f", robe, robe.darkened(0.12) if boy else Color("c0392b"), Color("c0392b"))
-	NpcSprites.draw_kind(self, p, key, 0, current_season == "겨울", 0, clampi(roundi(arms * 3.0), 0, 3), "cheer")
+	NpcSprites.draw_kind(self, p, key, 0, current_season == "겨울", dir, clampi(roundi(arms * 3.0), 0, 3), "cheer")
 
 ## 말뚝박기 엎드린 아이: 다리는 그대로 세우고, 허리 위(머리·몸통)를 왼쪽 위(앞 아이 쪽)로 눕혀 그린다. 아이 뒷모습(왼쪽 위를 봄) 칸.
 func _bent_kid(p: Vector2, robe: Color, boy: bool) -> void:
@@ -4003,7 +4081,13 @@ func _bent_kid(p: Vector2, robe: Color, boy: bool) -> void:
 	draw_texture_rect_region(tex, Rect2(p.x - 24.0 * sc, p.y + (HIP - 42.0) * sc, 48.0 * sc, (48.0 - HIP) * sc), Rect2(0, row + HIP, 48, 48.0 - HIP))
 	# 허리 위: 허리를 축으로 왼쪽 위로 눕힘
 	var hip := p + Vector2(0, (HIP - 42.0) * sc)
-	NpcSprites.set_xf(self, hip, -1.25, Vector2(sc, sc))
+	# 꺾인 허리 바깥쪽 부채꼴 빈틈: 허리 몇 줄을 0에서 눕힌 각도까지 조금씩 돌려 겹쳐 그려 옷으로 메운다
+	const BEND := -1.25
+	const SEAM := 7.0 # 메움에 쓰는 허리 위 줄 수
+	for si in range(6):
+		NpcSprites.set_xf(self, hip, BEND * float(si) / 6.0, Vector2(sc, sc))
+		draw_texture_rect_region(tex, Rect2(-24.0, -SEAM, 48.0, SEAM), Rect2(0, row + HIP - SEAM, 48, SEAM))
+	NpcSprites.set_xf(self, hip, BEND, Vector2(sc, sc))
 	draw_texture_rect_region(tex, Rect2(-24.0, 14.0 - HIP, 48.0, HIP - 14.0), Rect2(0, row + 14.0, 48, HIP - 14.0))
 	NpcSprites.reset_xf(self)
 
@@ -4020,6 +4104,8 @@ func _draw_kid_yards() -> void:
 	var bounds := _get_view_bounds()
 	var t := _scene_t
 	var robes: Array[Color] = [Color("f4f0e4"), Color("e8b8c8"), Color("b8d0e8"), Color("f6e3a0"), Color("c8e0b8")]
+	if _modern_plaza_tex("kids") != null:
+		return # 어린이 놀이터로 바뀜(_draw_modern_plazas)
 	for pl: Dictionary in _kid_yards:
 		var x0 := float(pl["x0"])
 		var y0 := float(pl["y0"])
@@ -4048,7 +4134,8 @@ func _draw_kid_yards() -> void:
 			jp = (bend[1] + Vector2(6, 0)).lerp(land, k) - Vector2(0, sin(k * PI) * 10.0)
 		else:
 			jp = land
-		_kid(jp, robes[3], true, 0.8 if cyc < 0.65 else 0.2)
+		# 오른쪽 아래에서 엎드린 아이들(왼쪽 위) 쪽으로 달려가므로 엎드린 아이와 같은 뒤-왼쪽 뒷모습
+		_kid(jp, robes[3], true, 0.8 if cyc < 0.65 else 0.2, 0.68, 3)
 		# 제기차기: 한쪽 발을 들썩, 제기가 오르내림
 		var jg := _cc(x0 + 0.4, y0 + 1.6)
 		if not FestivalArt._act(self, jg, "act_jegi", t, 4.0, false, 0.52):
@@ -4066,11 +4153,12 @@ func _draw_kid_yards() -> void:
 		var tag := rc + Vector2(cos(ang - 0.9) * 18.0, sin(ang - 0.9) * 8.0)
 		_kid(flee, robes[1], false, 0.5)
 		_kid(tag, robes[2], true, 0.9)
-		# 강아지 둘: 백구는 술래 뒤를, 황구는 뛰어오르는 아이를 쫓는다
+		# 강아지 둘: 백구는 술래 뒤를 쫓고, 황구는 말뚝박기 마당 앞을 제멋대로 오가며 뛰논다(아이와 따로 움직임)
 		var d1 := rc + Vector2(cos(ang - 1.6) * 18.0, sin(ang - 1.6) * 8.0)
 		_dog(d1, Color("f2eee4"), -1.0 if sin(ang - 1.6) > 0.0 else 1.0, t)
-		var d2 := jp + Vector2(10, 4)
-		_dog(d2, Color("c8903a"), -1.0, t + 1.0)
+		var dw := t * 0.9 + ph
+		var d2 := run_from + Vector2(-8.0 + sin(dw) * 14.0, 9.0 + sin(dw * 1.9) * 3.0) * kk
+		_dog(d2, Color("c8903a"), 1.0 if cos(dw) > 0.0 else -1.0, t + 1.0)
 
 ## PORT-TRACE [수원 쇠전 3x3]: 말뚝 줄에 매인 소 일곱(제자리에서 조금씩 서성이며 방향을 바꿈)과 소장수가 고삐를 끌고
 ## 마당을 한 바퀴 도는 소 한 마리, 매인 소를 차례로 찾아가 이빨을 보고 흥정하는 거간꾼과 손님(말풍선이 번갈아),
@@ -4892,7 +4980,20 @@ func _draw_siege() -> void:
 		for k2 in range(5):
 			var sp := fmod(t * 0.45 + float(k2) * 0.2, 1.0)
 			FastDraw.circle(self, c + Vector2(-20.0 + k2 * 9.0, 8.0 - sp * 26.0), 4.5 + sp * 7.0, Color(0.65, 0.60, 0.55, 0.42 * (1.0 - sp)))
-	# 공격력 / 성 방호력 막대
+
+## 공성전 공격력 / 성 방호력 막대.
+## PORT-TRACE [게이지 깜빡임]: 사람들보다 먼저 그리면, 성문 근처를 지나는 군사마다 성문 앞 그림 조각이 덮여
+## 막대가 잘렸다 보였다 했다 — 사람·말풍선을 다 그린 뒤에 그린다.
+func _draw_siege_bar() -> void:
+	var sg: SiegeSystem = citizens.siege if citizens else null
+	if sg == null or sg.state == "" or sg.state == "warning":
+		return
+	var tg: Vector2i = sg.target
+	if not grid.in_bounds(tg.x, tg.y):
+		return
+	var c := _cc(float(tg.x) + 0.5, float(tg.y) + 0.5)
+	if not _get_view_bounds().has_point(c):
+		return
 	var defense := sg.defense_power()
 	var top := c + Vector2(-50, -62)
 	draw_rect(Rect2(top, Vector2(100, 22)), Color(0.08, 0.05, 0.03, 0.85))
@@ -5225,7 +5326,7 @@ func _kind_at(p: Vector2, kind: String, gdir: Vector2, walking: bool, t: float, 
 		NpcSprites.draw_kind(self, p, kind, 0, current_season == "겨울", dir, clampi(roundi(arm * 3.0), 0, 3), "cheer" if arm > 0.0 else "")
 
 func _draw_market_life() -> void:
-	if _market_plazas.is_empty():
+	if _market_plazas.is_empty() or _modern_plaza_tex("market") != null: # 시민공원으로 바뀌면 난전 장면 대신 공원 그림
 		return
 	if get_canvas_transform().get_scale().x < 0.55:
 		return
@@ -5677,15 +5778,30 @@ func _draw_chapels() -> void:
 		return
 	var bounds := _get_view_bounds()
 	var t := _scene_t
+	# PORT-TRACE [교우 모임]: 교우 셋이 집회소 칸에, 천주교 학자는 그 앞 길에 따로 있어 혼자 떨어져 앉은 듯했다 —
+	# 학자가 있으면 그 바로 앞에 셋이 등을 보이고 무릎 꿇어 한 무리로 모이고, 학자가 쫓기거나 붙잡히면 흩어진다.
+	var scholar_of := {}
+	if citizens:
+		for a: Dictionary in citizens.agents:
+			if a.get("type", "") == "catholic" and not a.get("is_dead", false):
+				scholar_of[(a.get("extra", {}) as Dictionary).get("home", Vector2i(-1, -1))] = a
+	const BELIEVERS := ["believer_w", "believer_m", "believer_old"]
 	for h: Vector2i in _chapels:
 		var c := _cc(float(h.x) + 0.5, float(h.y) + 0.95)
+		var sc: Dictionary = scholar_of.get(h, {})
+		if not sc.is_empty():
+			if String(sc.get("state", "")) in ["fleeing", "arrested"]:
+				continue # 관헌이 들이닥치자 교우들은 흩어졌다
+			var gx := clampi(int(round(float(sc["x"]))), 0, grid.size - 1)
+			var gy := clampi(int(round(float(sc["y"]))), 0, grid.size - 1)
+			c = city.cell_center(float(sc["x"]), float(sc["y"]), float(grid.grid[gy][gx]["elevation"])) + Vector2(0, 12.0) * _sk()
 		if not bounds.has_point(c):
 			continue
-		var gyowu := NpcSprites.custom_kind("supply", Color("f2eee4"), Color("e6e0d2"), Color("8a8a8a"))
 		for i in range(3):
-			var p := c + Vector2(-11.0 + float(i) * 11.0, 4.0 + float(i % 2) * 2.0)
-			_spr_seat(p, gyowu, 2 if i != 1 else 3, Color("e6e0d2")) # 등 돌려 무릎 꿇고 기도
-		if int(t / 8.0 + float(h.x)) % 4 == 0:
+			var p := c + Vector2(-10.0 + float(i) * 10.0, 2.0 + float(i % 2) * 2.5) * _sk()
+			# 등 돌려 무릎 꿇고 기도(왼쪽 사람은 오른쪽 뒤, 오른쪽 사람은 왼쪽 뒤를 보며 가운데 학자를 향함)
+			_spr_seat(p, BELIEVERS[i], 2 if i == 0 else (3 if i == 2 else 2 + int(t / 6.0 + float(h.y)) % 2), Color("e6e0d2"))
+		if sc.is_empty() and int(t / 8.0 + float(h.x)) % 4 == 0:
 			_draw_speech_bubble(c + Vector2(0, -18), "쉿… 천주를 공경하세…", "")
 
 ## 성곽 미완성 끊김 지점 점멸 타일 가이드 하이라이트
@@ -5715,3 +5831,33 @@ func _draw_wall_guide_highlight() -> void:
 	# 중앙 안내 가이드 십자/경고 표시
 	draw_line(c + Vector2(0, -7), c + Vector2(0, 3), col, 2.5)
 	draw_circle(c + Vector2(0, 6), 1.6, col)
+
+# ============================================================ 근대화 시대: 마당 → 시민공원·어린이 놀이터·체육공원
+## 개편한 마당 종류의 근대 그림(UrbanEvolutionManager). 그림 파일이 없거나 개편 전이면 null(옛 장면 그대로)
+func _modern_plaza_tex(kind: String) -> Texture2D:
+	var um := UrbanEvolutionManager.instance
+	return um.plaza_texture(kind) if um != null else null
+
+## 마당 하나(n×n 칸)를 덮는 아이소 그림: 그림 아래쪽 n*16 픽셀이 바닥 마름모(art_ingest 캔버스 규격)
+var _mp_cache := {}       # 마당 종류 → 목록(마당이 바뀔 때만 다시 셈)
+var _mp_src: Array = []
+
+func _draw_modern_plazas() -> void:
+	if not is_same(_mp_src, _play_yards): # _draw_play_yards가 마당 목록을 새로 만들면 같이 갱신
+		_mp_src = _play_yards
+		_mp_cache.clear()
+	var bounds := _get_view_bounds()
+	for kind: String in ["market", "kids", "play"]:
+		var tex := _modern_plaza_tex(kind)
+		if tex == null:
+			continue
+		if not _mp_cache.has(kind):
+			_mp_cache[kind] = grid.list_plazas(kind)
+		for pl: Dictionary in _mp_cache[kind]:
+			var n := float(pl["n"])
+			var cen := _cc(float(pl["x0"]) + n * 0.5, float(pl["y0"]) + n * 0.5)
+			if not bounds.has_point(cen):
+				continue
+			var w := n * 64.0
+			var h := w * float(tex.get_height()) / float(maxi(1, tex.get_width()))
+			draw_texture_rect(tex, Rect2(cen.x - w * 0.5, cen.y + n * 16.0 - h, w, h), false)

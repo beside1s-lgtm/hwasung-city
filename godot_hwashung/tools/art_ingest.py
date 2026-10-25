@@ -12,6 +12,8 @@
   art_inbox/npcs/
     npc_farmer.png               ← 한 장에 인물 하나(자세 2·4·8개를 가로로)
     아무이름.png + 아무이름.txt  ← 한 장에 여러 인물. 한 줄(가로 행) = 한 인물, txt에 행 순서대로 이름
+  art_inbox/terrain/
+    아무이름.png + 아무이름.txt  ← 나무(32x44)·바닥 마름모(64x32). txt에 지형 이름을 읽는 순서대로
   txt 첫 줄에 grid=4x3 처럼 쓰면 자동 인식 대신 칸을 똑같이 나눠 자른다.
   이름은 영문 파일 이름 또는 목록의 한글 이름(예: 채제공, 농부, 초가 1) 둘 다 된다.
 
@@ -30,6 +32,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SPRITES = os.path.join(ROOT, "assets", "sprites")
 INBOX = os.path.join(ROOT, "art_inbox")
+FLOOD_ONLY = False  # --flood-only 로 켠다(remove_background 참고)
 BACKUP = os.path.join(os.path.dirname(ROOT), "_backup_sprites")
 
 # ------------------------------------------------------------------ 건물 목록: 이름 → (칸, 한글 이름)
@@ -47,6 +50,7 @@ BUILDINGS: dict[str, tuple[str, str]] = {
     "lm_gwana": ("2x2", "[지도] 관아 2x2"),
     "lm_jongnu": ("2x2", "[지도] 종루(여민각) 2x2"),
     "lm_jinhulso": ("2x2", "[지도] 진휼소 2x2"),
+    "lm_sewage": ("2x2", "[지도] 하수처리시설 2x2 (근대화)"),
     "tile_house_10_3x3": ("3x3", "대갓집 기와집(진휼소 등)"),
     "ws_3x3_royal_arsenal": ("3x3", "군기시(왕실 무기고)"),
     "cattle_market_3x3": ("3x3", "수원 쇠전(우시장) 바탕 — 소·사람 없이"),
@@ -62,8 +66,6 @@ BUILDINGS: dict[str, tuple[str, str]] = {
     "tile_house_09": ("2x2", "기와집 마당 넓은 집 2"),
     "ws_2x2_ceramics": ("2x2", "도자기 가마 공방"),
     "ws_2x2_lumber_machinery": ("2x2", "제재·목재 기계 공방"),
-    "children_play_yard": ("2x2", "아이들 놀이마당(제기·팽이)"),
-    "women_play_yard": ("2x2", "여인들 놀이마당(널뛰기·그네)"),
     "thatch_house_08": ("2x1", "초가 ㄱ자 1"),
     "thatch_house_09": ("2x1", "초가 ㄱ자 2"),
     "thatch_house_10": ("2x1", "초가 ㄱ자 3"),
@@ -92,6 +94,32 @@ for _i in range(1, 5):
     BUILDINGS[f"tile_house_{_i:02d}"] = ("1x1", f"기와집 {_i}")
 for _i, _n in enumerate(SHOPS):
     BUILDINGS[f"market_shop_{_i + 1:02d}"] = ("1x1", f"장터 {_n}")
+# 근대화 시대(1820~) 그림 → assets/sprites/buildings_modern/ (art_inbox/MODERN_PROMPTS.md)
+MODERN_BUILDINGS: dict[str, tuple[str, str]] = {
+    "stone_house_01": ("1x1", "석조 주택 1"), "stone_house_02": ("1x1", "석조 주택 2"), "stone_house_03": ("1x1", "석조 주택 3"),
+    "stone_shop_01": ("1x1", "석조 상점 1"), "stone_shop_02": ("1x1", "석조 상점 2"), "stone_office_01": ("1x1", "석조 관청·은행"),
+    "villa_01": ("1x1", "연립주택(빌라) 1"), "villa_02": ("1x1", "연립주택(빌라) 2"),
+    "brick_mansion_01": ("1x1", "붉은벽돌 양옥 1"), "brick_mansion_02": ("1x1", "붉은벽돌 양옥 2"),
+    "modern_highrise_01": ("2x2", "근대 상업 빌딩 1"), "modern_highrise_02": ("2x2", "근대 상업 빌딩 2"),
+    "factory_01": ("2x2", "증기 공장 1"), "factory_02": ("2x2", "전기 공장 2"),
+    "finance_bank_01": ("1x1", "근대 은행"), "finance_office_01": ("1x1", "보험·증권 사무소"),
+    "service_hotel_01": ("1x1", "근대 호텔"), "service_cafe_01": ("1x1", "다방·양식당"),
+    "yeonmudae_base": ("2x2", "연무대 신식 군사기지"),
+    "gov_office": ("2x2", "정부청사(옛 유수부 관아)"), "police_station": ("1x1", "경찰서"), "fire_station": ("1x1", "소방서"),
+    "welfare_center": ("2x2", "복지관(옛 진휼소)"),
+    "haenggung_republic": ("7x7", "대통령궁·국회·법원(옛 화성행궁)"),
+    "park_citizen": ("3x3", "시민공원(옛 난전 마당)"), "playground_modern": ("2x2", "어린이 놀이터(옛 어린이 마당)"),
+    "sports_park": ("2x2", "체육공원(옛 여인 놀이마당)"),
+    "water_collector": ("1x1", "집수정(옛 우물)"), "water_supply_plant": ("1x1", "생활용수 공급시설(저수지 위)"),
+    "university": ("4x4", "수원 대학교(옛 향교)"), "elementary_school": ("2x2", "초등학교(옛 서당)"),
+    "secondary_school": ("3x3", "중등학교(옛 서원)"),
+    "chukmanje_park": ("7x7", "축만제 호수공원"), "manseokgeo_park": ("7x7", "만석거 호수공원"),
+    "veh_car_front": ("1x1", "클래식 자동차(앞)"), "veh_car_back": ("1x1", "클래식 자동차(뒤)"),
+    "veh_tram_front": ("2x1", "노면전차(앞)"), "veh_tram_back": ("2x1", "노면전차(뒤)"),
+}
+BUILDINGS.update(MODERN_BUILDINGS)
+# 게임이 이미 찾는 근대 기본 이름(SpriteCacheManager)도 같이 바뀐다
+MODERN_TWINS = {"stone_house_01": ["stone_building"], "villa_01": ["villa"], "modern_highrise_01": ["modern_highrise"], "factory_01": ["factory"]}
 # 같은 그림을 함께 쓰는 기본 파일(…_01을 넣으면 기본 이름도 같이 바뀐다)
 BUILDING_TWINS = {"thatch_house_01": ["thatch_house"], "tile_house_01": ["tile_house"], "market_shop_01": ["market_shop"],
                   "ws_1x1_carpenter": ["workshop"]}
@@ -119,6 +147,13 @@ NAMED_ALIASES = {
     "yi_gigyeong": ["kim_myeongsin", "named_kim_myeongsin"], "yi_seonggil": ["lee_seonggil", "named_lee_seonggil"],
 }
 GENERIC = {
+    # 근대화 시대(1820~) 시민 — art_inbox/MODERN_PROMPTS.md
+    "npc_modern_gentleman": ("양복 신사", "중절모·양복·지팡이", 40), "npc_modern_worker": ("근대 노동자", "헌팅캡·멜빵 작업복", 39),
+    "npc_modern_girl": ("모던걸", "단발·개량한복·구두", 38), "npc_modern_lady": ("양장 부인", "양장 코트·레이스 양산", 38),
+    "npc_modern_student": ("남학생", "학생모·검은 교복·책가방", 36), "npc_modern_schoolgirl": ("여학생", "땋은 머리·흰 저고리·검은 치마·책보", 35),
+    "npc_modern_cyclist": ("자전거 탄 사람", "양복·자전거", 40), "npc_modern_vendor": ("신문팔이 소년", "헌팅캡·신문 뭉치", 33),
+    "npc_modern_official": ("근대 공무원", "양복·서류철", 39), "npc_modern_police": ("근대 경찰", "제모·제복·경찰봉", 40),
+    "npc_modern_firefighter": ("근대 소방관", "황동 헬멧·방화복·소방 호스", 40),
     "npc_yangban_scholar": ("양반 선비", "갓·도포·부채", 40), "npc_yangban_lady": ("양반 부인", "가체·장옷", 38),
     "npc_hallyang": ("한량", "갓·화려한 도포", 40), "npc_gisaeng": ("기생", "가체·화사한 치마저고리", 38),
     "npc_farmer": ("농부", "삿갓·흰 바지저고리·괭이", 39), "npc_peasant_woman": ("아낙", "흰 수건·치마·바구니", 37),
@@ -244,6 +279,20 @@ ACTIONS: dict[str, tuple[int, int, str, str]] = {
     "npc_artisan_blacksmith__hammer": (4, 39, "망치질하는 대장장이", "blacksmith in a leather apron hammering on an anvil (draw the small anvil): 1) hammer raised, 2) swinging, 3) striking with sparks, 4) lifting again"),
 }
 
+# ------------------------------------------------------------------ 지형 목록: 이름 → (종류, 한글 이름)
+# tile = 64x32 바닥 마름모(마름모 밖은 투명), tree = 32x44 나무(밑동이 아래 가운데)
+TERRAIN: dict[str, tuple[str, str]] = {}
+_SEASONS = {"spring": "봄", "summer": "여름", "autumn": "가을", "winter": "겨울"}
+for _k, _n in {"pine": "소나무", "zelkova": "느티나무", "willow": "버드나무", "maple": "단풍나무", "cherry": "벚나무"}.items():
+    for _s, _sn in _SEASONS.items():
+        TERRAIN[f"tree_{_k}_{_s}"] = ("tree", f"{_n} {_sn}")
+for _s, _sn in _SEASONS.items():
+    TERRAIN[f"farm_{_s}"] = ("tile", f"논 {_sn}")
+    TERRAIN[f"grass_{_s}"] = ("tile", f"풀밭 {_sn}")
+TERRAIN.update({"road_tram": ("tile", "전철 궤도"), "road_asphalt": ("tile", "아스팔트 도로")})
+TERRAIN.update({"farm_normal": ("tile", "논 기본"), "dirt_road": ("tile", "흙길"), "stone_road": ("tile", "돌길"),
+                "reservoir": ("tile", "저수지 물")})
+
 def _korean_lookup() -> dict[str, tuple[str, str]]:
     """한글 이름 → (종류, 영문 이름)"""
     out = {}
@@ -253,6 +302,8 @@ def _korean_lookup() -> dict[str, tuple[str, str]]:
         out[v[0]] = ("n", k)
     for k, v in GENERIC.items():
         out[v[0]] = ("g", k)
+    for k, (_, kn) in TERRAIN.items():
+        out[kn] = ("t", k)
     return out
 
 KOREAN = _korean_lookup()
@@ -285,6 +336,10 @@ def remove_background(img: Image.Image, tol: int = 30) -> Image.Image:
             hist[key] = hist.get(key, 0) + 1
     total = thumb.width * thumb.height
     keyed = [(k[0] * 8 + 4, k[1] * 8 + 4, k[2] * 8 + 4) for k, n in hist.items() if n > total * 0.06]
+    # --flood-only: 흰옷이 연회색 배경과 비슷한 그림(예: G03 농부)은 넓은 무채색 지우기가 옷 속까지 구멍을 내 얼룩이 생긴다 —
+    # 테두리에서 이어진 배경만 지운다.
+    if FLOOD_ONLY:
+        keyed = []
     t2 = tol * tol
     k2 = 14 * 14
 
@@ -705,6 +760,9 @@ def resolve(name: str, kind: str) -> str | None:
     return None
 
 def write_building(key: str, img: Image.Image, check: bool, results: list) -> None:
+    for t in MODERN_TWINS.get(key, []):
+        if t not in BUILDING_TWINS.setdefault(key, []):
+            BUILDING_TWINS[key].append(t)
     cells, _ = BUILDINGS[key]
     out = fit_building(keep_main(img), CANVAS[cells])
     try:  # 땅 판 옆면(흙·석축 단면)을 지우고 내려 윗면이 게임 땅에 붙게(tools/flatten_base.py)
@@ -713,8 +771,9 @@ def write_building(key: str, img: Image.Image, check: bool, results: list) -> No
     except Exception as e:
         print("  ⚠ 땅 판 정리 못 함:", key, e)
     for k in [key] + BUILDING_TWINS.get(key, []):
-        save_png(out, os.path.join(SPRITES, "buildings", k + ".png"), 64, check)
-        if not check: # 겨울판(눈 덮인 지붕)도 새 그림으로 다시
+        sub = "buildings_modern" if key in MODERN_BUILDINGS else "buildings"
+        save_png(out, os.path.join(SPRITES, sub, k + ".png"), 64, check)
+        if not check and key not in MODERN_BUILDINGS: # 겨울판(눈 덮인 지붕)도 새 그림으로 다시
             try:
                 import make_winter
                 make_winter.main([k])
@@ -734,6 +793,63 @@ def write_goods(gid: str, img: Image.Image, check: bool, results: list) -> None:
     cell.alpha_composite(fig, ((size - fig.width) // 2, size - fig.height - 1))
     save_png(cell, os.path.join(SPRITES, "goods", gid + ".png"), 32, check)
     results.append((gid, cell))
+
+def write_terrain(name: str, img: Image.Image, check: bool, results: list) -> None:
+    kind = TERRAIN[name][0]
+    obj = keep_main(img) if kind == "tree" else img
+    bb = obj.getbbox()
+    if bb:
+        obj = obj.crop(bb)
+    if kind == "tile":  # 마름모 그대로 64x32로 줄이고 마름모 밖은 투명
+        # 배경색과 조금이라도 다른 곳으로 좌우 끝·윗꼭짓점을 찾고, 높이는 가로의 절반만(아래 두께·옆면은 버림)
+        rgb = img.convert("RGB")
+        bgc = rgb.getpixel((0, 0))
+        diff = Image.new("L", rgb.size, 0)
+        dp, rp = diff.load(), rgb.load()
+        for yy in range(rgb.height):
+            for xx in range(rgb.width):
+                if _dist2(rp[xx, yy], bgc) > 400:
+                    dp[xx, yy] = 255
+        # 여유를 두고 잘라 옆 타일 끝이 걸릴 수 있으니, 가운데에서 이어진 열·행 덩어리만
+        def _run(has: list, mid: int) -> tuple:
+            if not has[mid]:
+                return 0, len(has)
+            a = b = mid
+            while a > 0 and has[a - 1]:
+                a -= 1
+            while b < len(has) - 1 and has[b + 1]:
+                b += 1
+            return a, b + 1
+        cols = [diff.crop((xx, 0, xx + 1, rgb.height)).getbbox() is not None for xx in range(rgb.width)]
+        x0, x1 = _run(cols, rgb.width // 2)
+        rows = [diff.crop((x0, yy, x1, yy + 1)).getbbox() is not None for yy in range(rgb.height)]
+        y0, y1 = _run(rows, rgb.height // 2)
+        # 가장 넓은 줄 = 마름모 가운데(아래 두께·옆면은 그 아래라 버린다). 테두리 선이 이음새로 보이지 않게 8% 안쪽만
+        widths = [diff.crop((x0, yy, x1, yy + 1)).getbbox() for yy in range(y0, y1)]
+        mid = y0 + max(range(len(widths)), key=lambda i: (widths[i][2] - widths[i][0]) if widths[i] else 0)
+        cx, cy = (x0 + x1) / 2, mid
+        hw, hh = (x1 - x0) / 2 * 0.92, (mid - y0) * 0.92
+        obj = rgb.crop((round(cx - hw), round(cy - hh), round(cx + hw), round(cy + hh)))
+        out = obj.resize((64, 32), Image.LANCZOS)
+        if name.startswith("grass_"):  # 풀밭은 게임이 마름모 안만 떼어 붙인다: 밖은 가장 가까운 안쪽 색으로 채워 테두리 줄이 안 생기게
+            px = out.load()
+            for y in range(32):
+                half = max(1, round(32 * (1 - abs(y + 0.5 - 16) / 16)) - 1)  # 가장자리 1px은 바깥과 섞였으니 안쪽 색으로
+                x0, x1 = 32 - half, 32 + half - 1
+                for x in range(64):
+                    px[x, y] = px[min(max(x, x0), x1), y]
+            out = out.convert("RGBA")
+        else:
+            mask = Image.new("L", (64, 32), 0)
+            ImageDraw.Draw(mask).polygon([(32, 0), (64, 16), (32, 32), (0, 16)], fill=255)
+            out.putalpha(mask)
+    else:  # 나무: 밑동이 (16, 42) 근처에 오게
+        s = min(30 / obj.width, 42 / obj.height)
+        fig = outline(harden_alpha(shrink(obj, (max(1, round(obj.width * s)), max(1, round(obj.height * s))))))
+        out = Image.new("RGBA", (32, 44), (0, 0, 0, 0))
+        out.alpha_composite(fig, ((32 - fig.width) // 2, 43 - fig.height))
+    save_png(out, os.path.join(SPRITES, "terrain", name + ".png"), 64, check)
+    results.append((name, out))
 
 def write_npc(key: str, poses: list[Image.Image], height: int | None, check: bool, results: list) -> None:
     kind, nid = key.split(":")
@@ -779,7 +895,7 @@ def read_list(txt: str):
 def process(check: bool) -> None:
     results: list = []
     problems: list[str] = []
-    for kind_dir, kind in (("buildings", "b"), ("npcs", "n"), ("actions", "a"), ("goods", "g"), ("gazette", "z")):
+    for kind_dir, kind in (("buildings", "b"), ("npcs", "n"), ("actions", "a"), ("goods", "g"), ("gazette", "z"), ("terrain", "t")):
         folder = os.path.join(INBOX, kind_dir)
         if not os.path.isdir(folder):
             continue
@@ -794,8 +910,10 @@ def process(check: bool) -> None:
             if max(img.size) > 2200:
                 r = 2200 / max(img.size)
                 img = img.resize((round(img.width * r), round(img.height * r)), Image.LANCZOS)
-            raw = img.convert("RGB")  # 기사 그림은 종이 바탕째 원본에서 잘라 쓴다(물표는 회색 틈에 있어 잘리지 않음)
-            img = strip_thin_lines(remove_background(remove_watermark(img)), 1 if kind in ("b", "g", "z") else 3)
+            flat_src = Image.new("RGBA", img.size, (255, 255, 255, 255))  # 이미 투명 배경인 그림은 흰 바탕에 얹어 둔다(투명 칸의 숨은 검은색 방지)
+            flat_src.alpha_composite(img.convert("RGBA"))
+            raw = flat_src.convert("RGB")  # 기사 그림은 종이 바탕째 원본에서 잘라 쓴다(물표는 회색 틈에 있어 잘리지 않음)
+            img = strip_thin_lines(remove_background(remove_watermark(img)), 1 if kind in ("b", "g", "z", "t") else 3)
             grid, items = read_list(txt) if os.path.exists(txt) else (None, [(stem, None, None)])
             if grid:
                 rows = grid_boxes(img, *grid)
@@ -841,6 +959,22 @@ def process(check: bool) -> None:
                         os.makedirs(os.path.dirname(out_p), exist_ok=True)
                         pan.quantize(colors=96, method=Image.Quantize.MEDIANCUT).convert("RGB").save(out_p, optimize=True)
                     results.append((name, pan.convert("RGBA")))
+            elif kind == "t":
+                flat = [b for r in rows for b in r]
+                if len(flat) != len(items):
+                    problems.append(f"{fn}: 찾은 지형 {len(flat)}개 ≠ 목록 {len(items)}개 — 이 장은 저장하지 않았습니다 (다시 생성하거나 txt 첫 줄에 grid=열x행)")
+                    continue
+                for (name, _, _), bb in zip(items, flat):
+                    key = name if name in TERRAIN else (KOREAN.get(name, ("", ""))[1] if KOREAN.get(name, ("",))[0] == "t" else None)
+                    if not key:
+                        problems.append(f"{fn}: 모르는 지형 이름 '{name}'")
+                        continue
+                    if TERRAIN[key][0] == "tile":  # 바닥은 배경 지우기로 속이 뚫리지 않게 원본에서, 흰 눈 가장자리가 잘리지 않게 넉넉히
+                        pad = 24
+                        bb = (max(0, bb[0] - pad), max(0, bb[1] - pad), min(raw.width, bb[2] + pad), min(raw.height, bb[3] + pad))
+                        write_terrain(key, raw.convert("RGBA").crop(bb), check, results)
+                    else:
+                        write_terrain(key, img.crop(bb), check, results)
             elif kind == "g":
                 flat = [b for r in rows for b in r]
                 if len(flat) != len(items):
@@ -929,4 +1063,5 @@ if __name__ == "__main__":
     sys.stdout.reconfigure(encoding="utf-8")
     if "--inbox" in sys.argv:  # 시험용: 다른 받은 그림 폴더
         INBOX = os.path.abspath(sys.argv[sys.argv.index("--inbox") + 1])
+    FLOOD_ONLY = "--flood-only" in sys.argv  # 테두리에서 이어진 배경만 지운다(흰옷 그림용)
     process(check="--check" in sys.argv)

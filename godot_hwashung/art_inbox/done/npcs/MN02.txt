@@ -1,0 +1,2 @@
+npc_modern_girl
+npc_modern_lady

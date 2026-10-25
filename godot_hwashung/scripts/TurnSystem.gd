@@ -89,7 +89,15 @@ func _on_turn(turn: int, season_index: int, year: int) -> void:
 	_is_processing_turn = true
 	await _execute_turn_stepped(turn, season_index, year)
 
+## 턴 계산을 다음 프레임으로 넘긴다. 그 프레임의 무거운 일 차례(GameGrid.frame_claim)는 턴 계산이 먼저 차지해,
+## 지도가 바뀌어 생기는 다시 계산(시민 길 정보·가림막·지도 굽기)은 턴이 끝난 뒤 프레임마다 하나씩 한다.
+func _next_frame() -> void:
+	if is_inside_tree():
+		await get_tree().process_frame
+		GameGrid.frame_take()
+
 func _execute_turn_stepped(turn: int, season_index: int, year: int) -> void:
+	GameGrid.frame_take()
 	# 1단계: 축조 공정 및 교역 진행
 	for completed_building in grid.process_site_tick(sim):
 		emit_signal("site_completed", completed_building)
@@ -137,8 +145,7 @@ func _execute_turn_stepped(turn: int, season_index: int, year: int) -> void:
 
 	var trade_res := trade.apply_turn()
 
-	if is_inside_tree():
-		await get_tree().process_frame
+	await _next_frame()
 
 	# 2단계: 민심/정책 적용 및 구획 발전/수확
 	grid.set_flood_crisis(sim.flood_crisis_active)
@@ -146,21 +153,37 @@ func _execute_turn_stepped(turn: int, season_index: int, year: int) -> void:
 	grid.set_policy(sim.loyalty, sim.tax_rate_market, sim.tax_rate_land, sim.tax_rate_military, sim.population)
 	var y: Dictionary = await grid.develop_and_harvest(sim.demand_res, sim.demand_com, sim.demand_agr, court.hyoryungwon["blessing"], is_inside_tree())
 	if int(y.get("shops_closed", 0)) > 0:
-		court.emit_signal("notice", "시전세가 무겁거나 민심이 흉흉하여 저잣거리 가게 %d곳이 문을 닫거나 규모를 줄였습니다." % int(y["shops_closed"]))
+		# 실제 까닭만 알린다(예전엔 입지가 나빠 문 닫은 가게도 늘 "시전세가 무겁거나"로 알려 세율을 낮춰도 헷갈렸다)
+		var why: Array[String] = []
+		if int(y.get("shops_closed_tax", 0)) > 0:
+			why.append("시전세가 무거워 %d곳" % int(y["shops_closed_tax"]))
+		if int(y.get("shops_closed_unrest", 0)) > 0:
+			why.append("민심이 흉흉하여 %d곳" % int(y["shops_closed_unrest"]))
+		if int(y.get("shops_closed_site", 0)) > 0:
+			why.append("길에서 멀거나 성 밖 외진 자리라 장사가 안 되어 %d곳" % int(y["shops_closed_site"]))
+		court.emit_signal("notice", "저잣거리 가게가 문을 닫거나 규모를 줄였습니다: %s." % ", ".join(why))
 	y["gold"] += trade_res["gold"]
 
 	# 3단계: 둔전 농업 생산 및 성문 물류 세입 다변수 산출
-	var agri: Dictionary = calculate_agricultural_production(season_index)
+	# PORT-TRACE [렉: 턴 정산 멈칫]: 구획 발전 마지막 줄들, 관개 다시 계산(20ms 남짓), 농업 산출(10ms 남짓)을 프레임마다 나눈다
+	await _next_frame()
+	IrrigationManager.recalculate_irrigation(grid, sim)
+	await _next_frame()
+	var agri: Dictionary = calculate_agricultural_production(season_index, false)
 	y["rice"] = agri["net_income"] + trade_res["rice"]
 
-	if is_inside_tree():
-		await get_tree().process_frame
+	await _next_frame()
 
 	# 4단계: 조정 효과 및 조세 세수 산출
 	var adj := court.apply_turn_effects(y)
 	sim.gold += adj["gold"]
 	sim.rice = max(0, sim.rice + adj["rice"])
-	sim.population += adj["pop"]
+	# [인구 상한] 구획 발전으로 늘어나는 인구도 상한(세율·생산력 중 작은 쪽)을 넘지 않는다(줄어드는 쪽은 그대로)
+	var add_pop: int = int(adj["pop"])
+	if add_pop > 0:
+		var cap_now: int = int(TaxManager.get_population_cap(TaxManager.get_total_tax_rate(sim), grid)["cap"])
+		add_pop = clampi(cap_now - sim.population, 0, add_pop)
+	sim.population += add_pop
 
 	var base_gold: int = adj["gold"]
 	var base_rice: int = adj["rice"]
@@ -203,23 +226,25 @@ func _execute_turn_stepped(turn: int, season_index: int, year: int) -> void:
 						comp_name = str(t_entry.get("name", comp_id))
 						break
 				court.emit_signal("notice", "실학 연구 [%s]이(가) 완수되었습니다!" % comp_name)
-		if bool(res_tick.get("prince_completed", false)):
+		if bool(res_tick.get("prince_completed", false)) and not ModernPoliticsManager.is_post_monarchy():
 			if court:
 				court.crown_prince["education"] = 100
 				court.emit_signal("notice", "경축: 세자께서 제왕학 서연을 완수하셨습니다!")
 
 
-	if is_inside_tree():
-		await get_tree().process_frame
+	await _next_frame()
 
 
 	# 5단계: 인프라 재연산, 외곽 취락 확장 및 최종 턴 리포트 발행
 	grid.recompute_infrastructure(sim.retainers["jeong_yakyong"])
 	sim.flood_defense = max(sim.flood_defense, grid.flood_defense)
+	# PORT-TRACE [렉: 턴 정산 멈칫]: 인프라 재연산(30ms 남짓)과 외곽 취락 확장(20ms 남짓)을 한 프레임에 몰지 않는다
+	await _next_frame()
 
 	if outside:
 		outside.grow()
 		sim.loyalty += outside.unrest_delta()
+		await _next_frame() # 외곽 확장(30ms 남짓)과 신문·턴 보고를 한 프레임에 몰지 않는다
 
 	sim.loyalty = clampi(sim.loyalty, 0, 100)
 	sim.authority = clampi(sim.authority, 0, 100)
@@ -276,6 +301,15 @@ func _execute_turn_stepped(turn: int, season_index: int, year: int) -> void:
 	if month_now == 12 and posmod(year - 1790, 2) == 0:
 		sim.emit_signal("gazette_published", 0, year, "가을")
 
+	# 지난 턴 끝 → 이번 턴 끝 사이 국고 변화(= 한 달 수지, 김판관 재정 조언용). 불러온 직후 첫 턴은 기준만 잡는다.
+	if sim.gold_at_last_budget >= 0:
+		sim.last_month_gold_delta = sim.gold - sim.gold_at_last_budget
+		# 계절 세수가 석 달에 한 번 몰려 들어오므로 조언은 최근 석 달 합으로 판단한다
+		sim.recent_gold_deltas.append(sim.last_month_gold_delta)
+		if sim.recent_gold_deltas.size() > 3:
+			sim.recent_gold_deltas.pop_front()
+	sim.gold_at_last_budget = sim.gold
+
 	# [규약] 현륭원 친림 참배 어명 건의는 길잡이 김판관(TutorialGuide) 단일 창구로 일원화 (중복 팝업 배제)
 	_is_processing_turn = false
 	if grid:
@@ -283,5 +317,5 @@ func _execute_turn_stepped(turn: int, season_index: int, year: int) -> void:
 
 ## [PORT-TRACE 다변수 농업 생산 및 성문 물류 세입 산출]
 ## FarmManager를 통해 수리 농업 인프라 엔진(IrrigationManager) 및 사계절/물류 결합 정산
-func calculate_agricultural_production(season_index: int) -> Dictionary:
-	return FarmManager.calculate_harvest(grid, sim, season_index)
+func calculate_agricultural_production(season_index: int, refresh_irrigation: bool = true) -> Dictionary:
+	return FarmManager.calculate_harvest(grid, sim, season_index, refresh_irrigation)

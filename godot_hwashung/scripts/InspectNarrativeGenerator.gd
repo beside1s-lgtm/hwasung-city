@@ -238,6 +238,8 @@ const KOREAN_NAMES: Dictionary = {
 	"reservoir": "만석거",
 	"chukmanje": "축만제 (서호)",
 	"jinhulso": "진휼소",
+	"sewage": "하수처리시설",
+	"sewage_site": "하수처리시설",
 	"embankment": "수원천 석축제방",
 	"levee": "수원천 석축제방",
 	"dike": "수원천 석축제방",

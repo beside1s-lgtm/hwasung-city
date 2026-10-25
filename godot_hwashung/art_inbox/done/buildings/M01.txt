@@ -1,0 +1,6 @@
+stone_house_01
+stone_house_02
+stone_house_03
+stone_shop_01
+stone_shop_02
+stone_office_01

@@ -1,0 +1,3 @@
+university
+elementary_school
+secondary_school
