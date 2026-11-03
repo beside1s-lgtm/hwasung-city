@@ -76,7 +76,7 @@
     <main class="max-w-5xl mx-auto px-4 py-8 md:py-12 flex-1 w-full flex flex-col justify-center">
 
         <!-- 인트로 히어로 배너 -->
-        <div class="text-center mb-10 md:mb-14">
+        <div class="text-center mb-8 md:mb-12">
             <span class="text-xs md:text-sm font-bold tracking-widest text-dan uppercase mb-2 block font-myeongjo">
                 ✦ 1789 팔달산 자락에서 피어난 개혁의 꿈 ✦
             </span>
@@ -85,14 +85,44 @@
             </h2>
             <p class="max-w-2xl mx-auto text-base md:text-lg text-muted leading-relaxed">
                 조선 제22대 왕 정조의 지극한 효심과 실학 정신으로 축조된 수원 화성.<br class="hidden sm:inline">
-                탄탄한 역사 사전학습부터 실전 시뮬레이션 게임 공략집까지 한곳에서 확인해 보세요.
+                탄탄한 역사 사전학습부터 실전 시뮬레이션 게임 실행 및 공략집까지 한곳에서 확인해 보세요.
             </p>
         </div>
 
-        <!-- 2개 페이지 선택 카드 컨테이너 -->
+        <!-- 🎮 게임 설치/실행 파일 다운로드 배너 카드 -->
+        <div class="mb-10 bg-cardBg rounded-2xl border-2 border-gold/40 shadow-md p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+            <div class="absolute -right-6 -bottom-6 text-gold/10 text-9xl pointer-events-none">
+                <i class="fa-solid fa-download"></i>
+            </div>
+            <div class="space-y-2 text-center md:text-left z-10">
+                <div class="flex items-center justify-center md:justify-start gap-2">
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-gold/15 text-gold border border-gold/30">
+                        <i class="fa-brands fa-windows mr-1"></i> PC Windows 단독 실행판
+                    </span>
+                    <span class="text-xs text-muted">v1.0.0</span>
+                </div>
+                <h3 class="text-2xl font-bold font-myeongjo text-ink">
+                    화성성역 시뮬레이션 게임 다운로드
+                </h3>
+                <p class="text-sm text-muted max-w-xl">
+                    별도의 설치 과정 없이 압축 해제 후 바로 실행할 수 있는 무설치 패키지입니다.<br class="hidden sm:inline">
+                    게임을 직접 플레이하며 정조의 어명 교지를 완수하고 1800년 화성을 완성해 보세요.
+                </p>
+            </div>
+            <!-- 다운로드 버튼 (GitHub Releases 직링크 넣는 곳) -->
+            <div class="z-10 flex-shrink-0 w-full md:w-auto">
+                <a href="https://drive.google.com/file/d/1UGdcwSQs6MTDrE7L71s1O8VkB_wSvqvj/view?usp=sharing" 
+                   class="w-full md:w-auto inline-flex items-center ...">
+                    <i class="fa-solid fa-circle-down mr-2.5 text-lg"></i>
+                    <span>게임 다운로드 (.zip)</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- 2개 학습/공략 카드 컨테이너 -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
 
-            <!-- 1페이지: learn.html -->
+            <!-- 1페이지: 정조와_수원화성_사전학습.html -->
             <div class="bg-cardBg rounded-2xl border-2 border-[#e2d5bb] hover:border-cheong shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden group">
                 <div class="p-6 md:p-8">
                     <!-- 상단 태그 및 뱃지 -->
@@ -134,14 +164,14 @@
 
                 <!-- 버튼 링크 -->
                 <div class="px-6 pb-6 md:px-8 md:pb-8 pt-0">
-                    <a href="./learn.html" class="w-full inline-flex items-center justify-center py-3.5 px-6 rounded-xl bg-cheong hover:bg-cheongDark text-white font-bold text-base shadow-md hover:shadow-lg transition-all duration-200 group-hover:translate-y-[-2px]">
+                    <a href="./정조와_수원화성_사전학습.html" class="w-full inline-flex items-center justify-center py-3.5 px-6 rounded-xl bg-cheong hover:bg-cheongDark text-white font-bold text-base shadow-md hover:shadow-lg transition-all duration-200 group-hover:translate-y-[-2px]">
                         <span>사전학습 시작하기</span>
                         <i class="fa-solid fa-arrow-right ml-2 text-sm transition-transform group-hover:translate-x-1"></i>
                     </a>
                 </div>
             </div>
 
-            <!-- 2페이지: guide.html -->
+            <!-- 2페이지: 화성성역_공략집.html -->
             <div class="bg-cardBg rounded-2xl border-2 border-[#e2d5bb] hover:border-dan shadow-md hover:shadow-xl transition-all duration-300 flex flex-col justify-between overflow-hidden group">
                 <div class="p-6 md:p-8">
                     <!-- 상단 태그 및 뱃지 -->
@@ -183,7 +213,7 @@
 
                 <!-- 버튼 링크 -->
                 <div class="px-6 pb-6 md:px-8 md:pb-8 pt-0">
-                    <a href="./guide.html" class="w-full inline-flex items-center justify-center py-3.5 px-6 rounded-xl bg-dan hover:bg-danDark text-white font-bold text-base shadow-md hover:shadow-lg transition-all duration-200 group-hover:translate-y-[-2px]">
+                    <a href="./화성성역_공략집.html" class="w-full inline-flex items-center justify-center py-3.5 px-6 rounded-xl bg-dan hover:bg-danDark text-white font-bold text-base shadow-md hover:shadow-lg transition-all duration-200 group-hover:translate-y-[-2px]">
                         <span>성역 공략집 열람하기</span>
                         <i class="fa-solid fa-arrow-right ml-2 text-sm transition-transform group-hover:translate-x-1"></i>
                     </a>
@@ -196,7 +226,7 @@
         <div class="mt-12 bg-panel/70 border border-[#e2d5bb] rounded-xl p-5 text-center text-xs md:text-sm text-muted">
             <p class="flex items-center justify-center flex-wrap gap-2">
                 <i class="fa-solid fa-circle-info text-gold text-base"></i>
-                <span><strong>권장 학습 순서:</strong> 먼저 <span class="text-cheong font-semibold">사전학습</span>을 완료하여 퀴즈를 풀어본 뒤, <span class="text-dan font-semibold">공략집</span>을 참고하여 축성을 시작하세요.</span>
+                <span><strong>권장 순서:</strong> <span class="text-cheong font-semibold">사전학습</span> ➔ <span class="text-ink font-semibold">게임 다운로드 및 실행</span> ➔ <span class="text-dan font-semibold">공략집</span> 참고 순서로 진행하시면 가장 효과적입니다.</span>
             </p>
         </div>
 
