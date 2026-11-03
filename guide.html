@@ -1,1 +1,495 @@
+<title>화성성역 공략집</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Song+Myung&family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;600&display=swap">
+<style>
+/* 배치: 게임의 교지 창처럼 단청 주홍 띠 머리 + 한지 바탕 본문, 넓은 화면에서는 왼쪽에 차례가 따라온다 */
+:root {
+  --paper: #f7f1e3;      /* 한지 */
+  --panel: #fffaf0;      /* 교지 창 안쪽 */
+  --ink: #241c15;        /* 먹 */
+  --ink-soft: #5c5045;
+  --rule: #e2d5bb;
+  --dan: #9b1c1c;        /* 단청 주홍(게임 창 머리띠) */
+  --dan-ink: #fff6e6;
+  --gold: #a87a12;       /* 금박 테두리 */
+  --cheong: #1f5f5b;     /* 단청 청록 */
+  --tip-bg: #e8f1ee;
+  --warn-bg: #f8e6e1;
+  --note-bg: #efe9dc;
+  --shadow: 0 1px 2px rgba(60, 40, 20, .08), 0 8px 24px rgba(60, 40, 20, .08);
+  --f-display: "Song Myung", "Gowun Batang", "Batang", serif;
+  --f-body: "Gowun Batang", "Noto Serif KR", "Batang", "AppleMyungjo", serif;
+  --f-ui: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #17130f; --panel: #211b15; --ink: #efe6d6; --ink-soft: #b9ab97; --rule: #3a3027;
+    --dan: #8c2a22; --dan-ink: #fbe9d4; --gold: #d6a640; --cheong: #6fb7ad;
+    --tip-bg: #1d2a27; --warn-bg: #321f1b; --note-bg: #29221b;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #17130f; --panel: #211b15; --ink: #efe6d6; --ink-soft: #b9ab97; --rule: #3a3027;
+  --dan: #8c2a22; --dan-ink: #fbe9d4; --gold: #d6a640; --cheong: #6fb7ad;
+  --tip-bg: #1d2a27; --warn-bg: #321f1b; --note-bg: #29221b;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 76px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { margin: 0; background: var(--paper); color: var(--ink); font: 17px/1.8 var(--f-body); word-break: keep-all; overflow-wrap: break-word; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--dan); }
+a { color: var(--cheong); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible, input:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* 머리 */
+.masthead { background: var(--dan); color: var(--dan-ink); border-bottom: 3px solid var(--gold); }
+.masthead .wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 340px); gap: 28px; align-items: center; padding-block: 36px 32px; }
+.masthead h1 { font: 400 clamp(2.4rem, 6vw, 3.6rem)/1.1 var(--f-display); margin: 0 0 10px; letter-spacing: .02em; text-wrap: balance; }
+.masthead .sub { margin: 0; font-family: var(--f-ui); font-size: .95rem; opacity: .9; max-width: 34em; }
+.masthead .meta { margin: 14px 0 0; font: 600 .8rem/1.4 var(--f-ui); letter-spacing: .08em; opacity: .8; }
+.cover { margin: 0; border: 2px solid var(--gold); border-radius: 4px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.25); line-height: 0; }
+.cover img { width: 100%; height: auto; display: block; }
+
+/* 부 탭 */
+.tabs-bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--panel); border-bottom: 1px solid var(--rule); box-shadow: var(--shadow); }
+.tabs { display: flex; gap: 6px; overflow-x: auto; padding-block: 8px; scrollbar-width: none; }
+.tab { display: flex; align-items: baseline; gap: 8px; flex: 0 0 auto; padding: 8px 14px; border-radius: 3px; color: var(--ink); text-decoration: none; font: 600 .95rem/1.2 var(--f-ui); border: 1px solid transparent; }
+.tab .num { font: 400 1.15rem/1 var(--f-display); color: var(--dan); }
+.tab:hover { border-color: var(--rule); }
+.tab[aria-current="true"] { background: var(--dan); color: var(--dan-ink); border-color: var(--gold); }
+.tab[aria-current="true"] .num { color: var(--dan-ink); }
+
+/* 본문 배치 */
+.part { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 40px; padding-block: 36px 64px; }
+.part[hidden] { display: none !important; }
+.toc { position: sticky; top: 80px; align-self: start; max-height: calc(100vh - 100px); overflow-y: auto; font: .88rem/1.45 var(--f-ui); }
+.toc-h { margin: 0 0 8px; font: 400 1.1rem/1.2 var(--f-display); color: var(--dan); }
+.toc ol { list-style: none; margin: 0; padding: 0; border-left: 2px solid var(--rule); }
+.toc li a { display: block; padding: 5px 0 5px 12px; margin-left: -2px; border-left: 2px solid transparent; color: var(--ink-soft); text-decoration: none; }
+.toc li.lv3 a { padding-left: 24px; font-size: .82rem; }
+.toc li a:hover { color: var(--ink); }
+.toc li a.on { color: var(--dan); border-left-color: var(--dan); font-weight: 600; }
+
+.doc { min-width: 0; max-width: 820px; }
+.part-head { margin-bottom: 28px; padding-bottom: 20px; border-bottom: 2px solid var(--dan); }
+.eyebrow { margin: 0; font: 600 .8rem/1 var(--f-ui); letter-spacing: .14em; color: var(--dan); }
+.part-head h1 { margin: 6px 0 12px; font: 400 clamp(1.9rem, 4.5vw, 2.6rem)/1.2 var(--f-display); text-wrap: balance; }
+.lead { margin: 0; color: var(--ink-soft); font-size: 1rem; }
+.doc h2 { margin: 52px 0 16px; font: 700 1.5rem/1.35 var(--f-body); text-wrap: balance; display: flex; gap: 10px; align-items: baseline; }
+.doc h2::before { content: ""; flex: 0 0 10px; height: 10px; background: var(--dan); transform: rotate(45deg) translateY(-3px); }
+.doc h3 { margin: 32px 0 10px; font: 700 1.18rem/1.4 var(--f-body); color: var(--cheong); }
+.doc p, .doc li { max-width: 40em; }
+.doc ul, .doc ol { padding-left: 1.3em; }
+.doc li + li { margin-top: 4px; }
+.doc code, .doc pre { font-family: var(--f-ui); }
+.doc code { background: var(--note-bg); padding: 1px 6px; border-radius: 3px; font-size: .88em; }
+strong { color: var(--dan); font-weight: 700; }
+:root[data-theme="dark"] strong { color: #f0a58f; }
+
+/* 표 */
+.scroll { overflow-x: auto; margin: 18px 0; border: 1px solid var(--rule); border-radius: 4px; background: var(--panel); }
+table { width: 100%; border-collapse: collapse; font: .9rem/1.55 var(--f-ui); font-variant-numeric: tabular-nums; }
+th { background: var(--dan); color: var(--dan-ink); text-align: left; font-weight: 600; padding: 9px 12px; white-space: nowrap; }
+td { padding: 8px 12px; border-top: 1px solid var(--rule); vertical-align: top; min-width: 5.5em; }
+tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--paper) 55%, var(--panel)); }
+td strong { color: var(--dan); }
+pre.flow { margin: 0; padding: 16px 18px; font-size: .88rem; line-height: 1.7; white-space: pre; color: var(--ink); }
+
+/* 사진 */
+figure { margin: 24px 0; }
+.shot { display: block; width: 100%; padding: 0; border: 1px solid var(--gold); border-radius: 4px; background: var(--panel); cursor: zoom-in; overflow: hidden; box-shadow: var(--shadow); line-height: 0; }
+.shot img { width: 100%; height: auto; display: block; transition: transform .25s; }
+.shot:hover img { transform: scale(1.012); }
+figcaption { margin-top: 8px; font: .85rem/1.4 var(--f-ui); color: var(--ink-soft); }
+figcaption::before { content: "▲ "; color: var(--gold); font-size: .7em; vertical-align: .15em; }
+
+/* 요령·주의 */
+.callout { margin: 20px 0; padding: 14px 18px 14px 18px; border-radius: 4px; background: var(--note-bg); border: 1px solid var(--rule); }
+.callout.tip { background: var(--tip-bg); border-color: color-mix(in srgb, var(--cheong) 35%, transparent); }
+.callout.warn { background: var(--warn-bg); border-color: color-mix(in srgb, var(--dan) 35%, transparent); }
+.callout .tag { display: inline-block; font: 600 .75rem/1 var(--f-ui); letter-spacing: .1em; padding: 4px 8px; border-radius: 2px; margin-bottom: 6px; background: var(--ink-soft); color: var(--panel); }
+.callout.tip .tag { background: var(--cheong); color: var(--panel); }
+.callout.warn .tag { background: var(--dan); color: var(--dan-ink); }
+.callout p { margin: 4px 0; font-size: .97rem; }
+
+/* 체크리스트 */
+ul.checks { list-style: none; padding: 0; }
+ul.checks li { padding: 6px 0; border-bottom: 1px dashed var(--rule); }
+ul.checks label { display: flex; gap: 10px; align-items: baseline; cursor: pointer; }
+ul.checks input { accent-color: var(--dan); width: 18px; height: 18px; flex: 0 0 auto; transform: translateY(3px); }
+ul.checks input:checked + * , ul.checks label:has(input:checked) { color: var(--ink-soft); text-decoration: line-through; }
+
+.part-nav { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--rule); font-family: var(--f-ui); }
+.part-nav a { text-decoration: none; padding: 10px 14px; border: 1px solid var(--rule); border-radius: 3px; background: var(--panel); color: var(--ink); }
+.part-nav a:hover { border-color: var(--gold); }
+.foot { padding-block: 24px 40px; color: var(--ink-soft); font: .8rem/1.6 var(--f-ui); border-top: 1px solid var(--rule); }
+
+/* 크게 보기 */
+.lightbox { position: fixed; inset: 0; z-index: 50; background: rgba(12, 9, 6, .92); display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); cursor: zoom-out; }
+.lightbox img { max-width: 100%; max-height: calc(100% - 48px); border: 2px solid #a87a12; border-radius: 3px; }
+.lightbox p { color: #efe6d6; font: .9rem/1.4 var(--f-ui); margin: 10px 0 0; text-align: center; }
+.lightbox .close { position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); right: calc(12px + env(safe-area-inset-right, 0px)); background: #8c2a22; color: #fbe9d4; border: 1px solid #d6a640; border-radius: 3px; font: 600 .9rem/1 var(--f-ui); padding: 10px 14px; cursor: pointer; }
+
+@media (max-width: 900px) {
+  .part { grid-template-columns: minmax(0, 1fr); gap: 0; padding-block: 24px 48px; }
+  .toc { position: static; max-height: none; margin-bottom: 24px; padding: 14px 16px; background: var(--panel); border: 1px solid var(--rule); border-radius: 4px; }
+  .toc li.lv3 { display: none; }
+  .masthead .wrap { grid-template-columns: minmax(0, 1fr); padding-block: 26px 22px; }
+  .cover { max-width: 420px; }
+}
+@media (max-width: 480px) {
+  body { font-size: 16px; }
+  .tab { padding: 8px 10px; font-size: .88rem; }
+  .doc h2 { font-size: 1.32rem; }
+}
+</style>
+
+<header class="masthead">
+  <div class="wrap">
+    <div>
+      <h1>화성성역 공략집</h1>
+      <p class="sub">정조 13년(1789) 빈 들판에서 1800년 결말, 그리고 1945년 근대 결산까지. 실제 게임 화면 사진으로 따라 하는 3부 안내서입니다.</p>
+      <p class="meta">화성성역 — 정조의 24년 · 쉬움 난이도 기준</p>
+    </div>
+    <figure class="cover"><img src="./images/01_title.jpg" alt="화성성역 시작 화면" width="1280" height="720"></figure>
+  </div>
+</header>
+
+<div class="tabs-bar"><nav class="wrap tabs" aria-label="공략집 부"><a class="tab" href="#part1" data-part="part1"><span class="num">1부</span><span>초심자 시작하기</span></a><a class="tab" href="#part2" data-part="part2"><span class="num">2부</span><span>중급자 도시 운영</span></a><a class="tab" href="#part3" data-part="part3"><span class="num">3부</span><span>상급자 엔딩 공략</span></a></nav></div>
+
+<main class="wrap">
+<section class="part" id="part1" data-part="part1"><nav class="toc" aria-label="1부 목차"><p class="toc-h">1부 차례</p><ol><li class="lv2"><a href="#part1-s1">1. 이 게임은 무엇을 하는 게임인가</a></li><li class="lv2"><a href="#part1-s2">2. 시작 화면과 난이도</a></li><li class="lv2"><a href="#part1-s3">3. 화면 읽는 법</a></li><li class="lv3"><a href="#part1-s4">3-1. 맨 위 정보 막대(왼쪽부터)</a></li><li class="lv3"><a href="#part1-s5">3-2. 맨 아래 메뉴</a></li><li class="lv3"><a href="#part1-s6">3-3. 길잡이 김판관</a></li><li class="lv2"><a href="#part1-s7">4. 어명 교지 7가지 따라 하기</a></li><li class="lv3"><a href="#part1-s8">4-1. 1교지: 화성행궁</a></li><li class="lv3"><a href="#part1-s9">4-2. 3교지: 성문</a></li><li class="lv3"><a href="#part1-s10">4-3. 4~7교지</a></li><li class="lv2"><a href="#part1-s11">5. 첫해에 꼭 알아야 할 위험</a></li><li class="lv2"><a href="#part1-s12">6. 살피기 도구</a></li><li class="lv2"><a href="#part1-s13">7. 초심자 체크리스트</a></li></ol></nav><article class="doc"><header class="part-head"><p class="eyebrow">1부</p><h1>초심자 시작하기</h1><p class="lead">처음 게임을 켠 사람을 위한 안내입니다. 화면 읽는 법, 첫 1~2년 동안 할 일, 초반에 자주 하는 실수를 다룹니다. 이 공략집의 사진은 모두 실제 게임을 실행해 찍은 화면입니다.</p></header><h2 id="part1-s1">1. 이 게임은 무엇을 하는 게임인가</h2>
+<p>정조 13년(1789년) 1월, 수원 팔달산 아래 빈 들판에서 시작합니다. 플레이어는 정조가 되어 <strong>1800년 6월(정조 승하)까지</strong> 수원 화성을 쌓고 백성이 모여 사는 도시를 키웁니다.</p>
+<ul><li><strong>1턴 = 1개월</strong>입니다. 1789년 1월부터 1800년까지 약 132번의 달이 지나갑니다.</li><li>석 달마다 계절이 바뀌고, 계절이 바뀔 때 인구 변동과 계절 세수를 정산합니다.</li><li>1800년이 되면 그때까지 쌓은 성과로 <strong>결말(엔딩) 하나</strong>가 정해집니다. 좋은 결말을 보면 1820년부터 이어지는 <strong>근대화 시대</strong>를 더 할 수 있습니다(3부 참고).</li></ul>
+<p>해야 할 일은 크게 세 가지입니다.</p>
+<ol><li>성곽을 빙 둘러 쌓아 도시를 지키기</li><li>백성이 살 마을(방·리)과 시장(저잣거리)을 만들기</li><li>논밭(대유둔전)과 저수지로 먹을 쌀을 넉넉히 만들기</li></ol>
+<h2 id="part1-s2">2. 시작 화면과 난이도</h2>
+<figure><button class="shot" type="button" aria-label="시작 화면 크게 보기"><img src="./images/01_title.jpg" alt="시작 화면" loading="lazy" width="1280" height="720"></button><figcaption>시작 화면</figcaption></figure>
+<p>[새 게임]을 누르면 난이도를 고르는 창이 뜹니다. <strong>난이도는 게임 도중 바꿀 수 없습니다.</strong></p>
+<figure><button class="shot" type="button" aria-label="난이도 선택 크게 보기"><img src="./images/02_difficulty.jpg" alt="난이도 선택" loading="lazy" width="1280" height="720"></button><figcaption>난이도 선택</figcaption></figure>
+<div class="scroll"><table><thead><tr><th>난이도</th><th>건설·보수·세자교육·훈련·참배 비용</th><th>공공시설 운영비</th><th>추천 대상</th></tr></thead><tbody><tr><td>쉬움 (태평성대)</td><td>1.0배</td><td>1.0배</td><td>처음 하는 사람</td></tr><tr><td>보통 (성역의 고난)</td><td>2.0배</td><td>1.2배</td><td>한 번 결말을 본 사람</td></tr><tr><td>어려움 (위기의 조선)</td><td>3.0배</td><td>1.3배</td><td>모든 시스템을 아는 사람</td></tr></tbody></table></div>
+<aside class="callout tip"><span class="tag">요령</span><p>처음에는 <strong>쉬움</strong>을 권합니다. 보통부터는 성곽 한 칸(쉬움 기준 1,000냥·500석), 성문 하나(2,000냥·1,500석) 값이 두세 배가 되어 초반 자금이 금방 바닥납니다.</p></aside>
+<h2 id="part1-s3">3. 화면 읽는 법</h2>
+<figure><button class="shot" type="button" aria-label="게임 첫 화면과 길잡이 김판관 크게 보기"><img src="./images/03_tutorial_hello.jpg" alt="게임 첫 화면과 길잡이 김판관" loading="lazy" width="1280" height="720"></button><figcaption>게임 첫 화면과 길잡이 김판관</figcaption></figure>
+<h3 id="part1-s4">3-1. 맨 위 정보 막대(왼쪽부터)</h3>
+<div class="scroll"><table><thead><tr><th>표시</th><th>뜻</th><th>시작 값</th></tr></thead><tbody><tr><td>날짜 (정조 14년(1789) 겨울 [1개월째])</td><td>지금 연도·계절·경과 개월</td><td>1789년 1월</td></tr><tr><td>난이도</td><td>고른 난이도</td><td>쉬움</td></tr><tr><td>주·상·농 막대</td><td>주거·상업·농업 수요. 막대가 높은 구획을 더 지으면 잘 채워집니다</td><td>—</td></tr><tr><td>🪙 금</td><td>나라 곳간의 돈(냥)</td><td>2,500</td></tr><tr><td>🌾 쌀</td><td>군량·식량(석)</td><td>1,600</td></tr><tr><td>교역</td><td>삼남 교역 창 열기</td><td>—</td></tr><tr><td>👤 인구</td><td>백성 수</td><td>120</td></tr><tr><td>❤️ 민심</td><td>백성의 마음(0~100%)</td><td>88%</td></tr><tr><td>👑 왕권</td><td>임금의 권위(0~100)</td><td>70</td></tr><tr><td>🌊 방재율</td><td>홍수를 막는 힘(0~100%)</td><td>0%</td></tr><tr><td>🏯 성곽</td><td>성곽 완공도</td><td>0%</td></tr><tr><td>설정·처음·속도</td><td>일시정지 / 1배 / 2배 / 3배속</td><td>—</td></tr></tbody></table></div>
+<p>각 숫자를 누르면 <strong>무엇이 이 값을 올리고 내리는지</strong> 설명과 바로가기 단추가 나옵니다(2부의 민심·인구 창 사진 참고).</p>
+<h3 id="part1-s5">3-2. 맨 아래 메뉴</h3>
+<div class="scroll"><table><thead><tr><th>단추</th><th>하는 일</th></tr></thead><tbody><tr><td>살피기</td><td>땅이나 건물을 눌러 정보를 봅니다(아래 6절)</td></tr><tr><td>도로</td><td>흙길·박석길을 끌어서 닦습니다</td></tr><tr><td>화성성곽</td><td>성곽을 끌어서 쌓습니다</td></tr><tr><td>홍예성문</td><td>길 위에 성문을 세웁니다</td></tr><tr><td>방·리 / 저잣거리 / 대유둔전 / 공방</td><td>주거·상업·농업·수공업 구획을 칠합니다</td></tr><tr><td>관청·공공</td><td>행정·군사·농업 시설(아래 사진)</td></tr><tr><td>지형편집</td><td>평지·산·물을 바꿉니다(한 칸 1,000냥)</td></tr><tr><td>국책대역사</td><td>만석거·제방·4대 성역 같은 큰 공사</td></tr><tr><td>조정·정무</td><td>인재 등용, 조세, 연구, 세자서연, 현륭원 참배 등</td></tr><tr><td>되돌리기</td><td>방금 지은 것을 취소합니다</td></tr></tbody></table></div>
+<figure><button class="shot" type="button" aria-label="관청·공공 메뉴 크게 보기"><img src="./images/06_menu_public.jpg" alt="관청·공공 메뉴" loading="lazy" width="1280" height="720"></button><figcaption>관청·공공 메뉴</figcaption></figure>
+<p>관청·공공은 세 묶음입니다.</p>
+<ul><li><strong>행정시설</strong>: 화성행궁, 수원유수부 관아, 순라청, 멸화군, 수원향교(성 밖), 우물·수로, 진휼소</li><li><strong>군사시설</strong>: 서장대, 봉돈, 포루, 공심돈, 연무대, 방화수류정(용연)</li><li><strong>농업시설</strong>: 만석거(영화정 포함), 축만제(서호), 작은 저수지, 석축제방</li></ul>
+<figure><button class="shot" type="button" aria-label="조정·정무 메뉴 크게 보기"><img src="./images/07_menu_policy.jpg" alt="조정·정무 메뉴" loading="lazy" width="1280" height="720"></button><figcaption>조정·정무 메뉴</figcaption></figure>
+<p>조정·정무 메뉴에서 비변사 시보, 조세 조율, 조정 인사, 포호 대책, 도적 소탕, 세자서연, 현륭원 친림, 을묘원행, 의궤 편찬, 실학 연구를 엽니다.</p>
+<h3 id="part1-s6">3-3. 길잡이 김판관</h3>
+<p>왼쪽 아래 말풍선이 길잡이 <strong>김판관</strong>입니다. 탭이 두 개 있습니다.</p>
+<ul><li><strong>📜 어명 교지</strong>: 지금 해야 할 주요 과제(퀘스트). 차례대로 7개입니다.</li><li><strong>🏛️ 정무 조언 (N)</strong>: 지금 상황에서 챙길 일들. 국고 적자, 인재 등장, 도적 출몰, 장마 대비 같은 조언이 쌓입니다. 숫자가 늘어나면 한 번씩 열어 보세요.</li></ul>
+<figure><button class="shot" type="button" aria-label="짓는 방법 안내 크게 보기"><img src="./images/04_tutorial_howto.jpg" alt="짓는 방법 안내" loading="lazy" width="1280" height="720"></button><figcaption>짓는 방법 안내</figcaption></figure>
+<p>짓는 법은 간단합니다. <strong>아래 단추에서 고르고 → 땅을 누르면</strong> 됩니다. 길과 성곽은 <strong>누른 채 끌면</strong> 한 번에 그어집니다. 잘못 지었으면 [되돌리기]를 누르세요.</p>
+<h2 id="part1-s7">4. 어명 교지 7가지 따라 하기</h2>
+<p>교지를 마치면 보상이 나옵니다(쉬움 기준).</p>
+<div class="scroll"><table><thead><tr><th>차례</th><th>교지</th><th>할 일</th><th>보상</th></tr></thead><tbody><tr><td>1</td><td>화성행궁 건립</td><td>넓은 평지(7×7칸)에 행궁</td><td>금 300, 쌀 150, 민심·왕권 +5</td></tr><tr><td>2</td><td>삼남대로 5칸 개설</td><td>행궁 앞으로 길 5칸 이상</td><td>금 150, 쌀 50</td></tr><tr><td>3</td><td>성문 먼저 세우기</td><td>큰길 위에 홍예성문</td><td>금 200, 쌀 50, 민심 +5</td></tr><tr><td>4</td><td>저잣거리·마을과 공동 우물</td><td>성문 안 길가에 저잣거리·방·리·둔전, 우물</td><td>금 300, 쌀 200</td></tr><tr><td>5</td><td>팔달산 서장대 축조</td><td>산꼭대기에 서장대</td><td>금 150, 민심 +5</td></tr><tr><td>6</td><td>화성 봉돈 축조</td><td>성곽이나 성문 바로 옆에 봉돈</td><td>금 150, 민심 +5</td></tr><tr><td>7</td><td>화성 성곽 축조 및 완공</td><td>성곽을 빙 둘러 100% 완공</td><td>금 1,000, 왕권 +30</td></tr></tbody></table></div>
+<h3 id="part1-s8">4-1. 1교지: 화성행궁</h3>
+<figure><button class="shot" type="button" aria-label="1교지 안내 크게 보기"><img src="./images/05_quest1_haenggung.jpg" alt="1교지 안내" loading="lazy" width="1280" height="720"></button><figcaption>1교지 안내</figcaption></figure>
+<p>말풍선의 <strong>[행궁 터 잡기]</strong> 를 누르면 행궁 도구가 골라지고 화면이 추천 자리로 옮겨 갑니다. <strong>[어디에?]</strong> 는 자리만 보여 줍니다. 추천 자리를 그대로 누르면 됩니다.</p>
+<figure><button class="shot" type="button" aria-label="행궁 공사 시작 크게 보기"><img src="./images/08_haenggung_building.jpg" alt="행궁 공사 시작" loading="lazy" width="1280" height="720"></button><figcaption>행궁 공사 시작</figcaption></figure>
+<p>행궁은 7×7칸 큰 궁궐이라 <strong>네 계절(약 1년)</strong> 동안 짓습니다. 비계(나무 발판)가 세워진 동안은 공사 중입니다.</p>
+<figure><button class="shot" type="button" aria-label="행궁 완공 크게 보기"><img src="./images/09_haenggung_done.jpg" alt="행궁 완공" loading="lazy" width="1280" height="720"></button><figcaption>행궁 완공</figcaption></figure>
+<p>행궁이 완공되면 신풍루·봉수당 같은 전각 이름표가 붙고, <strong>인구 6,000명이 들어올 자리</strong>와 장용영 기본 공격력 500이 생깁니다.</p>
+<p>2교지(삼남대로)는 [도로 닦기]를 누르고 행궁 앞에서 바깥쪽으로 <strong>누른 채 끌어</strong> 길을 5칸 이상 이으면 끝납니다. 이 길이 3교지 성문의 자리가 되므로, 성 밖(장안문 쪽)까지 길게 뻗어 두면 편합니다.</p>
+<aside class="callout tip"><span class="tag">요령</span><p>공사는 매달 저절로 진행되고, 6개월 넘게 멈춘 공사는 자동으로 마무리됩니다. 일꾼이 안 보여도 기다리면 됩니다.</p></aside>
+<h3 id="part1-s9">4-2. 3교지: 성문</h3>
+<p>성문은 <strong>길 위에만</strong> 세울 수 있습니다. [성문 세우기]를 누르면 장안문 → 팔달문 → 화서문 → 창룡문 → 화홍문 순서로 실제 자리를 추천해 줍니다. 성문이 서면 이름(현판)을 지어 주는 창이 뜹니다. 추천 이름을 눌러 정하면 됩니다.</p>
+<figure><button class="shot" type="button" aria-label="성문 완공 뒤 크게 보기"><img src="./images/12_after_gate.jpg" alt="성문 완공 뒤" loading="lazy" width="1280" height="720"></button><figcaption>성문 완공 뒤</figcaption></figure>
+<h3 id="part1-s10">4-3. 4~7교지</h3>
+<ul><li><strong>4교지</strong>: 성문 안쪽 길가에 저잣거리(상업)를 먼저 칠하세요. 시장이 생겨야 사람이 오갑니다. 이어서 방·리(집터), 대유둔전(논밭)을 칠하고 우물을 하나 팝니다.<ul><li>저잣거리·방·리·공방은 <strong>도로에서 3칸 이내</strong>, 둔전은 <strong>6칸 이내</strong>여야 도로에 이어진 것으로 칩니다. 너무 멀면 '!' 경고가 뜹니다.</li><li>성 밖 둔전은 만석거·축만제·저수지 중심에서 <strong>8칸 이내 평지</strong>에만 개간됩니다.</li></ul></li><li><strong>5교지</strong>: 서장대는 팔달산 꼭대기에. 모르겠으면 [어디에?]를 누르세요.</li><li><strong>6교지</strong>: 봉돈은 <strong>성곽이나 성문 바로 옆</strong>에만 지을 수 있습니다. 성곽을 몇 칸 먼저 쌓아 두세요.</li><li><strong>7교지</strong>: [화성성곽]을 끌어 도시를 빙 둘러쌉니다. 성곽은 한 구간에 두 달쯤 걸립니다. 길과 성곽이 만나는 곳에는 성문이 생깁니다. <strong>끊긴 곳 없이 사대문까지 이어진 닫힌 고리</strong>가 되어야 100%로 칩니다. 정무 조언의 [미구축 지점 확인]으로 끊긴 곳을 찾을 수 있습니다.</li></ul>
+<h2 id="part1-s11">5. 첫해에 꼭 알아야 할 위험</h2>
+<p>이 공략집을 쓰며 <strong>행궁과 성문만 짓고 나머지를 미뤄 본</strong> 결과, 1789년 1월 88%였던 민심이 1790년 가을 <strong>19%</strong> 까지 떨어졌습니다. 원인은 셋이었습니다.</p>
+<ol><li><strong>홍수</strong>: 여름 장마에 수원천이 넘쳐 금·쌀을 잃고 민심이 깎였습니다(방재율 0%).</li><li><strong>관아 없음</strong>: "고을에 관아가 없어 송사를 들어줄 곳이 없다"며 매달 민심 −1.</li><li><strong>구휼 시설 없음</strong>: 수해 뒤 진휼소가 없어 민심이 더 떨어졌습니다.</li></ol>
+<figure><button class="shot" type="button" aria-label="여름 홍수 재해 크게 보기"><img src="./images/10_disaster_flood.jpg" alt="여름 홍수 재해" loading="lazy" width="1280" height="720"></button><figcaption>여름 홍수 재해</figcaption></figure>
+<p>그래서 첫 1~2년에는 교지와 함께 이것들을 챙기세요.</p>
+<div class="scroll"><table><thead><tr><th>할 일</th><th>메뉴</th><th>이유</th></tr></thead><tbody><tr><td>수원유수부 관아</td><td>관청·공공 → 행정시설</td><td>송사 처리, 범죄 감소, 민심 하락 방지</td></tr><tr><td>순라청</td><td>관청·공공 → 행정시설</td><td>치안, 도둑 체포</td></tr><tr><td>우물</td><td>관청·공공 → 행정시설</td><td>화재 대비, 인구 안정</td></tr><tr><td>진휼소</td><td>관청·공공 → 행정시설</td><td>흉년·수해 때 민심 지킴</td></tr><tr><td>수원천 석축제방</td><td>국책대역사</td><td>방재율 +20%. 여름이 오기 전에</td></tr></tbody></table></div>
+<aside class="callout warn"><span class="tag">주의</span><p>민심이 <strong>45% 아래</strong>로 내려가면 인구가 빠지고, 성 밖 산과 숲에 <strong>도적 소굴</strong>이 생기기 시작합니다. 민심 관리가 초반 최우선입니다.</p></aside>
+<h2 id="part1-s12">6. 살피기 도구</h2>
+<p>[살피기]를 고르고 땅이나 건물을 누르면 그곳의 사연과 상태가 나옵니다. 공사 중인 칸은 '건설 현장'으로, 완공된 건물은 이름과 역사 설명으로 나옵니다. 어떤 건물인지 헷갈릴 때 쓰세요.</p>
+<figure><button class="shot" type="button" aria-label="살피기 창 크게 보기"><img src="./images/13_inspect.jpg" alt="살피기 창" loading="lazy" width="1280" height="720"></button><figcaption>살피기 창</figcaption></figure>
+<h2 id="part1-s13">7. 초심자 체크리스트</h2>
+<ul class="checks"><li><label><input type="checkbox"> 난이도는 쉬움</label></li><li><label><input type="checkbox"> 김판관 교지를 차례대로(행궁 → 길 → 성문 → 시장·마을·우물 → 서장대 → 봉돈 → 성곽)</label></li><li><label><input type="checkbox"> 첫해 안에 관아, 첫 여름 전에 석축제방 착공</label></li><li><label><input type="checkbox"> 민심 45% 아래로 떨어뜨리지 않기</label></li><li><label><input type="checkbox"> 정무 조언 숫자가 쌓이면 열어 보기</label></li><li><label><input type="checkbox"> 금이 400냥, 쌀이 400석 아래로 떨어지면 김판관 경고가 뜹니다. 그 전에 조세와 삼남 교역을 손보기(2부)</label></li></ul>
+<p>이 정도면 1790년대 중반까지 도시가 무너지지 않고 자랍니다. 다음은 <a href="#part2">2부: 중급자 도시 운영</a>입니다.</p></article></section>
+<section class="part" id="part2" data-part="part2"><nav class="toc" aria-label="2부 목차"><p class="toc-h">2부 차례</p><ol><li class="lv2"><a href="#part2-s1">1. 나라 살림: 조세</a></li><li class="lv3"><a href="#part2-s2">1-1. 세율 합계가 정하는 것 세 가지</a></li><li class="lv3"><a href="#part2-s3">1-2. 놓치기 쉬운 지출: 행궁 운영비</a></li><li class="lv3"><a href="#part2-s4">1-3. 삼남 교역</a></li><li class="lv2"><a href="#part2-s5">2. 인구와 민심</a></li><li class="lv2"><a href="#part2-s6">3. 인재 등용과 탕평</a></li><li class="lv3"><a href="#part2-s7">3-1. 인재 표</a></li><li class="lv3"><a href="#part2-s8">3-2. 탕평도 계산법</a></li><li class="lv3"><a href="#part2-s9">3-3. 녹봉</a></li><li class="lv2"><a href="#part2-s10">4. 학문력</a></li><li class="lv2"><a href="#part2-s11">5. 실학 연구</a></li><li class="lv2"><a href="#part2-s12">6. 왕실 정무</a></li><li class="lv3"><a href="#part2-s13">6-1. 시강원 세자서연</a></li><li class="lv3"><a href="#part2-s14">6-2. 현륭원 친림 참배</a></li><li class="lv2"><a href="#part2-s15">7. 국방</a></li><li class="lv3"><a href="#part2-s16">7-1. 성 방호력과 군사 공격력</a></li><li class="lv3"><a href="#part2-s17">7-2. 서장대 야조와 연무대 훈련</a></li><li class="lv3"><a href="#part2-s18">7-3. 도적</a></li><li class="lv2"><a href="#part2-s19">8. 재해와 사건</a></li><li class="lv2"><a href="#part2-s20">9. 국책대역사</a></li><li class="lv2"><a href="#part2-s21">10. 중반 운영 순서 요약 (1790~1795)</a></li></ol></nav><article class="doc"><header class="part-head"><p class="eyebrow">2부</p><h1>중급자 도시 운영</h1><p class="lead">어명 교지 7개를 마친 뒤, 도시를 크게 키우고 나라 살림을 꾸리는 법입니다. 조세·인구·인재·학문·연구·국방·재해를 다룹니다. 사진은 1794년(인구 약 9만 8천)과 1797년(인구 약 35만) 도시를 실제로 불러와 찍었습니다.</p></header><figure><button class="shot" type="button" aria-label="1794년 화성 전경 크게 보기"><img src="./images/20_city_1794_wide.jpg" alt="1794년 화성 전경" loading="lazy" width="1280" height="720"></button><figcaption>1794년 화성 전경</figcaption></figure>
+<figure><button class="shot" type="button" aria-label="1794년 화성 시가지 크게 보기"><img src="./images/21_city_1794_mid.jpg" alt="1794년 화성 시가지" loading="lazy" width="1280" height="720"></button><figcaption>1794년 화성 시가지</figcaption></figure>
+<h2 id="part2-s1">1. 나라 살림: 조세</h2>
+<p>[조정·정무 → 조세 조율]에서 세 가지 세금을 1~20% 사이로 정합니다.</p>
+<figure><button class="shot" type="button" aria-label="호조 탕평 조세 조율 크게 보기"><img src="./images/24_tax.jpg" alt="호조 탕평 조세 조율" loading="lazy" width="1280" height="720"></button><figcaption>호조 탕평 조세 조율</figcaption></figure>
+<div class="scroll"><table><thead><tr><th>세금</th><th>걷는 곳</th></tr></thead><tbody><tr><td>경작세(토지·농업)</td><td>둔전</td></tr><tr><td>시전세(상업·점포)</td><td>저잣거리·공방</td></tr><tr><td>군포세(호포·국방)</td><td>백성 머릿수</td></tr></tbody></table></div>
+<h3 id="part2-s2">1-1. 세율 합계가 정하는 것 세 가지</h3>
+<p><strong>① 세수</strong>: 매 계절 대략 <code>인구 × 0.15 × 세율 계수</code>만큼 들어오고, 매달 상업세·전세가 따로 들어옵니다. 1791년(2년차)부터는 집과 가게 등급별로 세금이 다릅니다.</p>
+<div class="scroll"><table><thead><tr><th>건물</th><th>세금 비율</th></tr></thead><tbody><tr><td>초가집</td><td>1</td></tr><tr><td>일반 기와집</td><td>2</td></tr><tr><td>대부호의 집</td><td>10</td></tr><tr><td>일반 상점·공방</td><td>1</td></tr><tr><td>고급 상점·공방</td><td>2</td></tr></tbody></table></div>
+<p>공방 1곳은 상점 10곳까지 세수를 2%씩 올려 줍니다. 저잣거리와 공방을 함께 두세요.</p>
+<p><strong>② 인구 상한</strong>: 세금이 무거우면 백성이 많이 모이지 않습니다.</p>
+<div class="scroll"><table><thead><tr><th>세율 합계</th><th>인구 상한(세율 기준)</th></tr></thead><tbody><tr><td>3%</td><td>100만</td></tr><tr><td>4%</td><td>70만</td></tr><tr><td>5~6%</td><td>60만</td></tr><tr><td>7~8%</td><td>50만</td></tr><tr><td>9~10%</td><td>40만</td></tr><tr><td>11~12%</td><td>30만</td></tr><tr><td>13~15%</td><td>20만</td></tr><tr><td>16% 이상</td><td>10만</td></tr></tbody></table></div>
+<p>실제 상한은 이 값과 <strong>생산력 상한</strong>(집·가게·공방·둔전이 먹여 살릴 수 있는 수) 가운데 작은 쪽입니다. 맵을 거의 다 채운 도시(민가 약 780, 상점 약 390, 공방 약 200, 둔전 약 390칸)의 생산력 상한이 약 92만 명입니다.</p>
+<p><strong>③ 조세 저항</strong>: 인구가 10만을 넘으면 세율 합계에 한계선이 생깁니다. 넘으면 그만큼 인구가 빠져나갑니다(넘은 1%마다 0.5%).</p>
+<div class="scroll"><table><thead><tr><th>인구</th><th>저항 한계선(세율 합계)</th></tr></thead><tbody><tr><td>10만 미만</td><td>없음</td></tr><tr><td>10만~20만</td><td>15%</td></tr><tr><td>20만~30만</td><td>12%</td></tr><tr><td>30만~40만</td><td>10%</td></tr><tr><td>40만~50만</td><td>8%</td></tr><tr><td>50만~60만</td><td>6%</td></tr><tr><td>60만~70만</td><td>4%</td></tr><tr><td>70만 이상</td><td>3%</td></tr></tbody></table></div>
+<h3 id="part2-s3">1-2. 놓치기 쉬운 지출: 행궁 운영비</h3>
+<p>행궁 운영비는 <strong>인구에 비례</strong>합니다. 인구 1,000명 미만이면 매달 100냥, 그 위로는 <strong>1,000명마다 매달 1,000냥</strong>씩 늘어납니다(인구 1만이면 매달 1만 냥). 인구를 무작정 늘리면 세금보다 운영비가 더 빨리 늘 수 있습니다.</p>
+<p>쉬움 난이도에서 곳간을 넉넉히 채워 두고 잰 실제 월 수지입니다.</p>
+<div class="scroll"><table><thead><tr><th>세율 합계</th><th>도시 인구</th><th>매달 수지</th></tr></thead><tbody><tr><td>3%</td><td>약 92만</td><td>약 −52만 냥</td></tr><tr><td>6%</td><td>약 59만</td><td>약 +4만 냥</td></tr><tr><td>9%</td><td>약 40만</td><td>약 +46만 냥</td></tr></tbody></table></div>
+<aside class="callout tip"><span class="tag">요령</span><p><strong>세율 합계 6% 이상</strong>을 지키세요. 6% 아래면 김판관이 "세수가 유지비를 감당하지 못한다"고 경고하고, 운영비를 못 내면 <strong>매달 민심 −6, 왕권 −4</strong>가 깎이고 녹봉이 밀린 신하가 떠납니다.</p><p>큰돈이 필요한 시기(을묘원행 준비 등)에는 합계 9~10%로 올려 인구 40만 선에서 돈을 모으는 것이 효율적입니다.</p></aside>
+<h3 id="part2-s4">1-3. 삼남 교역</h3>
+<p>맨 위의 [교역] 또는 정무 조언으로 엽니다. 남는 쌀을 팔아 금을 마련하거나, 쌀이 모자랄 때 사들입니다. 사대문 길목마다 교역로가 열리면 세입이 늘어납니다.</p>
+<figure><button class="shot" type="button" aria-label="삼남 교역 크게 보기"><img src="./images/28_trade.jpg" alt="삼남 교역" loading="lazy" width="1280" height="720"></button><figcaption>삼남 교역</figcaption></figure>
+<ul><li>성 밖 교역로가 개통된 성문 하나마다 세입 <strong>+2%</strong>, 사대문이 모두 이어지면 <strong>+2% 더</strong></li><li>팔달문 저잣거리에 생기는 우시장(쇠전)이 있으면 <strong>+1%</strong></li><li>모두 합쳐 최대 <strong>+11%</strong></li></ul>
+<h2 id="part2-s5">2. 인구와 민심</h2>
+<p>인구·민심 숫자를 누르면 올리고 내리는 요인과 바로가기가 나옵니다.</p>
+<figure><button class="shot" type="button" aria-label="인구 창 크게 보기"><img src="./images/30_stat_pop.jpg" alt="인구 창" loading="lazy" width="1280" height="720"></button><figcaption>인구 창</figcaption></figure>
+<figure><button class="shot" type="button" aria-label="민심 창 크게 보기"><img src="./images/29_stat_loyalty.jpg" alt="민심 창" loading="lazy" width="1280" height="720"></button><figcaption>민심 창</figcaption></figure>
+<p><strong>인구가 느는 조건</strong>: 방·리가 늘고, 민심이 높고, 쌀이 넉넉할 때. 민가가 <strong>우물·화재 대비(멸화군)·구휼(진휼소)</strong> 시설과 가까울수록 더 많이 모입니다. 계절 인구 증가율은 0~5% 사이입니다.</p>
+<p><strong>민심을 올리는 방법</strong></p>
+<div class="scroll"><table><thead><tr><th>방법</th><th>효과</th></tr></thead><tbody><tr><td>세율 낮추기</td><td>꾸준히 오름</td></tr><tr><td>현륭원 친림</td><td>민심·왕권 함께 오름</td></tr><tr><td>진휼소</td><td>흉년·수해 피해를 막음</td></tr><tr><td>도적 소탕</td><td>치안 회복, 소탕 후 8턴(2년) 평온</td></tr><tr><td>서장대 야조</td><td>민심 +3</td></tr><tr><td>김홍도·유득공·김정희·유한지 등용</td><td>매달 민심 +1~2</td></tr></tbody></table></div>
+<aside class="callout warn"><span class="tag">주의</span><p>민심 <strong>45% 이하</strong>: 인구 감소 + 매 턴 도적 소굴 생성(최대 3곳). 민심 <strong>30 미만</strong>은 1800년에 '민중 혁명' 결말 후보가 됩니다.</p></aside>
+<h2 id="part2-s6">3. 인재 등용과 탕평</h2>
+<p>[조정·정무 → 조정 인사]에서 인재를 등용합니다. 초야에 새 인재가 나타나면 김판관이 알려 줍니다(천거 정확도는 김판관 추천이 맞을 확률).</p>
+<figure><button class="shot" type="button" aria-label="규장각 및 조정 인사 크게 보기"><img src="./images/22_court.jpg" alt="규장각 및 조정 인사" loading="lazy" width="1280" height="720"></button><figcaption>규장각 및 조정 인사</figcaption></figure>
+<h3 id="part2-s7">3-1. 인재 표</h3>
+<p>학문은 도시 학문력에 더해지는 점수, ✦는 <strong>서학 성향</strong> 인재입니다.</p>
+<div class="scroll"><table><thead><tr><th>인재</th><th>정파</th><th>학문</th><th>주요 효과</th></tr></thead><tbody><tr><td>다산 정약용 ✦</td><td>남인</td><td>10</td><td>대역사 공기 35% 단축, 방호력 +100, 연구비 30% 할인. <strong>서기수용론 연구 필수</strong></td></tr><tr><td>번암 채제공</td><td>남인</td><td>9</td><td>대역사 공사비 25% 절감. <strong>을묘원행 필수</strong></td></tr><tr><td>정헌 이가환 ✦</td><td>남인</td><td>9</td><td>축성 정밀도, 수학적 축성술 연구 필수</td></tr><tr><td>연암 박지원</td><td>북학파</td><td>10</td><td>상업 세수 +50%</td></tr><tr><td>담헌 홍대용 ✦</td><td>북학파</td><td>10</td><td>학문력 +10, 연구비 −20%</td></tr><tr><td>초정 박제가</td><td>북학파</td><td>8</td><td>상업 세수 +40%, 과농소초 연구 필수</td></tr><tr><td>청장관 이덕무</td><td>북학파</td><td>8</td><td><strong>세자 서연 가속(+2%/달)</strong>, 의궤 간행비 −30%</td></tr><tr><td>영재 유득공</td><td>북학파</td><td>7</td><td>민심 +1/달</td></tr><tr><td>추사 김정희</td><td>북학파</td><td>4</td><td>민심 +1/달</td></tr><tr><td>풍석 서유구</td><td>소론</td><td>7</td><td>둔전 소출 +25%, 임원경제지 연구 필수</td></tr><tr><td>해좌 정범조</td><td>소론</td><td>6</td><td>향교 유생 결집, 왕권 정당성</td></tr><tr><td>수원부사 조심태</td><td>소론</td><td>1</td><td>방재율 +5/달</td></tr><tr><td>풍고 김조순</td><td>노론</td><td>6</td><td>정국 안정, 세자 교육 보조</td></tr><tr><td>단원 김홍도</td><td>(무정파)</td><td>5</td><td>민심 +2/달. <strong>을묘원행 필수</strong></td></tr><tr><td>명필 유한지</td><td>(무정파)</td><td>2</td><td>민심 +1, 왕권 +1/달</td></tr><tr><td>야뇌 백동수</td><td>(장인)</td><td>0</td><td>국방력 +10/달, <strong>도적 침입 차단</strong>, 방호력 +300</td></tr><tr><td>석수 김바우</td><td>(장인)</td><td>0</td><td>성곽 완공도 +2/달, 대역사 투입 −20%</td></tr><tr><td>도편수 이성길</td><td>(장인)</td><td>0</td><td>목조 누각·행궁 건립 가속</td></tr><tr><td>가죽공 무쇠</td><td>(장인)</td><td>0</td><td>갑옷·군장으로 방호력 가산</td></tr><tr><td>어영대장 구선복</td><td>노론</td><td>0</td><td>국방력 +15/달 (군량 −10/달)</td></tr><tr><td>도승지 홍국영</td><td>노론</td><td>0</td><td>등용 즉시 왕권 +15 (민심 −1/달)</td></tr></tbody></table></div>
+<p><strong>피해야 할 인재</strong> (등용하면 손해가 더 큼)</p>
+<div class="scroll"><table><thead><tr><th>인재</th><th>문제</th></tr></thead><tbody><tr><td>좌의정 홍인한</td><td>등용 때 3,000냥을 주지만 매달 국고 5% 누수, 왕권 −1, 학문 −5</td></tr><tr><td>이기경</td><td>학문력 −2/달, 정약용과 함께면 불화</td></tr><tr><td>만포 심환지</td><td>왕권 −2/달, 대역사 20% 지연, 연구비 +25%, 학문 −3</td></tr></tbody></table></div>
+<h3 id="part2-s8">3-2. 탕평도 계산법</h3>
+<p>탕평도는 <strong>가장 많은 정파가 차지하는 비율</strong>로 정해집니다. 장인과 무정파(김홍도·유한지·백동수·김바우 등)는 계산에서 빠집니다.</p>
+<p><code>탕평도 = (1 − (최다 정파 비율 − 0.25) ÷ 0.75) × 100</code></p>
+<div class="scroll"><table><thead><tr><th>등용 상태(정파 인재만)</th><th>최다 비율</th><th>탕평도</th></tr></thead><tbody><tr><td>아무도 없음</td><td>—</td><td>50</td></tr><tr><td>1명뿐</td><td>100%</td><td><strong>0</strong></td></tr><tr><td>남인 2 + 북학 2</td><td>50%</td><td>67</td></tr><tr><td>남인 2 + 북학 2 + 소론 1 + 노론 1</td><td>33%</td><td>89</td></tr><tr><td>네 정파 똑같이</td><td>25%</td><td>100</td></tr></tbody></table></div>
+<aside class="callout tip"><span class="tag">요령</span><p><strong>한 정파가 절반을 넘지 않게</strong> 하면 탕평도 60 이상이 유지됩니다. 남인(정약용·채제공) 2명을 쓰면 북학파 2명, 소론·노론에서 1~2명을 함께 쓰세요. 탕평도 30 미만이면 1800년 '피바람의 당쟁' 결말 후보가 됩니다.</p></aside>
+<h3 id="part2-s9">3-3. 녹봉</h3>
+<p>인재는 매달 녹봉을 받습니다(예: 정약용 500냥, 박지원 450냥). 국고가 바닥나 녹봉이 밀리면 인재가 떠납니다.</p>
+<h2 id="part2-s10">4. 학문력</h2>
+<p>도시 학문력은 <strong>0~200점</strong>입니다.</p>
+<ul><li><strong>인재 부문(0~100)</strong>: 등용한 인재의 학문 점수 합</li><li><strong>교육 부문(0~100)</strong>: 수원향교(+20), 서당(+1씩), 그리고 강독 문답·별시·보유론 같은 교육 노력 누적</li></ul>
+<p>학문력은 실학 연구 속도, 세자 서연 속도, 근대화 시대 연구 속도와 외교 성공률에 모두 쓰입니다. 1800년 좋은 결말에는 <strong>학문력 60 이상</strong>이 필요하니, 1790년대 초부터 인재 5~6명과 향교를 갖추세요.</p>
+<h2 id="part2-s11">5. 실학 연구</h2>
+<p>[조정·정무 → 실학 연구]. 한 번에 하나씩 연구하며, 매달 국고에서 1,000냥(정약용 등용 시 700냥)을 쓰고 <strong>1 + 학문력÷10 %</strong>(최대 10%)씩 진척합니다. 돈이 모자라거나 필수 인재가 없어지면 진척을 그대로 둔 채 멈춥니다.</p>
+<figure><button class="shot" type="button" aria-label="실학 연구 크게 보기"><img src="./images/23_research.jpg" alt="실학 연구" loading="lazy" width="1280" height="720"></button><figcaption>실학 연구</figcaption></figure>
+<div class="scroll"><table><thead><tr><th>연구</th><th>필수 인재</th><th>효과</th></tr></thead><tbody><tr><td>조엄의 감저(고구마) 도입</td><td>—</td><td>군량 소비 37% 감소</td></tr><tr><td>과농소초 및 통상 개화론</td><td>박제가</td><td>식량 생산 +40%</td></tr><tr><td>임원경제지·우량 벼 품종</td><td>서유구</td><td>식량 생산 +20%</td></tr><tr><td>일반 농법(녹비·퇴비)</td><td>—</td><td>매달 식량 +60</td></tr><tr><td>만석거 관개 정비</td><td>—</td><td>매달 식량 +80</td></tr><tr><td><strong>남인 실학자의 보유론</strong></td><td>채제공 또는 정약용</td><td>천주교당 왕권 감소 소멸, 민심 +1/달, 학문력 +5</td></tr><tr><td><strong>기기도설·거중기·서기수용론</strong></td><td>정약용</td><td>왕권 감소 무효, 서학 인재 연구비 −30%, 대역사 비용 −20%</td></tr><tr><td>수학적 축성술·천문 역법</td><td>이가환</td><td>수문 내구도·성곽 방호력 강화</td></tr></tbody></table></div>
+<aside class="callout warn"><span class="tag">주의</span><p><strong>보유론과 서기수용론은 반드시 둘 다</strong> 끝내야 합니다. 서학 성향 인재(정약용·이가환·홍대용) 가운데 한 명이라도 등용한 채로 두 연구를 마치지 못하면, 1800년에 거의 무조건 <strong>'서학의 난'</strong> 결말이 됩니다(3부).</p></aside>
+<p>학문력 60이면 한 연구에 약 15달, 100이면 약 10달 걸립니다. 8개를 다 하려면 1790년부터 쉬지 않고 돌려야 합니다. <strong>보유론 → 서기수용론을 먼저</strong> 하세요.</p>
+<h2 id="part2-s12">6. 왕실 정무</h2>
+<h3 id="part2-s13">6-1. 시강원 세자서연</h3>
+<p>1790년 원자가 태어나면 [세자서연]을 열 수 있습니다. 매달 2,000냥(× 난이도 배율)을 쓰고 <code>(1% + 학문력÷100 × 9%) ÷ 1.5</code> 씩 오릅니다. 학문력 100이면 한 달 약 6.7%, <strong>이덕무를 등용하면 +2%</strong> 더 오릅니다. 100%에 이르면 민심 +15, 왕권 +20.</p>
+<figure><button class="shot" type="button" aria-label="시강원 세자서연 크게 보기"><img src="./images/26_crown_prince.jpg" alt="시강원 세자서연" loading="lazy" width="1280" height="720"></button><figcaption>시강원 세자서연</figcaption></figure>
+<aside class="callout tip"><span class="tag">요령</span><p>세자 교육도는 1800년에 <strong>70 이상</strong>(참 결말), 최소 <strong>40 이상</strong>(세도정치 결말 회피)이 필요합니다. 1795년 전에는 시작하세요.</p></aside>
+<h3 id="part2-s14">6-2. 현륭원 친림 참배</h3>
+<p>사도세자의 묘에 참배합니다. 금 2,000냥·쌀 1,000석(× 난이도 배율). 민심과 왕권이 오르고 참배 횟수가 쌓입니다.</p>
+<figure><button class="shot" type="button" aria-label="화산 현륭원 친림 크게 보기"><img src="./images/27_hyoryungwon.jpg" alt="화산 현륭원 친림" loading="lazy" width="1280" height="720"></button><figcaption>화산 현륭원 친림</figcaption></figure>
+<aside class="callout warn"><span class="tag">주의</span><p><strong>1795년 이후에도 참배 횟수가 0회</strong>면 1800년에 '불효의 저주' 결말이 됩니다. 1789년부터 한 번이라도 다녀오세요.</p></aside>
+<h2 id="part2-s15">7. 국방</h2>
+<h3 id="part2-s16">7-1. 성 방호력과 군사 공격력</h3>
+<div class="scroll"><table><thead><tr><th>방호력(성이 버티는 힘)</th><th>값</th></tr></thead><tbody><tr><td>성곽 완공도</td><td>최대 +50</td></tr><tr><td>사대문</td><td>개소당 +15</td></tr><tr><td>수문</td><td>개소당 +10</td></tr><tr><td>포루·공심돈</td><td>개소당 +8</td></tr><tr><td>치성·암문</td><td>개소당 +3</td></tr></tbody></table></div>
+<div class="scroll"><table><thead><tr><th>공격력(적을 무찌르는 힘)</th><th>값</th></tr></thead><tbody><tr><td>행궁 완공(장용영 외영)</td><td>기본 500</td></tr><tr><td>서장대</td><td>+150</td></tr><tr><td>순라청</td><td>개소당 +50</td></tr><tr><td>군영·연무대</td><td>개소당 +80</td></tr><tr><td>서장대 야조 훈련</td><td>회당 +50(최대 +1,000)</td></tr></tbody></table></div>
+<p>도적이 쳐들어오면 매초 성 방호력이 먼저 깎이고, 그동안 아군 공격력으로 도적 체력을 깎습니다. <strong>방호력이 남아 있는 동안은 민가 약탈·인명 피해가 없습니다.</strong></p>
+<h3 id="part2-s17">7-2. 서장대 야조와 연무대 훈련</h3>
+<figure><button class="shot" type="button" aria-label="서장대 연례 야간 군사 훈련 크게 보기"><img src="./images/31_seojangdae_drill.jpg" alt="서장대 연례 야간 군사 훈련" loading="lazy" width="1280" height="720"></button><figcaption>서장대 연례 야간 군사 훈련</figcaption></figure>
+<div class="scroll"><table><thead><tr><th>훈련</th><th>비용(쉬움)</th><th>효과</th></tr></thead><tbody><tr><td>서장대 야조</td><td>금 2,000, 쌀 1,000 / 1년 1회</td><td>공격력 +50, 왕권 +5, 민심 +3</td></tr><tr><td>연무대 무예 사열</td><td>금 2,000, 쌀 2,000</td><td>국방력 신장</td></tr></tbody></table></div>
+<h3 id="part2-s18">7-3. 도적</h3>
+<ul><li>민심 45 이하일 때 성 밖 산·숲에 소굴이 최대 3곳 생깁니다. 게임 첫 2년과 토벌 뒤 2년은 평온합니다. <strong>백동수를 등용하면 도적이 아예 생기지 않습니다.</strong></li><li><strong>왕권 30 이상</strong>: 도적은 성 밖 민가 2~3채를 약탈하고 달아납니다.</li><li><strong>왕권 30 미만</strong>: 도적이 <strong>화성행궁을 향해 돌격</strong>합니다. 방호력이 0인 채로 행궁에 닿으면 그 자리에서 <strong>도시 함락 결말</strong>로 게임이 끝납니다.</li><li>[도적 소탕] 비용: 금 1,000, 쌀 1,000(× 난이도).</li></ul>
+<figure><button class="shot" type="button" aria-label="도적 소탕 창(백동수 수호 중) 크게 보기"><img src="./images/32_bandit.jpg" alt="도적 소탕 창(백동수 수호 중)" loading="lazy" width="1280" height="720"></button><figcaption>도적 소탕 창(백동수 수호 중)</figcaption></figure>
+<aside class="callout tip"><span class="tag">요령</span><p>왕권은 30 위로, 서장대·순라청·포루는 1790년대 초반에 갖추세요. 성곽이 상하면 정무 조언에 [성곽 보수]가 뜹니다.</p></aside>
+<h2 id="part2-s19">8. 재해와 사건</h2>
+<div class="scroll"><table><thead><tr><th>사건</th><th>대비</th></tr></thead><tbody><tr><td>여름 장마·홍수</td><td>방재율. 석축제방 +20%/개소, 화홍문 +30%, 남수문 +30%, 만석거·저수지 +20% (최대 100%)</td></tr><tr><td>가뭄·흉년</td><td>만석거·축만제·저수지, 진휼소, 고구마 연구</td></tr><tr><td>팔달산 맹호</td><td>[포호책] 결단</td></tr><tr><td>화재</td><td>멸화군, 우물</td></tr><tr><td>도둑·난동</td><td>순라청(포졸이 출동해 붙잡아 관아로 압송), 관아</td></tr><tr><td>송사(재판)</td><td>관아가 있으면 친국 재판이 열립니다. 정무 조언에 뜨면 열어서 판결하세요</td></tr></tbody></table></div>
+<p>방재율 60% 미만인 채로 여름이 오면 김판관이 제방 착공을 권합니다.</p>
+<h2 id="part2-s20">9. 국책대역사</h2>
+<p>[국책대역사]는 큰 공사를 한꺼번에 맡기는 메뉴입니다. 만석거 관개, 수원천 석축제방, 팔달산 서성곽, 화홍문 북성곽, 창룡문 동성곽, 남수문 남성곽 공사가 있습니다(성곽 대역사는 약 12개월).</p>
+<figure><button class="shot" type="button" aria-label="국책 대역사 청원 크게 보기"><img src="./images/25_mega_projects.jpg" alt="국책 대역사 청원" loading="lazy" width="1280" height="720"></button><figcaption>국책 대역사 청원</figcaption></figure>
+<p>같은 시설을 직접 지어 버리면 해당 대역사는 '비활성'이 됩니다. 손으로 성곽을 다 쌓았다면 대역사는 쓸 일이 없습니다. 정약용(공기 −35%)·채제공(공사비 −25%)·김바우(투입 −20%)를 등용하면 훨씬 싸고 빨라집니다.</p>
+<h2 id="part2-s21">10. 중반 운영 순서 요약 (1790~1795)</h2>
+<ol><li><strong>1790</strong>: 관아·순라청·우물·진휼소, 석축제방. 세자서연 시작. 현륭원 첫 참배.</li><li><strong>1790~1791</strong>: 채제공·정약용 등용 → <strong>보유론 연구 시작</strong>. 탕평 맞추려 북학파(박지원·박제가)·소론(서유구) 등용.</li><li><strong>1791~1793</strong>: 저잣거리·공방·둔전을 넓혀 세수 확보, 세율 합계 6~10% 유지. 만석거·축만제. 서장대 야조 해마다.</li><li><strong>1792~1794</strong>: 사대문·수문·포루를 포함해 <strong>성곽 폐곡선 100%</strong>. 수원향교, 김홍도 등용.</li><li><strong>1794~1795</strong>: 서기수용론 완료, 박석길로 행궁 진입로 포장, 금·쌀 각 20만 모으기 → 을묘원행(3부).</li></ol>
+<p>다음은 <a href="#part3">3부: 상급자 엔딩 공략</a>입니다.</p></article></section>
+<section class="part" id="part3" data-part="part3"><nav class="toc" aria-label="3부 목차"><p class="toc-h">3부 차례</p><ol><li class="lv2"><a href="#part3-s1">1. 결말 한눈에 보기</a></li><li class="lv3"><a href="#part3-s2">1-1. 조선 결말 (1800년, 1~14번)</a></li><li class="lv3"><a href="#part3-s3">1-2. 근대 결말 (1820~1945, 15~23번)</a></li><li class="lv2"><a href="#part3-s4">2. 1800년 결말은 이렇게 정해진다</a></li><li class="lv3"><a href="#part3-s5">2-1. 참 결말(12번) 조건 10가지 — 모두 충족</a></li><li class="lv3"><a href="#part3-s6">2-2. 함정 결말 두 가지</a></li><li class="lv3"><a href="#part3-s7">2-3. 결함 심각도 경쟁(3~10번)</a></li><li class="lv3"><a href="#part3-s8">2-4. 도중 패배(13·14번)</a></li><li class="lv2"><a href="#part3-s9">3. 을묘원행 — 참 결말의 마지막 관문</a></li><li class="lv2"><a href="#part3-s10">4. 참 결말 연도별 계획 (쉬움 기준)</a></li><li class="lv2"><a href="#part3-s11">5. 근대화 시대 (1820~1945)</a></li><li class="lv3"><a href="#part3-s12">5-1. 열강 침공</a></li><li class="lv3"><a href="#part3-s13">5-2. 서학 진흥(근대 과학 연구)</a></li><li class="lv3"><a href="#part3-s14">5-3. 국제외교와 동맹</a></li><li class="lv3"><a href="#part3-s15">5-4. 역사 사건 일정</a></li><li class="lv3"><a href="#part3-s16">5-5. 문답 정답표</a></li><li class="lv3"><a href="#part3-s17">5-6. 1897 정치체제 결단과 그 뒤</a></li><li class="lv3"><a href="#part3-s18">5-7. 1945년 결산 (17·18·19번)</a></li><li class="lv2"><a href="#part3-s19">6. 근대 참 결말 체크리스트</a></li></ol></nav><article class="doc"><header class="part-head"><p class="eyebrow">3부</p><h1>상급자 엔딩 공략</h1><p class="lead">1800년 결말이 어떻게 정해지는지, 참 결말을 보는 연도별 계획, 그리고 1820~1945 근대화 시대의 모든 결말과 외교 문답 정답을 다룹니다. 사진은 1797년 도시(인구 약 35만, 민심·왕권 100)를 실제로 불러와 결말 판정과 근대화 시작까지 진행해 찍었습니다.</p></header><figure><button class="shot" type="button" aria-label="1797년 화성 전경 크게 보기"><img src="./images/40_city_1797_wide.jpg" alt="1797년 화성 전경" loading="lazy" width="1280" height="720"></button><figcaption>1797년 화성 전경</figcaption></figure>
+<h2 id="part3-s1">1. 결말 한눈에 보기</h2>
+<h3 id="part3-s2">1-1. 조선 결말 (1800년, 1~14번)</h3>
+<div class="scroll"><table><thead><tr><th>번호</th><th>결말</th><th>성격</th></tr></thead><tbody><tr><td>12</td><td><strong>대조선 문예 부흥 [참 결말]</strong></td><td>최고 결말, 근대화 시대 진입 가능</td></tr><tr><td>11</td><td>미완의 개혁과 수호의 요새</td><td>좋은 결말, 근대화 시대 진입 가능</td></tr><tr><td>1</td><td>서학의 난</td><td>특수 실패</td></tr><tr><td>2</td><td>불효의 저주</td><td>특수 실패</td></tr><tr><td>3</td><td>피폐한 빈국 (재정 파탄)</td><td>결함 경쟁</td></tr><tr><td>4</td><td>사대부의 반정 (왕권 실추)</td><td>결함 경쟁</td></tr><tr><td>5</td><td>민초의 거대한 봉기</td><td>결함 경쟁</td></tr><tr><td>6</td><td>함락된 신도시 (국방 붕괴)</td><td>결함 경쟁</td></tr><tr><td>7</td><td>약탈당한 풍요</td><td>결함 경쟁</td></tr><tr><td>8</td><td>피바람의 당쟁</td><td>결함 경쟁</td></tr><tr><td>9</td><td>세도정치의 암운</td><td>결함 경쟁</td></tr><tr><td>10</td><td>무지의 늪</td><td>결함 경쟁</td></tr><tr><td>13·14</td><td>도적 떼의 행궁 함락 / 화성행궁 함락</td><td>도중 패배(1800년 전에도 발생)</td></tr></tbody></table></div>
+<h3 id="part3-s3">1-2. 근대 결말 (1820~1945, 15~23번)</h3>
+<div class="scroll"><table><thead><tr><th>번호</th><th>결말</th><th>계기</th></tr></thead><tbody><tr><td>17</td><td><strong>글로벌 선진국 도약 [근대 참 결말]</strong></td><td>1945 결산 70점 이상</td></tr><tr><td>18</td><td>중진국의 늪</td><td>1945 결산 40~69점</td></tr><tr><td>19</td><td>후진국화</td><td>1945 결산 40점 미만</td></tr><tr><td>15</td><td>식민지의 암운</td><td>열강 침공에 함락</td></tr><tr><td>16</td><td>일제 침탈</td><td>일본 침공에 함락, 또는 1876 회담 실패</td></tr><tr><td>20</td><td>임오군란</td><td>구식 군대 설득 실패 + 반란군에 함락</td></tr><tr><td>21</td><td>국민에게 자리를 양보하다</td><td>1897년·선거 때 민심 60 미만, 또는 퇴임 선택</td></tr><tr><td>22</td><td>정치적 파멸</td><td>계엄령 선포 1년 뒤</td></tr><tr><td>23</td><td>조선 혁명</td><td>1897년 왕조 유지 선택 1년 뒤</td></tr></tbody></table></div>
+<p>모든 결말은 한 번 보면 [역사 사전]에 조각으로 남아 다시 볼 수 있습니다.</p>
+<h2 id="part3-s4">2. 1800년 결말은 이렇게 정해진다</h2>
+<p>1800년이 되는 순간 게임이 멈추고 아래 순서로 <strong>단 하나</strong>를 고릅니다. 위에서 걸리면 아래는 보지 않습니다.</p>
+<div class="scroll"><pre class="flow">① 참 결말(12) 조건 10개를 모두 갖췄나?           → 예: 12번
+② 서학 인재를 썼는데 보유론·서기수용론 미완?      → 예: 1번 서학의 난
+③ 1795년 이후인데 현륭원 친림 0회?               → 예: 2번 불효의 저주
+④ 성곽 100% + 방호력 70↑ + 학문력 60↑?           → 예: 11번 수호의 요새
+⑤ 남은 결함(3~10번) 중 가장 심각한 것             → 그 결말</pre></div>
+<h3 id="part3-s5">2-1. 참 결말(12번) 조건 10가지 — 모두 충족</h3>
+<div class="scroll"><table><thead><tr><th>조건</th><th>기준</th></tr></thead><tbody><tr><td>성곽</td><td>사대문까지 이어진 닫힌 고리 <strong>100%</strong></td></tr><tr><td>성 방호력</td><td><strong>80 이상</strong></td></tr><tr><td>을묘원행</td><td><strong>완수</strong></td></tr><tr><td>세자 교육도</td><td><strong>70 이상</strong></td></tr><tr><td>탕평도</td><td><strong>60 이상</strong></td></tr><tr><td>민심</td><td><strong>80 이상</strong></td></tr><tr><td>왕권</td><td><strong>80 이상</strong></td></tr><tr><td>학문력</td><td><strong>60 이상</strong></td></tr><tr><td>실학</td><td><strong>보유론 + 서기수용론</strong> 둘 다 완료</td></tr><tr><td>인구</td><td><strong>50만 이상</strong></td></tr></tbody></table></div>
+<p>아래 사진은 1797년 도시를 그 자리에서 판정해 나온 <strong>참 결말</strong> 화면입니다(성곽 100%, 방호력 370, 학문력 125, 세자 교육 100, 탕평 80, 민심·왕권 100, 친림 6회, 을묘원행 완수). 인구 조건이 생기기 전에 찍은 것이라, 지금 규칙으로는 이 도시(인구 약 35만)가 인구가 모자라 <strong>11번 수호의 요새</strong>가 됩니다.</p>
+<figure><button class="shot" type="button" aria-label="참 결말 결산 화면 크게 보기"><img src="./images/44_ending_popup.jpg" alt="참 결말 결산 화면" loading="lazy" width="1280" height="720"></button><figcaption>참 결말 결산 화면</figcaption></figure>
+<aside class="callout tip"><span class="tag">요령</span><p>인구 50만을 넘기려면 세율 합계를 낮춰야 합니다. 세율 기준 인구 상한이 7~8%에서 50만이고, 인구 50만부터는 조세 저항 한계선이 6%로 내려갑니다. 1797년 무렵부터 <strong>세율 합계 6%</strong>에 맞추고(6% 아래로 내리면 운영비가 모자랍니다) 민가·상점·공방·둔전을 넉넉히 넓혀 두세요(2부 1-1 참고).</p></aside>
+<h3 id="part3-s6">2-2. 함정 결말 두 가지</h3>
+<p><strong>1번 서학의 난</strong>은 ④ 수호의 요새보다 <strong>먼저</strong> 검사합니다. 정약용·이가환·홍대용 가운데 <strong>한 명이라도</strong> 등용한 상태로 1800년을 맞았는데 보유론·서기수용론을 둘 다 끝내지 못했다면, 다른 지표가 아무리 좋아도 서학의 난입니다.</p>
+<ul><li>서기수용론은 <strong>정약용만</strong> 열 수 있습니다. 이가환이나 홍대용만 쓰고 정약용을 안 쓰면 서학의 난이 사실상 확정입니다.</li><li>서학 인재를 하나도 쓰지 않으면 이 결말은 피하지만, 참 결말 조건(실학 완료)을 못 채워 최대 11번입니다.</li></ul>
+<p><strong>2번 불효의 저주</strong>는 현륭원 참배를 한 번도 안 하면 걸립니다. 1795년 이후 판정이므로 1800년에는 반드시 검사됩니다. <strong>한 번만 다녀와도</strong> 피합니다.</p>
+<h3 id="part3-s7">2-3. 결함 심각도 경쟁(3~10번)</h3>
+<p>위에서 아무것도 안 걸리면, 아래 결함 점수를 계산해 <strong>가장 높은 것</strong>이 결말이 됩니다. 점수가 0 이하인 항목은 후보가 아닙니다.</p>
+<div class="scroll"><table><thead><tr><th>결말</th><th>후보가 되는 조건</th><th>점수(클수록 위험)</th></tr></thead><tbody><tr><td>3 재정 파탄</td><td>금 또는 쌀 1만 미만</td><td>(1만 − 적은 쪽) ÷ 1만 × 1.2</td></tr><tr><td>4 사대부의 반정</td><td>왕권 25 미만</td><td>(25 − 왕권) ÷ 25 × 1.1</td></tr><tr><td>5 민중 혁명</td><td>민심 30 미만</td><td>(30 − 민심) ÷ 30 × 1.1</td></tr><tr><td>6 함락된 신도시</td><td>방호력 30 미만 또는 성곽 70% 미만</td><td>(방호력 결함 + 성곽 결함) × 0.6</td></tr><tr><td>7 약탈당한 풍요</td><td>금·쌀 모두 10만 이상 + 방호력 35 미만</td><td>(35 − 방호력) ÷ 35 × 1.3</td></tr><tr><td>8 피바람의 당쟁</td><td>탕평도 30 미만</td><td>(30 − 탕평도) ÷ 30</td></tr><tr><td>9 세도정치</td><td>세자 교육도 40 미만</td><td>(40 − 교육도) ÷ 40</td></tr><tr><td>10 무지의 늪</td><td>성곽 100% + 학문력 60 미만</td><td>(60 − 학문력) ÷ 60</td></tr></tbody></table></div>
+<p>결함이 하나도 없으면 성곽 70% 미만은 6번, 학문력 60 미만은 10번, 나머지는 11번이 됩니다.</p>
+<aside class="callout tip"><span class="tag">요령</span><p>참 결말이 어렵다면 <strong>최소 11번</strong>을 노리세요. 성곽 100%, 방호력 70, 학문력 60만 맞추고, 서학 인재를 쓴 경우에는 두 실학 연구를, 그리고 현륭원 참배 1회를 챙기면 됩니다.</p></aside>
+<h3 id="part3-s8">2-4. 도중 패배(13·14번)</h3>
+<p>왕권이 30 아래로 떨어지면 도적이 행궁으로 돌격합니다. 성 방호력이 0이 되고 장용영 요격군까지 패하면 1800년을 기다리지 않고 <strong>행궁 함락</strong>으로 끝납니다(왕권 20 미만이면 '사대부의 반정'으로 처리). 왕권 30을 절대 깨지 마세요.</p>
+<h2 id="part3-s9">3. 을묘원행 — 참 결말의 마지막 관문</h2>
+<p>1795년이 되면 매달 아래 조건을 검사해 모두 맞으면 저절로 원행이 시작됩니다. 1795년을 놓쳐도 <strong>나중에 조건을 갖추면 '지연된 을묘원행'</strong> 으로 치를 수 있습니다.</p>
+<figure><button class="shot" type="button" aria-label="을묘년 화성 원행 완수 크게 보기"><img src="./images/41_eulmyo.jpg" alt="을묘년 화성 원행 완수" loading="lazy" width="1280" height="720"></button><figcaption>을묘년 화성 원행 완수</figcaption></figure>
+<div class="scroll"><table><thead><tr><th>조건</th><th>기준</th></tr></thead><tbody><tr><td>연도</td><td>1795년 이후</td></tr><tr><td>왕권</td><td>50 이상</td></tr><tr><td>민심</td><td><strong>80 이상</strong></td></tr><tr><td>성곽</td><td>닫힌 고리 100%</td></tr><tr><td>사대문</td><td>장안문·팔달문·화서문·창룡문 모두 완공</td></tr><tr><td>행궁</td><td>완공</td></tr><tr><td>도로</td><td>장안문 ↔ 행궁(신풍루) ↔ 팔달문이 도로로 이어짐, 행궁 진입로는 <strong>박석길</strong></td></tr><tr><td>국고</td><td><strong>금 20만 냥 이상</strong></td></tr><tr><td>군량</td><td><strong>쌀 20만 석 이상</strong></td></tr><tr><td>인재</td><td><strong>채제공, 정약용, 김홍도</strong> 모두 등용</td></tr></tbody></table></div>
+<aside class="callout warn"><span class="tag">주의</span><p>원행이 시작되면 <strong>금 20만, 쌀 20만이 실제로 빠져나갑니다.</strong> 원행 직후 국고가 1만 아래로 떨어지면 재정 파탄 위험이 생기니, 넉넉히 30만 이상 모아 두세요.</p></aside>
+<p>원행 동안에는 8일간의 행차, 격쟁·상언, 봉수당 진찬연, 낙남헌 양로연, 서장대 야조, 화성 별시가 이어집니다. 끝나면 [의궤 편찬]에서 《원행을묘정리의궤》와 《화성성역의궤》를 간행할 수 있습니다.</p>
+<figure><button class="shot" type="button" aria-label="규장각 의궤 편찬 크게 보기"><img src="./images/42_uigwe.jpg" alt="규장각 의궤 편찬" loading="lazy" width="1280" height="720"></button><figcaption>규장각 의궤 편찬</figcaption></figure>
+<h2 id="part3-s10">4. 참 결말 연도별 계획 (쉬움 기준)</h2>
+<div class="scroll"><table><thead><tr><th>연도</th><th>핵심 목표</th></tr></thead><tbody><tr><td>1789</td><td>행궁 착공, 길·장안문, 저잣거리·방·리·둔전·우물. <strong>현륭원 첫 참배</strong>. 관아</td></tr><tr><td>1790</td><td>석축제방(첫 여름 전), 진휼소·순라청. <strong>세자서연 시작</strong>. 채제공·정약용 등용, <strong>보유론 연구</strong></td></tr><tr><td>1791</td><td>북학파(박지원·박제가·이덕무)·소론(서유구) 등용으로 탕평 60↑. 세율 합계 6~10%. 서장대·야조</td></tr><tr><td>1792</td><td><strong>서기수용론</strong> 연구. 만석거·축만제. 사대문 모두 착공. 김홍도 등용</td></tr><tr><td>1793</td><td>성곽 폐곡선 + 포루·공심돈·수문으로 방호력 80↑. 수원향교</td></tr><tr><td>1794</td><td>성곽 100% 확인([미구축 지점 확인]). 행궁 진입로 <strong>박석길</strong> 포장. 금·쌀 각 20만 이상 모으기</td></tr><tr><td>1795</td><td>민심 80·왕권 50 이상 유지 → <strong>을묘원행</strong></td></tr><tr><td>1796~1799</td><td>남은 실학 연구, 세자 교육 70↑(가능하면 100), 왕권·민심 80↑ 유지, 야조 매년. 세율 합계를 6%로 낮추고 민가를 넓혀 <strong>인구 50만</strong></td></tr><tr><td>1800</td><td>판정 직전 금·쌀 각 1만 이상, 모든 지표 재확인</td></tr></tbody></table></div>
+<aside class="callout tip"><span class="tag">요령</span><p><strong>학문력이 모든 것의 속도를 정합니다.</strong> 학문력 100이면 실학 연구 1개 약 10달, 세자 교육 약 15달이면 끝납니다. 1790년대 초에 인재 6명 이상과 향교를 갖추면 일정이 넉넉해집니다.</p></aside>
+<h2 id="part3-s11">5. 근대화 시대 (1820~1945)</h2>
+<p>11번 또는 12번 결말 화면을 닫으면 <strong>격동의 19세기</strong> 창이 뜹니다. [근대화 시작]을 누르면 1800년 상태를 따로 보관한 뒤 1820년 1월로 넘어갑니다.</p>
+<figure><button class="shot" type="button" aria-label="근대화 시작 제안 크게 보기"><img src="./images/45_offer_modern.jpg" alt="근대화 시작 제안" loading="lazy" width="1280" height="720"></button><figcaption>근대화 시작 제안</figcaption></figure>
+<figure><button class="shot" type="button" aria-label="1820년 근대 화성 크게 보기"><img src="./images/50_city_1820_wide.jpg" alt="1820년 근대 화성" loading="lazy" width="1280" height="720"></button><figcaption>1820년 근대 화성</figcaption></figure>
+<p>근대 시대에는 맨 위에 외교 신뢰도·동맹·문화재 보존도·도시화율 등이 추가되고, 길잡이는 <strong>참사관 김종수</strong>로 바뀝니다. 현륭원·을묘원행·세자서연은 없어집니다.</p>
+<h3 id="part3-s12">5-1. 열강 침공</h3>
+<ul><li>매년 1월 침공 확률: <strong>50% − 외교 신뢰도 × 4.5%</strong> (신뢰도 10이면 5%)</li><li>침공력: <strong>400 + (1820년부터 지난 햇수 × 15) ± 30</strong></li><li>아군 국방력: 성 방호력 + 장용영/신식군대 공격력(전사자 제외) + 순라청 수 × 30 + 동맹국당 원군 500 + (유선전신 완료 시 +100)</li><li>막으면 민심 +10, 국방 위상 +15, 문화재 보존도 −8. <strong>처음 막으면 국제외교 회담이 열립니다.</strong></li><li>지면 <strong>식민지(15번)</strong>, 상대가 일본이면 <strong>일제 침탈(16번)</strong>.</li><li>침공국은 동맹이 아니면서 외교를 한 번도 성공하지 않은 나라부터 고릅니다.</li></ul>
+<h3 id="part3-s13">5-2. 서학 진흥(근대 과학 연구)</h3>
+<figure><button class="shot" type="button" aria-label="서학 진흥 크게 보기"><img src="./images/51_west_research.jpg" alt="서학 진흥" loading="lazy" width="1280" height="720"></button><figcaption>서학 진흥</figcaption></figure>
+<p>한 분야씩 연구하며 <strong>매달 1만 냥</strong>을 씁니다. 속도 배율 1배일 때 한 분야에 10년(120달)이 걸리고, 배율은 최대 10배입니다.</p>
+<p><code>속도 배율 = 1 + 학문력÷50 + 서양 서적 수×0.3 + 외교 기술 교류 보상 + 수원 대학교 +1 + 유학 다녀온 인재 보너스</code> (최대 10)</p>
+<ul><li>서양 서적: 1년에 1권, 1만 냥, 최대 10권</li><li>해외 유학: 1만 냥, 12달, 동시에 3명까지. 귀국하면 그 인재의 학문 능력 × 0.05 만큼 배율이 오르고, 다녀올 때마다 쌓입니다(유학 중에는 학문력에서 빠짐)</li></ul>
+<div class="scroll"><table><thead><tr><th>분야</th><th>선행</th><th>완료 효과</th></tr></thead><tbody><tr><td>화학·제련</td><td>—</td><td>국방력 +50</td></tr><tr><td>서양 포술·탄도학</td><td>화학·제련</td><td>국방력 +80</td></tr><tr><td>증기기관·기계학</td><td>포술</td><td><strong>매달 국고 +3,000냥</strong>, 포장도로·철길·기차역</td></tr><tr><td>서양 의학·종두법</td><td>—</td><td>민심 +10, 의학 4분야 해금</td></tr><tr><td>천문·측량·지리학</td><td>—</td><td>외교 성공률 +5%</td></tr><tr><td>철도·토목공학</td><td>증기기관</td><td>운송 효율 2배, 도로 포장비 −50%</td></tr><tr><td>방적·방직기계</td><td>증기기관</td><td>상업 생산성 +30%, 매달 +2,000냥</td></tr><tr><td>유선전신·통신학</td><td>증기기관</td><td>외교 대기 3달→1달, 침공 때 +100</td></tr><tr><td>조선·해양공학</td><td>증기기관</td><td>국방력 +120, 외교 성공률 +10%</td></tr><tr><td>의학 4분야(예방접종·미생물학·해부학·공중위생학)</td><td>종두법</td><td>각각 인구 부양력 +10%. 공중위생학은 수처리시설 해금</td></tr></tbody></table></div>
+<aside class="callout warn"><span class="tag">주의</span><p><strong>1876년 강화도 회담을 마치면 달력이 1턴 = 1년으로 빨라집니다.</strong> 연구는 턴마다 진행되므로, 1876년 이후에는 1945년까지 약 70턴밖에 남지 않습니다. <strong>화학 → 포술(1875 대비)과 증기기관을 1875년 전에</strong> 끝내세요.</p></aside>
+<h3 id="part3-s14">5-3. 국제외교와 동맹</h3>
+<figure><button class="shot" type="button" aria-label="국제외교 회담 크게 보기"><img src="./images/52_diplomacy.jpg" alt="국제외교 회담" loading="lazy" width="1280" height="720"></button><figcaption>국제외교 회담</figcaption></figure>
+<ul><li><strong>회담</strong>: 3달에 1번(유선전신 뒤 1달). 성공률 = 40% + 서학 진척도÷200 × 35% + 학문력(최대 100)÷100 × 15% + 측량 5% + 철갑선 10%. 성공하면 신뢰도 +1(최대 10)과 함께 차관 2만 냥 / 신식 무기(국방력 +50) / 기술 교류(연구 속도 +0.5배) 중 하나를 받습니다.</li><li><strong>동맹</strong>: 신뢰도 10이 되면 나라를 골라 협상(문답 3개, 하나라도 틀리면 결렬). <strong>최대 5개국</strong>, 연합국과 추축국은 함께 맺을 수 없습니다.<ul><li>연합국: 미국, 청, 러시아, 영국, 프랑스</li><li>추축국: 독일, 일본, 이탈리아, 오스만 제국, 오스트리아-헝가리</li></ul></li><li>동맹국은 매년 5% 확률로 침략당해 파병을 요청합니다. 거부하면 동맹이 깨지고 <strong>신뢰도 −5</strong>. 파병 승률은 군사력 차이로 10~90%이며, 지면 보낸 군사를 일부나 전부 잃습니다(해마다 50씩 회복).</li></ul>
+<aside class="callout warn"><span class="tag">주의</span><p><strong>연합국 5개국 모두와 동맹</strong>하면 1945 결산의 동맹 점수 100(20점 만점)을 받고, 침공 때 원군 2,500을 얻습니다.</p><p>단, <strong>1884년에 동맹국이 청나라 하나뿐</strong>이면 갑신정변이 터집니다. 청과만 동맹한 상태로 1884년을 맞지 마세요.</p></aside>
+<h3 id="part3-s15">5-4. 역사 사건 일정</h3>
+<div class="scroll"><table><thead><tr><th>시기</th><th>사건</th><th>대비</th></tr></thead><tbody><tr><td>1875</td><td><strong>일본 대규모 침공</strong> (침공력 2배, 약 2,400~2,500)</td><td>국방력 2,600 이상. 포술·화학·동맹 원군·순라청</td></tr><tr><td>1876</td><td><strong>강화도 회담</strong> (문답 10개, 하나라도 틀리면 일제 침탈)</td><td>아래 정답표</td></tr><tr><td>연무대를 신식 군사기지로 개편한 직후</td><td><strong>임오군란</strong> (문답 3개, 틀리면 반란군 1,000과 전투)</td><td>정답표, 또는 국방력 1,000 이상</td></tr><tr><td>1884</td><td><strong>갑신정변</strong> (동맹이 청 하나뿐일 때)</td><td>정답표. 실패하면 신뢰도 0, 청 동맹 파기, 2~4년 뒤 청일전쟁(시설 절반 파괴, 문화재 −30)</td></tr><tr><td>1897</td><td><strong>정치체제 결단</strong></td><td>아래 5-6</td></tr></tbody></table></div>
+<figure><button class="shot" type="button" aria-label="1876 강화도 회담 크게 보기"><img src="./images/57_treaty_1876.jpg" alt="1876 강화도 회담" loading="lazy" width="1280" height="720"></button><figcaption>1876 강화도 회담</figcaption></figure>
+<h3 id="part3-s16">5-5. 문답 정답표</h3>
+<p>보기는 화면에 나오는 순서(1~4번) 그대로입니다.</p>
+<p><strong>1876 강화도 회담 (10문항)</strong></p>
+<div class="scroll"><table><thead><tr><th>문항</th><th>정답</th></tr></thead><tbody><tr><td>1. 일본 군함 이름과 응수</td><td>② 운요호 — 허가 없이 영해에 들어와 측량하며 접근한 쪽이 먼저 도발</td></tr><tr><td>2. '자주국' 조항의 속셈</td><td>① 청과의 사대 관계를 끊어 청의 간섭을 배제하려는 것</td></tr><tr><td>3. 부산의 일본인 거류 시설</td><td>② 초량왜관</td></tr><tr><td>4. 연안 측량 요구</td><td>③ 우리 수군이 측량해 필요한 해도만 내주겠다</td></tr><tr><td>5. 개항장 일본인 범죄 재판</td><td>③ 영사재판권 — 우리 법으로 다스린다며 거부</td></tr><tr><td>6. 무관세 요구</td><td>② 관세율은 우리가 정한다</td></tr><tr><td>7. 일본 화폐 유통</td><td>② 상평통보 체계를 흔드니 거부</td></tr><tr><td>8. 쌀 무제한 수출</td><td>② 흉년 방곡 권한과 사전 통보 규정</td></tr><tr><td>9. 제1차 수신사</td><td>② 김기수</td></tr><tr><td>10. 도끼 상소의 인물과 논리</td><td>① 최익현 — 왜양일체론</td></tr></tbody></table></div>
+<p><strong>임오군란 (3문항)</strong>: ② 밀린 군료를 깨끗한 쌀로 지급하고 부정 관리 문책 / ② 구식 군인도 신식 군대에 편입, 노병에게 둔전과 연금 / ② 교관은 기술만, 지휘권은 조선 장수</p>
+<p><strong>갑신정변 (3문항)</strong>: ① 김옥균·박영효·홍영식 / ③ 외국 군대를 끌어들이지 말고 우리 군대로 수습 / ① 톈진조약 — 조선이 참여해 '요청 없는 파병 금지' 조항을 넣게 한다</p>
+<p><strong>동맹 협상 (나라별 3문항)</strong></p>
+<div class="scroll"><table><thead><tr><th>나라</th><th>1</th><th>2</th><th>3</th></tr></thead><tbody><tr><td>미국</td><td>② 제너럴셔먼호 사건 · 신미양요</td><td>② 거중조정</td><td>② 민영익(보빙사)</td></tr><tr><td>청</td><td>① 조청상민수륙무역장정</td><td>① 묄렌도르프</td><td>② 속방 문구 없이 대등하게</td></tr><tr><td>러시아</td><td>① 부동항 확보(남하 정책)</td><td>① 묄렌도르프</td><td>② 조차 거부, 통상·교관 협력</td></tr><tr><td>영국</td><td>② 거문도 사건(1885)</td><td>① 해리 파크스</td><td>② 영토 불가침 서약</td></tr><tr><td>프랑스</td><td>② 병인양요 — 외규장각 의궤</td><td>③ 병인박해</td><td>② 보호·학교·병원은 허락하되 국법을 따르게</td></tr><tr><td>독일</td><td>① 에두아르트 차페</td><td>① 한반도 영세 중립화론</td><td>② 합작 회사·지분·기술 이전 조건</td></tr><tr><td>일본</td><td>② 임오군란 — 제물포조약</td><td>① 톈진조약</td><td>② 상주 거부, 유사시 파병·교관 협력만</td></tr><tr><td>이탈리아</td><td>③ 1884년</td><td>① 가리발디</td><td>② 호혜 조건의 협정 관세</td></tr><tr><td>오스만 제국</td><td>② 콘스탄티노플(이스탄불)</td><td>① 크림 전쟁</td><td>② 불평등 조항 철폐 공조</td></tr><tr><td>오스트리아-헝가리</td><td>③ 1892년</td><td>① 이중 제국(아우스글라이히)</td><td>② 사전 통보한 우호 방문만</td></tr></tbody></table></div>
+<h3 id="part3-s17">5-6. 1897 정치체제 결단과 그 뒤</h3>
+<figure><button class="shot" type="button" aria-label="1897 나라의 앞날 크게 보기"><img src="./images/58_decision_1897.jpg" alt="1897 나라의 앞날" loading="lazy" width="1280" height="720"></button><figcaption>1897 나라의 앞날</figcaption></figure>
+<div class="scroll"><table><thead><tr><th>선택</th><th>결과</th></tr></thead><tbody><tr><td>왕조 국가 유지</td><td>1년 뒤 <strong>조선 혁명(23번)</strong> 으로 끝</td></tr><tr><td>현대 정치체제 + 민심 60 이상</td><td>초대 대통령. 행궁이 대통령궁·국회·법원이 됨</td></tr><tr><td>현대 정치체제 + 민심 60 미만</td><td><strong>국민에게 자리를 양보하다(21번)</strong> 로 끝</td></tr></tbody></table></div>
+<p>대통령제에서는:</p>
+<ul><li>조세·서학 진흥·외교 같은 정무를 직접 못 하고, 석 달마다 국회·행정 각부가 올리는 <strong>건의를 승인/반려</strong>합니다. 조정 인재의 학문 능력이 높을수록 건의 수준이 좋아집니다. 건설과 인재 등용은 직접 합니다.</li><li><strong>6년마다 선거</strong>. 민심 60 이상이면 연임/퇴임을 고르고, 60 미만이면 낙선(21번). 퇴임을 고르면 21번으로 끝나니 <strong>1945년까지 가려면 계속 연임</strong>하세요.</li><li><strong>계엄령</strong>을 선포하면 다시 직접 통치하지만 민심 −20, 1년 뒤 <strong>정치적 파멸(22번)</strong>.</li></ul>
+<aside class="callout tip"><span class="tag">요령</span><p>1945년 결산까지 가려면: 1897년에 민심 60 이상 → 현대 정치체제 → 선거마다 민심 60 이상 유지하고 연임.</p></aside>
+<h3 id="part3-s18">5-7. 1945년 결산 (17·18·19번)</h3>
+<p><code>결산 점수 = 문화재 보존도 × 30% + 도시화 × 25% + 학문 × 25% + 동맹 × 20%</code></p>
+<div class="scroll"><table><thead><tr><th>항목</th><th>계산</th></tr></thead><tbody><tr><td>문화재 보존도</td><td>성곽·사대문·행궁 상태(0~100). 침공을 막을 때마다 −8(1875 일본은 −16), 청일전쟁 −30. [문화재 보수]로 회복</td></tr><tr><td>도시화</td><td>근대 도시화율 × 80% + 상하수도 보급률 × 20%</td></tr><tr><td>학문</td><td>(서학 진척도 ÷ 2 + 학문력 ÷ 2) ÷ 2 (각각 200점 만점을 100으로 환산)</td></tr><tr><td>동맹</td><td>동맹국 수 ÷ 5 × 100</td></tr></tbody></table></div>
+<div class="scroll"><table><thead><tr><th>점수</th><th>결말</th></tr></thead><tbody><tr><td>70 이상</td><td><strong>글로벌 선진국 도약</strong></td></tr><tr><td>40~69</td><td>중진국의 늪</td></tr><tr><td>40 미만</td><td>후진국화</td></tr></tbody></table></div>
+<p>예시: 문화재 90, 도시화 50, 학문 80, 동맹 5개국 → 27 + 12.5 + 20 + 20 = <strong>79.5점 → 선진국</strong>.</p>
+<figure><button class="shot" type="button" aria-label="근대 수도체제 크게 보기"><img src="./images/55_water_works.jpg" alt="근대 수도체제" loading="lazy" width="1280" height="720"></button><figcaption>근대 수도체제</figcaption></figure>
+<aside class="callout tip"><span class="tag">요령</span><p>동맹 5개국(20점)과 문화재 보존(30점 비중)이 가장 큰 몫입니다. 침공 자체를 줄이려면 외교 신뢰도 10을 빨리 만들고, 부서진 문화재는 즉시 보수하세요. 도시화는 공중위생학 뒤 수처리시설, 근대화 국책사업(도로 포장·수도 정비·관청 근대화·복지시설)로 올립니다.</p></aside>
+<h2 id="part3-s19">6. 근대 참 결말 체크리스트</h2>
+<ul class="checks"><li><label><input type="checkbox"> 1820~1874: 화학 → 포술 → 증기기관, 종두법. 서적 매년 구입, 인재 유학. 학문력 유지</label></li><li><label><input type="checkbox"> 첫 침공 격퇴 → 외교 회담 반복 → 신뢰도 10</label></li><li><label><input type="checkbox"> 연합국 5개국 동맹 (청 단독 동맹으로 1884 맞지 않기)</label></li><li><label><input type="checkbox"> 1875 일본 침공: 국방력 2,600 이상</label></li><li><label><input type="checkbox"> 1876 강화도 회담: 정답표대로 10문항</label></li><li><label><input type="checkbox"> 연무대 신식 개편은 국방력 1,000 이상일 때, 임오군란 문답 정답</label></li><li><label><input type="checkbox"> 1897: 민심 60 이상으로 현대 정치체제</label></li><li><label><input type="checkbox"> 선거마다 민심 60 이상, 연임</label></li><li><label><input type="checkbox"> 1945: 문화재 보수, 수처리시설·국책사업으로 도시화, 결산 70점 이상</label></li></ul></article></section>
+</main>
+
+<footer class="wrap foot">사진은 모두 실제 게임을 실행해 찍었습니다. 수치는 현재 게임 버전의 규칙을 기준으로 합니다.</footer>
+
+<script>
+(function () {
+  var parts = Array.prototype.slice.call(document.querySelectorAll(".part"));
+  var tabs = Array.prototype.slice.call(document.querySelectorAll(".tab"));
+  var order = parts.map(function (p) { return p.id; });
+
+  // 각 부 끝에 이전·다음 부 이동 단추
+  parts.forEach(function (p, i) {
+    var nav = document.createElement("nav");
+    nav.className = "part-nav";
+    var prev = i > 0 ? tabs[i - 1] : null, next = i < parts.length - 1 ? tabs[i + 1] : null;
+    nav.innerHTML = (prev ? '<a href="#' + order[i - 1] + '">← ' + prev.textContent.trim() + '</a>' : '<span></span>') +
+                    (next ? '<a href="#' + order[i + 1] + '">' + next.textContent.trim() + ' →</a>' : '<span></span>');
+    p.querySelector(".doc").appendChild(nav);
+  });
+
+  function partOf(hash) {
+    var id = (hash || "").replace("#", "");
+    if (!id) return order[0];
+    var m = id.match(/^(part\d)/);
+    return m && order.indexOf(m[1]) >= 0 ? m[1] : order[0];
+  }
+  function show(hash, scroll) {
+    var pid = partOf(hash);
+    parts.forEach(function (p) { p.hidden = p.id !== pid; });
+    tabs.forEach(function (t) { t.setAttribute("aria-current", t.dataset.part === pid ? "true" : "false"); });
+    var target = hash && hash.length > 1 ? document.getElementById(hash.slice(1)) : null;
+    if (scroll) {
+      if (target && target.id !== pid) target.scrollIntoView();
+      else document.querySelector(".tabs-bar").scrollIntoView();
+    }
+    spy();
+  }
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a) return;
+    e.preventDefault();
+    var h = a.getAttribute("href");
+    try { history.replaceState(null, "", h); } catch (err) {}
+    show(h, true);
+  });
+
+  // 차례에서 지금 읽는 절 표시
+  var ticking = false;
+  function spy() {
+    var cur = parts.filter(function (p) { return !p.hidden; })[0];
+    if (!cur) return;
+    var heads = cur.querySelectorAll(".doc h2, .doc h3"), on = null;
+    for (var i = 0; i < heads.length; i++) { if (heads[i].getBoundingClientRect().top < 120) on = heads[i].id; }
+    cur.querySelectorAll(".toc a").forEach(function (a) { a.classList.toggle("on", a.getAttribute("href") === "#" + on); });
+  }
+  window.addEventListener("scroll", function () {
+    if (!ticking) { ticking = true; requestAnimationFrame(function () { ticking = false; spy(); }); }
+  }, { passive: true });
+
+  // 사진 크게 보기
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest && e.target.closest(".shot");
+    if (!b) return;
+    var img = b.querySelector("img");
+    var box = document.createElement("div");
+    box.className = "lightbox";
+    box.setAttribute("role", "dialog");
+    box.setAttribute("aria-label", img.alt);
+    box.innerHTML = '<button class="close" type="button">닫기</button><div><img alt=""><p></p></div>';
+    box.querySelector("img").src = img.src;
+    box.querySelector("p").textContent = img.alt;
+    function close() { box.remove(); document.removeEventListener("keydown", onKey); b.focus(); }
+    function onKey(ev) { if (ev.key === "Escape") close(); }
+    box.addEventListener("click", close);
+    document.addEventListener("keydown", onKey);
+    document.body.appendChild(box);
+    box.querySelector(".close").focus();
+  });
+
+  // 체크리스트는 이 기기에만 기억
+  var boxes = document.querySelectorAll("ul.checks input");
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem("hwaseong-guide-checks") || "{}"); } catch (err) {}
+  boxes.forEach(function (c, i) {
+    c.id = "chk-" + i;
+    c.checked = !!saved[i];
+    c.addEventListener("change", function () {
+      saved[i] = c.checked;
+      try { localStorage.setItem("hwaseong-guide-checks", JSON.stringify(saved)); } catch (err) {}
+    });
+  });
+
+  show(location.hash, false);
+})();
+</script>
 
