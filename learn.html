@@ -66,12 +66,11 @@ h1, h2, h3 { font-family: "Gowun Batang", "Batang", "Nanum Myeongjo", serif; tex
 .top-in { max-width: 980px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; justify-content: space-between; }
 .brand { font-family: "Gowun Batang", serif; font-weight: 700; font-size: 1.05em; display: flex; align-items: center; gap: 8px; }
 .seal { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 6px; background: var(--red); color: #fff; font-size: .8em; font-weight: 700; }
-.tabs { display: flex; gap: 6px; align-items: center; }
+.tabs { display: flex; gap: 6px; }
 .tab {
   font: inherit; font-size: 1em; cursor: pointer;
   border: 2px solid var(--line); background: transparent; color: var(--ink);
   padding: 6px 16px; border-radius: 999px;
-  text-decoration: none;
 }
 .tab[aria-selected="true"] { background: var(--green); border-color: var(--green); color: #fff; }
 .tabs { flex-wrap: wrap; }
@@ -170,8 +169,8 @@ figcaption { font-size: .88em; color: var(--muted); margin-top: 6px; }
 
 /* 연표 */
 .timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.timeline li { display: grid; grid-template-columns: 76px 1fr; gap: 12px; align-items: baseline; }
-.timeline .yr { font-family: "Gowun Batang", serif; font-weight: 700; color: var(--green); font-size: 1.1em; text-align: right; }
+.timeline li { display: grid; grid-template-columns: max-content 1fr; gap: 12px; align-items: baseline; }
+.timeline .yr { font-family: "Gowun Batang", serif; font-weight: 700; color: var(--green); font-size: 1.1em; text-align: right; white-space: nowrap; min-width: 3.8em; }
 .timeline li > span:last-child { min-width: 0; }
 
 /* 성문 지도 */
@@ -228,8 +227,8 @@ figcaption { font-size: .88em; color: var(--muted); margin-top: 6px; }
 }
 .opts.ox .opt { justify-content: center; font-size: 2.2em; font-weight: 700; padding: 16px; }
 .opt .num {
-  flex: none; display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
-  background: var(--card); border: 1px solid var(--line); font-size: .95em;
+  flex: none; display: inline-flex; align-items: center; justify-content: center; width: 1.8em; height: 1.8em; border-radius: 50%;
+  background: var(--card); border: 1px solid var(--line); font-size: .9em;line-height: 1;text-align: center;box-sizing: border-box;
 }
 .opt:hover:not(:disabled) { border-color: var(--green); }
 .opt:disabled { cursor: default; }
@@ -280,27 +279,260 @@ figcaption { font-size: .88em; color: var(--muted); margin-top: 6px; }
   <div class="kicker">화성성역 — 정조의 24년 · 사전학습</div>
   <h1>정조와 수원 화성</h1>
   <p class="sub">게임을 시작하기 전에, 진짜 역사를 먼저 만나 봐요!</p>
-  <figure><img src="./images/40_city_1797_wide.jpg" alt="게임 완성 장면" width="1280" height="720">  </div>
-  <div class="note"><b>1800년이 되면</b> 그때까지 이룬 도시의 모습과 백성의 행복에 따라 결말이 정해져요.</div>
+  <figure><img src="./images/40_city_1797_wide.jpg" alt="게임 완성 장면" width="1280" height="720">  </figure>  <button class="btn start-btn" data-go="1">시작하기 →</button>
+</article>
+
+<article class="slide">
+  <div class="kicker">오늘 배울 것</div>
+  <h2>이 순서로 알아봐요</h2>
+  <div class="cols">
+    <div class="box"><div class="big-emoji">👑</div><h3>1. 정조 임금</h3><p>어떤 왕이었을까?</p></div>
+    <div class="box"><div class="big-emoji">🏯</div><h3>2. 수원 화성</h3><p>왜, 어떻게 쌓았을까?</p></div>
+    <div class="box"><div class="big-emoji">🌾</div><h3>3. 백성과 도시</h3><p>사람들은 어떻게 살았을까?</p></div>
+    <div class="box"><div class="big-emoji">🎮</div><h3>4. 게임 낱말</h3><p>게임에 나오는 말 미리 알기</p></div>
+  </div>
+  <div class="note">학습 후 <b>✏️ 퀴즈</b>에서 문제를 풀어 봐요. <b>⛶ 전체 화면</b>을 누르면 화면을 크게 볼 수 있어요.</div>
+</article>
+
+<article class="slide">
+  <div class="kicker">1. 정조 임금</div>
+  <h2>정조는 누구일까요?</h2>
+  <div class="cols">
+    <div style="display:grid;gap:12px">
+      <p> <class="lead">정조는 조선의 <span class="word">22번째 왕</span>이에요.</p>
+      <p> (1776년~1800년 <b>총 24년</b>)</p>
+      <p>게임 「정조의 24년」은 이 24년을 말해요.</p>
+    </div>
+    <ul class="dots box">
+      <li>📚 책 읽기를 좋아한 공부하는 왕</li>
+      <li>🏛️ 규장각을 세워 젊은 학자들을 길렀어요</li>
+      <li>🤝 신분이 낮아도 실력 있는 사람을 뽑아 썼어요</li>
+      <li>❤️ 백성의 이야기를 직접 들으려 애썼어요</li>
+    </ul>
+  </div>
+  <ol class="timeline box">
+    <li><span class="yr">1752</span><span>정조 태어남</span></li>
+    <li><span class="yr">1776</span><span>조선 22대 왕이 됨</span></li>
+    <li><span class="yr">1800</span><span>세상을 떠남 (게임도 1800년에 끝나요)</span></li>
+  </ol>
+</article>
+
+<article class="slide">
+  <div class="kicker">1. 정조 임금</div>
+  <h2>아버지를 그리워한 아들</h2>
+  <p class="lead">정조의 아버지는 <span class="word">사도세자</span>예요. 정조가 열한 살 때, 아버지는 할아버지 영조 임금과 사이가 크게 틀어져 안타깝게 세상을 떠났어요.</p>
+  <div class="cols">
+    <div class="box red"><h3>🙏 효심</h3><p>왕이 된 정조는 늘 아버지를 그리워했어요. 그래서 아버지의 무덤을 좋은 땅으로 옮기기로 했어요.</p></div>
+    <div class="box green"><h3>⛰️ 1789년, 수원 화산으로</h3><p>아버지의 무덤을 수원의 화산으로 옮기고 이름을 <b>현륭원</b>이라 지었어요. 원래 그 근처 마을 사람들은 <b>팔달산 아래</b>로 이사했어요.</p></div>
+  </div>
+  <div class="game-link">게임은 바로 이때, <b>1789년 1월 팔달산 아래 빈 들판</b>에서 시작해요. 게임 속 [현륭원 친림]은 정조가 아버지 무덤에 찾아가는 일이에요.</div>
+</article>
+
+<article class="slide">
+  <div class="kicker">2. 수원 화성</div>
+  <h2>왜 새 도시를 만들었을까요?</h2>
+  <p class="lead">새 도시가 만들어질 곳은 원래 작은 마을이었어요. 정조는 이곳을 <b>크고 튼튼한 성곽 도시</b>로 키우고 싶었어요.</p>
+  <div class="cols">
+    <div class="box"><div class="big-emoji">🛡️</div><h3>지키기</h3><p>성을 쌓아 아버지의 무덤과 도시를 지키고, 서울(한양) 남쪽을 든든하게 했어요.</p></div>
+    <div class="box"><div class="big-emoji">💰</div><h3>장사하기</h3><p>큰길이 지나는 자리라 시장을 열고 상인을 불러 모아 잘사는 도시를 만들려 했어요.</p></div>
+    <div class="box"><div class="big-emoji">👑</div><h3>새로운 정치</h3><p>왕의 힘(왕권)을 키우고, 새로운 생각을 펼쳐 볼 도시가 필요했어요.</p></div>
+  </div>
+</article>
+
+<article class="slide">
+  <div class="kicker">2. 수원 화성</div>
+  <h2>10년 걸릴 공사를 2년 9개월 만에!</h2>
+  <div class="cols">
+    <div style="display:grid;gap:12px">
+      <p class="lead">화성은 <span class="word">1794년 1월</span>에 쌓기 시작해 <span class="word">1796년 9월</span>에 완성했어요.</p>
+      <p>처음에는 10년쯤 걸릴 거라고 했는데, 3년도 안 되어 끝냈어요. 성벽 둘레는 약 <b>5.7km</b>로, 어른이 한 바퀴 걸으면 2시간쯤 걸려요.</p>
+    </div>
+    <div class="box gold">
+      <h3>💡 빨리 지을 수 있었던 비결</h3>
+      <ul class="dots">
+        <li>새로운 기계(거중기 등)를 썼어요</li>
+        <li>일한 만큼 <b>품삯(돈)</b>을 주어 열심히 일했어요</li>
+        <li>돌과 벽돌을 함께 써서 튼튼하고 빠르게 쌓았어요</li>
+      </ul>
+    </div>
+  </div>
+  <div class="note">이전에는 나라 공사에 백성을 불러다 돈 없이 일을 시키는 일이 많았어요. 정조는 <b>일한 만큼 돈을 주었어요.</b> 백성을 아끼는 마음이 담겨 있지요.</div>
+</article>
+
+<article class="slide">
+  <div class="kicker">2. 수원 화성</div>
+  <h2>정약용과 거중기</h2>
+  <div class="cols">
+    <div style="display:grid;gap:12px">
+      <p class="lead">젊은 학자 <span class="word">정약용</span>은 정조가 아끼던 신하예요. 정조가 보여 준 서양 과학책을 참고해 <span class="word">거중기</span>를 설계했어요.</p>
+      <p>거중기는 <b>도르래</b>를 여러 개 이어서 만든 기계예요. 사람 몇 명의 작은 힘으로도 아주 무거운 돌을 번쩍 들어 올릴 수 있었어요.</p>
+    </div>
+    <svg class="gatemap" viewBox="0 0 260 220" role="img" aria-label="도르래 원리 그림">
+      <rect x="20" y="16" width="220" height="10" rx="4" class="mount"/>
+      <circle cx="90" cy="46" r="16" fill="none" stroke="currentColor" stroke-width="3" style="color:var(--green)"/>
+      <circle cx="170" cy="46" r="16" fill="none" stroke="currentColor" stroke-width="3" style="color:var(--green)"/>
+      <circle cx="130" cy="120" r="16" fill="none" stroke="currentColor" stroke-width="3" style="color:var(--red)"/>
+      <line x1="90" y1="26" x2="90" y2="30" stroke="var(--muted)" stroke-width="3"/>
+      <line x1="170" y1="26" x2="170" y2="30" stroke="var(--muted)" stroke-width="3"/>
+      <path d="M74 46 L74 190 M106 46 L114 120 M146 120 L154 46 M186 46 L186 120" stroke="var(--ink)" stroke-width="2" fill="none"/>
+      <rect x="100" y="150" width="60" height="40" rx="4" fill="var(--gold)"/>
+      <line x1="130" y1="136" x2="130" y2="150" stroke="var(--ink)" stroke-width="2"/>
+      <text x="115" y="176" font-size="14">   큰 돌</text>
+      <text x="50" y="208" font-size="13">움직 도르래 1개 = 절반의 무게</text>
+    </svg>
+  </div>
+  <div class="game-link">게임 속 [조정 인사]에서 인재를 등용하고, [실학 연구]를 하면 공사와 도시 운영이 더 좋아져요.</div>
+</article>
+
+<article class="slide">
+  <div class="kicker">2. 수원 화성</div>
+  <h2>화성의 문 — 동서남북</h2>
+  <div class="cols">
+    <svg class="gatemap" viewBox="0 0 320 300" role="img" aria-label="수원 화성 성문 위치 그림">
+      <ellipse cx="85" cy="160" rx="55" ry="40" class="mount"/>
+      <text x="58" y="165" font-size="13">팔달산</text>
+      <path class="wall" d="M60 120 L150 50 L240 70 L285 150 L230 255 L140 270 L70 215 Z"/>
+      <rect x="150" y="38" width="40" height="22" rx="5" class="gate"/><text x="146" y="30" font-size="14">장안문(북)</text>
+      <rect x="160" y="258" width="40" height="22" rx="5" class="gate"/><text x="150" y="298" font-size="14">팔달문(남)</text>
+      <rect x="45" y="120" width="30" height="22" rx="5" class="gate"/><text x="2" y="112" font-size="14">화서문(서)</text>
+      <rect x="272" y="140" width="30" height="22" rx="5" class="gate"/><text x="240" y="186" font-size="14">창룡문(동)</text>
+      <rect x="204" y="62" width="26" height="16" rx="4" class="water"/><text x="208" y="96" font-size="12">화홍문</text>
+      <path d="M215 20 L215 290" stroke="var(--green)" stroke-width="3" stroke-dasharray="6 5" fill="none" opacity=".6"/>
+      <text x="222" y="235" class="dir">수원천</text>
+    </svg>
+    <div style="display:grid;gap:10px;align-content:start">
+      <div class="box"><b>장안문</b> — 북쪽 문. 한양으로 가는 가장 중요한 정문이에요.</div>
+      <div class="box"><b>팔달문</b> — 남쪽 문. 문 밖에 큰 시장이 열렸어요.</div>
+      <div class="box"><b>화서문</b>(서쪽/서해바다) · <b>창룡문</b>(동쪽/강원도)</div>
+      <div class="box green"><b>화홍문</b> — 수원천 물이 성 안으로 흐르도록 만든 <b>물길 문(수문)</b>이에요.</div>
+    </div>
+  </div>
+  <div class="game-link">[홍예성문]을 누르면 장안문 → 팔달문 → 화서문 → 창룡문 → 화홍문 순서로 자리를 알려 줘요. 성문은 <b>길 위에만</b> 세울 수 있어요.</div>
+</article>
+
+<article class="slide">
+  <div class="kicker">2. 수원 화성</div>
+  <h2>성을 지키는 특별한 건물들</h2>
+  <div class="cols">
+    <div class="box"><div class="big-emoji">🚩</div><h3>서장대</h3><p>팔달산 정상의 <b>지휘 본부</b>. 장군이 여기서 성 전체를 내려다보며 군사를 지휘했어요.</p></div>
+    <div class="box"><div class="big-emoji">🔥</div><h3>봉돈</h3><p><b>봉화</b>를 올리는 곳. 낮에는 연기, 밤에는 불빛으로 위험을 멀리 알렸어요.</p></div>
+    <div class="box"><div class="big-emoji">🗼</div><h3>공심돈</h3><p>속이 빈 높은 <b>감시탑</b>. 안에 숨어서 적을 살피고 공격할 수 있었어요.</p></div>
+    <div class="box"><div class="big-emoji">🌸</div><h3>방화수류정</h3><p>연못(용연) 옆의 아름다운 정자. 경치를 즐기면서 <b>주변을 살피는 곳</b>이기도 했어요.</p></div>
+  </div>
+  <div class="game-link">서장대(5번 교지)는 <b>산꼭대기</b>, 봉돈(6번 교지)는 <b>성곽 위</b>에 지어요.</div>
+</article>
+
+<article class="slide">
+  <div class="kicker">2. 수원 화성</div>
+  <h2>화성행궁 — 왕이 머무는 궁궐</h2>
+  <div class="cols">
+    <div style="display:grid;gap:12px">
+      <p class="lead"><span class="word">행궁</span>은 왕이 서울 밖으로 나들이할 때 머무는 궁궐이에요.</p>
+      <p>정조는 아버지 무덤에 갈 때마다 화성행궁에 머물렀어요. 안에는 <b>신풍루</b>(정문), <b>봉수당</b>(잔치를 연 건물) 같은 건물이 있어요.</p>
+    </div>
+    <figure><img src="./images/09_haenggung_done.jpg" alt="게임 속 건설 중인 화성행궁"><figcaption>게임 속 화성행궁. 1번 교지가 바로 행궁 짓기예요.</figcaption></figure>
+  </div>
+</article>
+
+<article class="slide">
+  <div class="kicker">3. 백성과 도시</div>
+  <h2>1795년, 어머니를 위한 큰 나들이</h2>
+  <div class="cols">
+    <div style="display:grid;gap:12px">
+      <p class="lead">1795년, 정조의 어머니 <span class="word">혜경궁 홍씨</span>가 61살 생신(회갑)을 맞았어요. 정조는 어머니를 모시고 화성까지 <b>8일 동안</b> 큰 나들이를 했어요. 이것을 <span class="word">을묘원행</span>이라고 해요.</p>
+      <ul class="dots">
+        <li>🚣 한강에 배를 이어 만든 <b>배다리</b>를 놓고 건넜어요</li>
+        <li>🎉 화성행궁 봉수당에서 성대한 생신 잔치를 열었어요</li>
+        <li>🍚 가난한 백성과 노인에게 쌀과 음식을 베풀었어요</li>
+      </ul>
+    </div>
+    <figure><img src="./images/41_eulmyo.jpg"alt="게임 속 을묘원행 장면"><figcaption>게임 속 [을묘원행] 화면</figcaption></figure>
+  </div>
+</article>
+
+<article class="slide">
+  <div class="kicker">3. 백성과 도시</div>
+  <h2>먹을 쌀이 있어야 도시가 커져요</h2>
+  <p class="lead">사람이 모이려면 식량 넉넉해야 해요. 정조는 화성 둘레에 <b>저수지</b>를 만들고 <b>나라 농장</b>을 열었어요.</p>
+  <div class="cols">
+    <div class="box green"><h3>💧 만석거 (1795)</h3><p>북쪽 저수지. "쌀 만 석을 거둔다"는 뜻. 가뭄을 대비.</p></div>
+    <div class="box gold"><h3>🌾 대유둔전 (1795)</h3><p>만석거 물로 농사짓는 <b>나라 농장</b>. 여기서 거둔 곡식으로 성과 군대를 꾸렸어요.</p></div>
+    <div class="box green"><h3>💧 축만제 (1799)</h3><p>서쪽 저수지. 지금은 <b>서호</b>라고 불러요.</p></div>
+  </div>
+  <div class="game-link">논밭(대유둔전)은 성 밖에만 만들 수 있고<b>만석거·축만제·저수지 가까이</b>있으면 생산량이 높아져요.</div>
+</article>
+
+<article class="slide">
+  <div class="kicker">3. 백성과 도시</div>
+  <h2>정조의 군대, 장용영</h2>
+  <div class="cols">
+    <div class="box red"><h3>⚔️ 장용영</h3><p>정조가 직접 만든 <b>왕을 지키는 군대</b>예요. 그중 일부가 화성에 머물며 성을 지켰어요.</p></div>
+    <div class="box"><h3>🏹 연무대</h3><p>군사들이 활쏘기와 무예를 연습하던 곳이에요. 정조도 이곳에서 군사 훈련을 지켜보았어요.</p></div>
+  </div>
+  <div class="game-link">행궁을 지으면 장용영 공격력이 생겨요. [도적 소탕]·[포호 대책]으로 백성을 지켜요.</div>
+</article>
+
+<article class="slide">
+  <div class="kicker">3. 백성과 도시</div>
+  <h2>모든 것을 기록한 책, 『화성성역의궤』</h2>
+  <div class="cols">
+    <div style="display:grid;gap:12px">
+      <p class="lead">정조는 화성을 쌓은 과정을 <b>빠짐없이</b> 책으로 남겼어요. 이 책이 <span class="word">『화성성역의궤』</span>예요.</p>
+      <ul class="dots">
+        <li>📐 각 건물의 그림과 크기</li>
+        <li>🧱 쓴 돌·벽돌·나무의 양과 값</li>
+        <li>👷 일한 사람의 이름과 받은 품삯</li>
+      </ul>
+    </div>
+    <div class="box gold">
+      <h3>🌏 화성성역의궤의 가치</h3>
+      <p>화성은 6.25 전쟁 때 많이 부서졌어요. 하지만 의궤를 보고 <b>원래 모습 그대로</b> 복원할 수 있었어요.</p>
+      <p style="margin-top:8px">그 덕에 수원 화성은 <b>1997년 유네스코 세계유산</b>이 되었어요.</p>
+    </div>
+  </div>
+  <div class="game-link">조정·정무의 [의궤 편찬]이 바로 이 책을 만드는 일이에요.</div>
+</article>
+
+<article class="slide">
+  <div class="kicker">3. 백성과 도시</div>
+  <h2>실학 — 생활에 쓸모 있는 학문</h2>
+  <p class="lead">정조 때에는 어려운 글만 읽지 말고 <b>백성의 생활에 실제로 도움이 되는 것</b>을 연구하자는 학문이 활발했어요. 이것을 <span class="word">실학</span>이라고 해요.</p>
+  <div class="cols">
+    <div class="box"><div class="big-emoji">🔧</div><h3>기술</h3><p>거중기처럼 일을 쉽게 하는 기계</p></div>
+    <div class="box"><div class="big-emoji">🌱</div><h3>농사</h3><p>더 많이 거두는 농사법</p></div>
+    <div class="box"><div class="big-emoji">🛒</div><h3>상업</h3><p>장사와 물건 오가는 길을 넓히기</p></div>
+  </div>
+  <div class="game-link">[실학 연구]를 마치는 것은 가장 좋은 결말을 보기 위한 조건 가운데 하나예요.</div>
 </article>
 
 <article class="slide">
   <div class="kicker">4. 게임 낱말</div>
-  <h2>알아 두면 좋은 게임 요령 세 가지</h2>
+  <h2>게임에 나오는 낱말 미리 알기</h2>
+  <dl class="words">
+    <div class="box"><dt>냥</dt><dd>조선의 돈 단위. 게임의 🪙 금.</dd></div>
+    <div class="box"><dt>석(섬)</dt><dd>곡식을 세는 단위. 쌀 한 가마니 정도.</dd></div>
+    <div class="box"><dt>민심</dt><dd>백성의 마음(행복,충성심).</dd></div>
+    <div class="box"><dt>왕권</dt><dd>왕의 힘과 권위.</dd></div>
+    <div class="box"><dt>교지</dt><dd>왕이 내리는 명령 문서. 게임의 퀘스트.</dd></div>
+    <div class="box"><dt>방·리</dt><dd>마을을 나누는 단위. 게임에서는 집터.</dd></div>
+    <div class="box"><dt>저잣거리</dt><dd>가게가 늘어선 시장 거리.</dd></div>
+    <div class="box"><dt>둔전</dt><dd>나라나 국가가 운영하는 농장.</dd></div>
+    <div class="box"><dt>세금(조세)</dt><dd>나라 살림을 위해 백성이 내는 돈이나 곡식.</dd></div>
+  </dl>
+</article>
+
+<article class="slide">
+  <div class="kicker">4. 게임 낱말</div>
+  <h2>게임은 이렇게 흘러가요</h2>
   <div class="cols">
-    <div class="box gold">
-      <h3>1️⃣ 어명 교지를 차례대로!</h3>
-      <p>김판관의 <b>어명 교지</b>를 순서대로 따라가면 도시가 저절로 모양을 갖춰요.</p>
+    <div style="display:grid;gap:10px;align-content:start">
+      <div class="box"><b>1턴 = 1개월</b><br>1789년 1월부터 1800년까지, 약 130번의 달이 지나가요.</div>
+      <div class="box"><b>어명 교지 7개</b><br>① 화성행궁 → ② 큰길 → ③ 성문 → ④ 시장·마을·우물 → ⑤ 서장대 → ⑥ 봉돈 → ⑦ 성곽 완공</div>
+      <div class="box"><b>결말</b><br>1800년에 내가 만든 도시를 보고 결말이 정해져요. 백성을 아끼면 좋은 결말!</div>
     </div>
-    <div class="box green">
-      <h3>2️⃣ 첫해 안에 관아와 제방!</h3>
-      <p>여름 장마가 오기 전에 <b>제방</b>을 쌓고, 백성의 억울함을 들어줄 <b>관아</b>를 일찍 지어야 민심이 떨어지지 않아요.</p>
-    </div>
-    <div class="box red">
-      <h3>3️⃣ 민심이 가장 중요해요!</h3>
-      <p>백성의 마음(민심)이 45% 아래로 떨어지면 도적이 나타나요. 백성을 아끼는 정조가 되어 봐요.</p>
-    </div>
+    <figure><img src="./images/50_city_1820_wide.jpg"alt="게임 속 성곽 도시가 자라는 모습"><figcaption>게임 속 화성 도시. 진짜 역사처럼 성을 쌓고 백성을 모아요.</figcaption></figure>
   </div>
+  <div class="note">진짜 정조처럼 <b>백성의 마음(민심)</b>을 잘 살피는 것이 이 게임의 가장 큰 비밀이에요!</div>
 </article>
 
 <article class="slide cover">
@@ -411,6 +643,9 @@ figcaption { font-size: .88em; color: var(--muted); margin-top: 6px; }
   });
 
   // ---------- 화면 크기 맞추기 ----------
+  // 보이는 카드의 글자 크기를 바꿔 가며, 머리띠와 넘김 막대 사이에 스크롤 없이 꽉 차는 가장 큰 크기를 찾습니다.
+  // 카드 안의 글자·여백·그림 크기는 모두 em 단위라 글자 크기 하나로 함께 커지고 작아집니다.
+  // 폭이 좁은 화면(휴대폰)에서는 글씨가 너무 작아지지 않도록 맞추지 않고 스크롤합니다.
   function visibleCard() {
     if (!document.getElementById("learn").hidden) return slides[cur];
     return document.querySelector("#quiz > .slide:not([hidden])");
@@ -424,6 +659,7 @@ figcaption { font-size: .88em; color: var(--muted); margin-top: 6px; }
     var below = learnOn ? document.querySelector(".navbar").offsetHeight : 24;
     var avail = window.innerHeight - (card.getBoundingClientRect().top + window.scrollY) - below - 2;
     var lo = 11, hi = Math.min(40, window.innerWidth / 40);
+    // 재는 동안 스크롤바가 나타났다 사라지며 폭이 바뀌지 않도록 잠시 숨깁니다.
     var rootStyle = document.documentElement.style;
     rootStyle.overflowY = "hidden";
     card.style.flex = "none";
@@ -486,6 +722,7 @@ figcaption { font-size: .88em; color: var(--muted); margin-top: 6px; }
   });
 
   // ---------- 퀴즈 ----------
+  // s: 해설이 있는 슬라이드 번호(0부터)
   var QUESTIONS = [
     { q: "정조는 조선의 몇 번째 왕일까요?", o: ["15번째", "19번째", "22번째", "27번째"], a: 2,
       e: "정조는 조선의 22번째 왕이에요. 1776년부터 1800년까지 24년 동안 나라를 다스렸어요.", s: 2 },
@@ -580,7 +817,7 @@ figcaption { font-size: .88em; color: var(--muted); margin-top: 6px; }
   function finish() {
     el("quiz-q").hidden = true; el("quiz-result").hidden = false;
     var n = order.length, badge, title, msg;
-    if (score >= 13) { badge = "🏅"; title = "화성 축성 대감"; msg = "정말 대단해요! 정조 임금도 칭찬할 실력이에요. 이제 게임에서 멋진 화성을 쌓아 봐요."; }
+    if (score >= 13) { badge = "🏅"; title = "화성 축성 대감"; msg = "대단해요! 정조 임금도 칭찬할 실력이에요. 이제 게임에서 멋진 화성을 쌓아 봐요."; }
     else if (score >= 10) { badge = "🎖️"; title = "장용영 장수"; msg = "아주 잘했어요! 틀린 문제만 다시 보면 완벽해요."; }
     else if (score >= 6) { badge = "📜"; title = "규장각 학자"; msg = "잘했어요! 아래 해설을 읽고 한 번 더 도전해 봐요."; }
     else { badge = "🌱"; title = "새내기 백성"; msg = "괜찮아요! 슬라이드를 다시 보고 오면 훨씬 잘할 수 있어요."; }
